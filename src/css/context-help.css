@@ -1,0 +1,219 @@
+.context-help-trigger {
+  position: fixed;
+  top: max(24px, env(safe-area-inset-top));
+  left: calc(50% + min(176px, calc(50vw - 64px)));
+  z-index: 180;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.context-help-trigger[hidden] {
+  display: none !important;
+}
+
+.context-help-trigger[aria-expanded="true"] {
+  border-color: var(--lime);
+  box-shadow: 0 0 0 5px rgba(184, 255, 0, 0.12), 0 0 24px rgba(184, 255, 0, 0.42);
+  transform: rotate(-7deg) scale(1.06);
+}
+
+.context-help-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1399;
+  pointer-events: auto;
+}
+
+.context-help-shade {
+  position: absolute;
+  display: block;
+  background: rgba(4, 6, 4, 0.72);
+  pointer-events: auto;
+}
+
+.context-tour-spotlight {
+  position: fixed;
+  z-index: 1400;
+  pointer-events: none;
+  border: 2px solid var(--lime);
+  border-radius: 14px;
+  box-shadow: 0 0 0 9999px rgba(4, 6, 4, 0.72), 0 0 0 5px rgba(184, 255, 0, 0.13), 0 0 26px rgba(184, 255, 0, 0.72);
+  transition: top 220ms ease, left 220ms ease, width 220ms ease, height 220ms ease;
+}
+
+.context-help-target {
+  position: relative !important;
+  z-index: 1402 !important;
+  isolation: isolate;
+  filter: none !important;
+}
+
+.context-help-annotation {
+  position: fixed;
+  z-index: 1403;
+  min-height: 118px;
+  box-sizing: border-box;
+  padding: 16px 16px 14px;
+  border: 2px solid rgba(243, 245, 239, 0.86);
+  border-radius: 7px 13px 9px 15px;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(184, 255, 0, 0.08), transparent 35%),
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.035) 0 1px, transparent 1px 4px),
+    #202720;
+  color: var(--text);
+  box-shadow: 5px 5px 0 rgba(184, 255, 0, 0.14), 0 12px 32px rgba(0, 0, 0, 0.38);
+  transform: rotate(-1.2deg);
+}
+
+.context-help-annotation::before,
+.context-help-annotation::after {
+  position: absolute;
+  border: 1px solid rgba(243, 245, 239, 0.32);
+  border-radius: inherit;
+  content: "";
+  pointer-events: none;
+}
+
+.context-help-annotation::before {
+  inset: 3px -3px -3px 3px;
+  transform: rotate(1deg);
+}
+
+.context-help-annotation::after {
+  inset: -3px 3px 3px -3px;
+  transform: rotate(-0.5deg);
+}
+
+.context-help-annotation[data-placement="above"] {
+  transform: rotate(1.2deg);
+}
+
+.context-help-arrow {
+  position: absolute;
+  top: -21px;
+  width: 16px;
+  height: 16px;
+  border-top: 3px solid var(--lime);
+  border-left: 3px solid var(--lime);
+  transform: rotate(45deg);
+}
+
+.context-help-annotation[data-placement="above"] .context-help-arrow {
+  top: auto;
+  bottom: -21px;
+  transform: rotate(225deg);
+}
+
+.context-help-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.context-help-eyebrow {
+  color: var(--lime);
+  font-family: "Comic Sans MS", "Bradley Hand", cursive;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.context-help-heading h2,
+.context-help-annotation h2 {
+  margin: 7px 0 0;
+  color: var(--text);
+  font-family: "Comic Sans MS", "Bradley Hand", cursive;
+  font-size: 21px;
+  line-height: 1.1;
+}
+
+.context-help-close {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  padding: 0 0 2px;
+  place-items: center;
+  border: 1px solid rgba(243, 245, 239, 0.36);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text);
+  font-size: 21px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.context-help-description {
+  margin: 9px 0 13px;
+  color: #c4c9bf;
+  font-family: "Comic Sans MS", "Bradley Hand", cursive;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.context-tour-controls {
+  display: flex;
+  gap: 8px;
+  position: relative;
+  z-index: 1;
+}
+
+.context-tour-prev,
+.context-tour-next {
+  min-height: 32px;
+  padding: 6px 12px;
+  border: 1px solid rgba(184, 255, 0, 0.52);
+  border-radius: 8px;
+  font: 700 12px/1 "Comic Sans MS", "Bradley Hand", cursive;
+  cursor: pointer;
+}
+
+.context-tour-prev {
+  background: transparent;
+  color: #c4c9bf;
+}
+
+.context-tour-prev[hidden] {
+  display: none;
+}
+
+.context-tour-next {
+  flex: 1;
+  background: var(--lime);
+  color: #10130f;
+}
+
+.context-help-close:focus-visible,
+.context-tour-prev:focus-visible,
+.context-tour-next:focus-visible {
+  outline: 2px solid var(--lime);
+  outline-offset: 3px;
+}
+
+body.context-help-open {
+  overflow: hidden;
+}
+
+body.context-help-open .bottom-nav {
+  pointer-events: none;
+}
+
+@media (max-width: 360px) {
+  .context-help-annotation {
+    padding: 13px;
+  }
+
+  .context-help-annotation h2 {
+    font-size: 18px;
+  }
+
+  .context-help-description {
+    font-size: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .context-help-trigger,
+  .context-tour-spotlight {
+    transition: none;
+  }
+}

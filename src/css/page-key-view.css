@@ -1,0 +1,231 @@
+/* page-key-view.css - Your Key / Import Screen */
+
+#page-key-view {
+  overflow-y: auto;
+  overscroll-behavior: none;
+}
+
+.key-view-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 20px 140px;
+  gap: 24px;
+}
+
+.key-view-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.key-view-hero-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 26px;
+  background:
+    radial-gradient(circle at center, rgba(184, 255, 0, 0.16) 0%, transparent 70%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.03) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(16px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--lime);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 12px 28px rgba(0, 0, 0, 0.3);
+  animation: heroPodBreathing 3s ease-in-out infinite;
+}
+
+.key-view-hero-icon svg {
+  animation: keyFloatingPulse 2.8s ease-in-out infinite;
+  will-change: transform, filter;
+}
+
+.key-view-title {
+  font-size: 26px;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 6px 0 0;
+}
+
+.key-view-subtitle {
+  font-size: 14px;
+  color: var(--muted);
+  margin: 0;
+  line-height: 1.45;
+  max-width: 290px;
+  text-align: center;
+}
+
+/* Copyable Key Box */
+.key-box-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 52px;
+}
+
+.key-box-field {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-sizing: border-box;
+}
+
+.key-box-field:active {
+  transform: scale(0.98);
+  border-color: var(--lime);
+  background: rgba(184, 255, 0, 0.06);
+}
+
+.key-box-text {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--lime);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: all;
+  flex: 1;
+}
+
+.key-box-copy-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--lime);
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.key-box-field:hover .key-box-copy-icon {
+  transform: scale(1.1);
+}
+
+.key-box-subnote {
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+  margin: 0;
+}
+
+/* Fixed Bottom Actions */
+.key-view-bottom-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 16px 20px 32px;
+  background: rgba(17, 18, 17, 0.95);
+  backdrop-filter: blur(16px);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 10;
+}
+
+.btn-lime-import {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 56px;
+  border-radius: 18px;
+  background: var(--lime);
+  color: #000000;
+  border: none;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 160ms ease, opacity 160ms ease, box-shadow 160ms ease;
+  box-shadow: 0 4px 20px rgba(184, 255, 0, 0.25);
+}
+
+.btn-lime-import:active {
+  transform: scale(0.98);
+}
+
+.btn-lime-import svg {
+  color: #000000;
+  stroke-width: 1.2px;
+}
+
+/* Telegram Guide Banner Card */
+.guide-banner-card {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(184, 255, 0, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%);
+  border: 1px solid rgba(184, 255, 0, 0.25);
+  backdrop-filter: blur(12px);
+  cursor: pointer;
+  margin-top: 18px;
+  transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+.guide-banner-card:active {
+  transform: scale(0.98);
+  background: rgba(184, 255, 0, 0.14);
+  border-color: rgba(184, 255, 0, 0.5);
+}
+
+.guide-banner-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: rgba(184, 255, 0, 0.12);
+  border: 1px solid rgba(184, 255, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.guide-banner-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 3px;
+}
+
+.guide-banner-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.01em;
+}
+
+.guide-banner-sub {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.35;
+}
+
+.guide-banner-arrow {
+  color: var(--lime);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

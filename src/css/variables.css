@@ -1,0 +1,12 @@
+:root {
+  color-scheme: dark;
+  --bg: #111211;
+  --surface: #171917;
+  --surface-raised: #1d201d;
+  --line: rgba(184, 255, 0, 0.8);
+  --line-soft: rgba(184, 255, 0, 0.34);
+  --lime: #b8ff00;
+  --text: #f3f5ef;
+  --muted: #92978d;
+  --font: "Avenir Next", "Manrope", "Helvetica Neue", sans-serif;
+}

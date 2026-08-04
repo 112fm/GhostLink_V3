@@ -1,0 +1,271 @@
+/* page-app-select.css - App Selection Screen */
+
+#page-app-select {
+  overflow-y: auto;
+  overscroll-behavior: none;
+}
+
+.app-select-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 20px 140px;
+  gap: 16px;
+}
+
+.app-select-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  margin-top: 0;
+}
+
+.app-select-hero-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 26px;
+  background:
+    radial-gradient(circle at center, rgba(184, 255, 0, 0.16) 0%, transparent 70%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.03) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(16px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--lime);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 12px 28px rgba(0, 0, 0, 0.3);
+  animation: heroPodBreathing 3s ease-in-out infinite;
+}
+
+.app-select-hero-icon img {
+  animation: cloudFloatingPulse 2.8s ease-in-out infinite;
+  will-change: transform, filter;
+}
+
+@keyframes cloudFloatingPulse {
+  0%, 100% {
+    transform: scale(1) translateY(0);
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4)) drop-shadow(0 0 4px rgba(184, 255, 0, 0.2));
+  }
+  50% {
+    transform: scale(1.08) translateY(-2px);
+    filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.5)) drop-shadow(0 0 18px rgba(184, 255, 0, 0.75));
+  }
+}
+
+.app-select-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 6px 0 0;
+}
+
+.app-select-subtitle {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0;
+  line-height: 1.4;
+  max-width: 280px;
+  text-align: center;
+}
+
+/* Side-by-side Cards Container */
+.app-cards-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.app-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 14px 16px;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  min-height: 280px;
+  justify-content: space-between;
+  transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  opacity: 0.65;
+}
+
+.app-card input[type="radio"] {
+  display: none;
+}
+
+.app-card-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: #ffffff;
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+/* Phone Mockup Placeholder Area */
+.app-card-preview-area {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  min-height: 150px;
+}
+
+.app-card-img {
+  max-width: 100%;
+  max-height: 160px;
+  object-fit: contain;
+  transition: all 0.35s ease;
+  filter: grayscale(1) opacity(0.45);
+}
+
+.app-card.active {
+  opacity: 1;
+  border-color: var(--lime);
+  background: linear-gradient(180deg, rgba(30, 42, 22, 0.85) 0%, rgba(18, 25, 14, 0.9) 100%);
+  box-shadow: 0 0 24px rgba(184, 255, 0, 0.16), inset 0 1px 0 rgba(184, 255, 0, 0.2);
+}
+
+.app-card.active .app-card-img {
+  filter: grayscale(0) opacity(1);
+  transform: scale(1.06);
+}
+
+.app-card.disabled {
+  pointer-events: none;
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.app-card.disabled .app-card-img {
+  filter: grayscale(1) opacity(0.35);
+}
+
+/* Card Bottom Badge Pills */
+.app-badge-pill {
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  margin-top: 12px;
+  width: 100%;
+  max-width: 130px;
+}
+
+.app-badge-pill.recommended {
+  border: 1px solid var(--lime);
+  background: rgba(184, 255, 0, 0.08);
+  color: var(--lime);
+}
+
+.app-badge-pill.dev {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted);
+}
+
+.app-badge-pill.dev::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -75%;
+  width: 50%;
+  height: 200%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.3) 50%,
+    transparent 100%
+  );
+  transform: rotate(25deg);
+  animation: badgeShimmer 3.2s ease-in-out infinite;
+}
+
+@keyframes badgeShimmer {
+  0% {
+    left: -75%;
+  }
+  25% {
+    left: 125%;
+  }
+  100% {
+    left: 125%;
+  }
+}
+
+/* Fixed Bottom Action Bar */
+.app-select-bottom-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 16px 20px 32px;
+  background: rgba(17, 18, 17, 0.95);
+  backdrop-filter: blur(16px);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 10;
+}
+
+.btn-white-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 56px;
+  border-radius: 18px;
+  background: var(--lime);
+  color: #000000;
+  border: none;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 160ms ease, opacity 160ms ease, background 160ms ease;
+  box-shadow: 0 4px 20px rgba(184, 255, 0, 0.25);
+}
+
+.btn-white-action:active {
+  transform: scale(0.98);
+}
+
+.btn-white-action svg {
+  color: #000000;
+}
+
+.btn-outline-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 56px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 160ms ease, background 160ms ease;
+}
+
+.btn-outline-action:active {
+  transform: scale(0.98);
+}
