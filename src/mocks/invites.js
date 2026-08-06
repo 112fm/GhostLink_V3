@@ -180,7 +180,7 @@
         }
         return {
           isMock: true,
-          standardInvitation: { type: 'standard', isMock: true, url: `https://t.me/GhostLinkBot?start=ref_${referralCode}` },
+          standardInvitation: { type: 'standard', isMock: true, url: `ghostlink-mock://invite/ref_${referralCode}` },
           invitations: clone(invitations),
           stats: stats(),
         };
@@ -207,7 +207,7 @@
           owner_id: ownerId,
           status: 'created',
           temporary_key: `ghostlink-mock://bridge/temp-${suffix}`,
-          invite_url: `https://t.me/GhostLinkBot?start=bridge_mock_${suffix}`,
+          invite_url: `ghostlink-mock://bridge/invite-${suffix}`,
           expires_ts: createdTs + TTL_SECONDS,
           bound_user_id: null,
           error: null,

@@ -147,8 +147,8 @@
       refs.toggleQr?.classList.add('active');
       if (refs.qrLabel) {
         refs.qrLabel.textContent = state.mode === 'bridge'
-          ? 'Локальный mock-QR использует текущую подготовленную ссылку. Реальный QR появится после подключения Bridge API.'
-          : 'Локальный mock-QR использует текущую реферальную ссылку.';
+          ? 'Демонстрационный QR: показывает mock-ссылку и не создаёт ключ.'
+          : 'Демонстрационный QR: показывает mock-приглашение и не открывает Telegram.';
       }
     }
 

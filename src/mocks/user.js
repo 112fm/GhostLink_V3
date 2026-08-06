@@ -1,5 +1,5 @@
 export const mockUser = Object.freeze({
   id: "mock-user",
-  name: "Тестовый пользователь",
+  name: "Демонстрационный режим",
   role: "user",
 });

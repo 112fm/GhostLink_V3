@@ -121,8 +121,7 @@ function renderDeviceCards(devices) {
       button.addEventListener('click', () => startDeviceMutation(device, type));
       actions.append(button);
     });
-    right.append(actions);
-    card.append(left, right);
+    card.append(left, right, actions);
     activeDevicesContainer.append(card);
   });
 }
@@ -145,8 +144,8 @@ function renderDeviceList(snapshot) {
     btnDevicesAdd.textContent = isAtLimit ? 'Лимит устройств достигнут' : 'Добавить устройство';
   }
   setDevicesListStatus(isAtLimit
-    ? 'Свободных мест нет. Удалите или сбросьте ненужное устройство.'
-    : isEmpty ? 'Список загружен. Можно добавить первое устройство.' : 'Список устройств обновлён.');
+    ? 'Демонстрационный список: свободных мест нет.'
+    : isEmpty ? 'Демонстрационный список пуст. Можно добавить первое устройство.' : 'Демонстрационные устройства обновлены.');
   resumeSavedDeviceMutations();
 }
 
@@ -851,20 +850,7 @@ if (btnKeyViewBack && pageKeyView) {
 
 if (btnOpenBotGuide) {
   btnOpenBotGuide.addEventListener('click', () => {
-    const selectedRadio = document.querySelector('input[name="app-choice"]:checked');
-    const selectedApp = selectedRadio ? selectedRadio.value : 'incy';
-    const startParam = selectedApp === 'karing' ? 'help_karing' : 'help_incy';
-    const guideUrl = `https://t.me/GhostLinkBot?start=${startParam}`;
-    const tgDeepLink = `tg://resolve?domain=GhostLinkBot&start=${startParam}`;
-    
-    if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.openTelegramLink === 'function') {
-      window.Telegram.WebApp.openTelegramLink(guideUrl);
-    } else {
-      window.location.href = tgDeepLink;
-      setTimeout(() => {
-        window.open(guideUrl, '_blank');
-      }, 300);
-    }
+    showToast('Демонстрационный режим: инструкция в Telegram-боте не открывается.');
   });
 }
 
@@ -993,17 +979,7 @@ const btnDeviceKaringGuide = document.getElementById('btnDeviceKaringGuide');
 
 if (btnDeviceKaringGuide) {
   btnDeviceKaringGuide.addEventListener('click', () => {
-    const startParam = currentAppChoice === 'karing' ? 'help_karing' : 'help_incy';
-    const guideUrl = `https://t.me/GhostLinkBot?start=${startParam}`;
-    const tgDeepLink = `tg://resolve?domain=GhostLinkBot&start=${startParam}`;
-    if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.openTelegramLink === 'function') {
-      window.Telegram.WebApp.openTelegramLink(guideUrl);
-    } else {
-      window.location.href = tgDeepLink;
-      setTimeout(() => {
-        window.open(guideUrl, '_blank');
-      }, 300);
-    }
+    showToast('Демонстрационный режим: инструкция в Telegram-боте не открывается.');
   });
 }
 

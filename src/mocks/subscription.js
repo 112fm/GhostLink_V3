@@ -1,21 +1,21 @@
 (function registerMockProfileSubscription(globalScope) {
   const SCENARIOS = Object.freeze({
     active: Object.freeze({
-      profile: Object.freeze({ id: 'mock-user-active', displayName: 'Тестовый пользователь' }),
+      profile: Object.freeze({ id: 'mock-user-active', displayName: 'Демонстрационный режим' }),
       subscription: Object.freeze({
         state: 'active', active: true, plan: Object.freeze({ id: 'vip-diamond', title: 'VIP DIAMOND', emoji: '💎' }),
         totalDays: 30, remainingDays: 29, deviceLimit: 5, usedDevices: 3,
       }),
     }),
     'low-days': Object.freeze({
-      profile: Object.freeze({ id: 'mock-user-low-days', displayName: 'Тестовый пользователь' }),
+      profile: Object.freeze({ id: 'mock-user-low-days', displayName: 'Демонстрационный режим' }),
       subscription: Object.freeze({
         state: 'active', active: true, plan: Object.freeze({ id: 'solo-ghost', title: 'SOLO GHOST', emoji: '👻' }),
         totalDays: 30, remainingDays: 6, deviceLimit: 2, usedDevices: 1,
       }),
     }),
     expired: Object.freeze({
-      profile: Object.freeze({ id: 'mock-user-expired', displayName: 'Тестовый пользователь' }),
+      profile: Object.freeze({ id: 'mock-user-expired', displayName: 'Демонстрационный режим' }),
       subscription: Object.freeze({
         state: 'expired', active: false, plan: null,
         totalDays: 30, remainingDays: 0, deviceLimit: 0, usedDevices: 0,

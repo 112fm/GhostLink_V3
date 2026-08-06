@@ -27,7 +27,7 @@
     const scenario = SCENARIOS[mode];
     const tariff = TARIFFS.find((item) => item.id === scenario.plan);
     return {
-      profile: { id: `local-${mode}-user`, displayName: 'Тестовый пользователь', access: 'granted' },
+      profile: { id: `local-${mode}-user`, displayName: 'Демонстрационный режим', access: 'granted' },
       subscription: {
         state: mode,
         active: true,
@@ -45,7 +45,7 @@
     if (SCENARIOS[mode]) return createNormalSnapshot(mode);
     if (mode === 'pending') {
       return {
-        profile: { id: 'local-pending-user', displayName: 'Тестовый пользователь', access: 'pending' },
+        profile: { id: 'local-pending-user', displayName: 'Демонстрационный режим', access: 'pending' },
         subscription: { state: 'pending', active: false, plan: null, totalDays: 0, remainingDays: 0, deviceLimit: 0, usedDevices: 0 },
         tariffs: clone(TARIFFS),
       };

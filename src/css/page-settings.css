@@ -284,10 +284,10 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 20px;
   padding: 14px 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
   backdrop-filter: blur(12px);
   transition: all 0.25s ease;
 }
@@ -297,7 +297,6 @@
   align-items: center;
   gap: 12px;
   min-width: 0;
-  flex: 1 1 auto;
 }
 
 .device-badge-emoji {
@@ -324,16 +323,16 @@
   font-size: 15px;
   font-weight: 700;
   color: #ffffff;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .device-apple-sub-row {
   display: flex;
   align-items: center;
   gap: 6px;
-  white-space: nowrap;
+  flex-wrap: wrap;
+  white-space: normal;
 }
 
 .device-is-this-badge {
@@ -344,7 +343,8 @@
   border: 1px solid rgba(184, 255, 0, 0.25);
   padding: 1px 6px;
   border-radius: 6px;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  white-space: normal;
   display: inline-block;
 }
 
@@ -359,26 +359,29 @@
   flex-direction: column;
   align-items: flex-end;
   gap: 10px;
-  flex-shrink: 0;
+  min-width: 0;
 }
 
 .device-card-actions {
-  display: flex;
-  justify-content: flex-end;
-  flex-wrap: wrap;
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
-  margin-top: 9px;
+  margin-top: 2px;
 }
 
 .device-card-action {
   min-height: 30px;
-  padding: 0 9px;
+  min-width: 0;
+  padding: 7px 8px;
   border: 1px solid rgba(184, 255, 0, 0.28);
   border-radius: 10px;
   background: rgba(184, 255, 0, 0.06);
   color: var(--lime);
   font-size: 11px;
   font-weight: 700;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
 }
 
 .device-card-action--remove {
@@ -398,7 +401,7 @@
   flex-direction: column;
   align-items: flex-end;
   gap: 2px;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .device-activity {
@@ -413,7 +416,7 @@
   font-size: 13px;
   font-weight: 700;
   color: #ffffff;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .device-status-dot {
@@ -427,6 +430,25 @@
 .device-status-dot.offline {
   background: rgba(255, 255, 255, 0.3);
   box-shadow: none;
+}
+
+@media (max-width: 380px) {
+  .device-apple-card {
+    grid-template-columns: 1fr;
+  }
+
+  .device-apple-right,
+  .device-right-stats {
+    align-items: flex-start;
+  }
+
+  .device-card-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .device-card-action--remove {
+    grid-column: 1 / -1;
+  }
 }
 
 /* Sleek Trash Action Button */
