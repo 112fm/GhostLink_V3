@@ -1,12 +1,8 @@
 (function registerLocalDeviceListAdapter(globalScope) {
   const DEFAULT_RESPONSE = Object.freeze({
-    connected: 3,
+    connected: 0,
     device_limit: 5,
-    items: Object.freeze([
-      Object.freeze({ uuid: 'local-device-iphone', email: 'iPhone 15 Pro', last_online: 0, up: 0, down: 0 }),
-      Object.freeze({ uuid: 'local-device-windows', email: 'Windows PC', last_online: null, up: 0, down: 0 }),
-      Object.freeze({ uuid: 'local-device-tv', email: 'Apple TV 4K', last_online: null, up: 0, down: 0 }),
-    ]),
+    items: Object.freeze([]),
   });
 
   function clone(value) {

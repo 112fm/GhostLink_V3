@@ -325,8 +325,8 @@
   background: rgba(15, 18, 15, 0.85);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  border-top: 1px solid rgba(184, 255, 0, 0.1);
-  border-bottom: 1px solid rgba(184, 255, 0, 0.1);
+  border-top: none;
+  border-bottom: none;
   border-radius: 0 0 20px 20px;
   min-height: 64px;
   display: flex;
