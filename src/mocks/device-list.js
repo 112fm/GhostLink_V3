@@ -1,11 +1,7 @@
 (function registerMockDeviceList(globalScope) {
   const STORAGE_KEY = 'ghostlink-v3-mock-device-list-v1';
 
-  const DEFAULT_DEVICES = Object.freeze([
-    { id: 'dev-iphone', name: 'iPhone 15 Pro', platform: 'phone', app: 'INCY', status: 'online', lastActive: 'Онлайн сейчас', traffic: '227.4 ГБ', isCurrent: true },
-    { id: 'dev-windows', name: 'Windows PC', platform: 'laptop', app: 'Karing', status: 'offline', lastActive: '24 дн. назад', traffic: '3.6 ГБ', isCurrent: false },
-    { id: 'dev-tv', name: 'Apple TV 4K', platform: 'tv', app: 'Karing', status: 'offline', lastActive: '1 мес. назад', traffic: '91.2 ГБ', isCurrent: false },
-  ]);
+  const DEFAULT_DEVICES = Object.freeze([]);
 
   function clone(value) {
     return JSON.parse(JSON.stringify(value));

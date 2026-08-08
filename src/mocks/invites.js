@@ -36,11 +36,7 @@
     const clock = options.now || (() => Date.now());
     const ownerId = options.ownerId || 'mock-inviter';
     const referralCode = options.referralCode || '8fa492b';
-    const invitations = options.invitations || [
-      { id: 'maria', name: 'Мария', handle: '@maria_v', status: 'subscribed', createdAt: '8 дней назад' },
-      { id: 'alex', name: 'Алексей', handle: '@alex_dev', status: 'pending', createdAt: '2 дня назад' },
-      { id: 'igor', name: 'Игорь', handle: '@igor_k', status: 'expired', createdAt: '21 день назад' },
-    ];
+    const invitations = options.invitations || [];
     let online = options.online !== false;
     let createCount = 0;
 
