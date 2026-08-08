@@ -1,0 +1,487 @@
+      <!-- ================================================================
+           OVERLAY FLOW: настройка ключа и подключение устройства.
+           ================================================================ -->
+      <!-- Экран: Настройка ключа -->
+      <section id="page-setup" class="page-overlay hidden">
+        <header class="page-header">
+          <button class="btn-back" id="btn-setup-back" aria-label="Назад">
+            <img src="./assets/icons/back.svg" alt="Назад" />
+          </button>
+          <div class="page-header-text">
+            <h2>Настройка ключа</h2>
+          </div>
+        </header>
+
+        <div class="setup-content">
+          <!-- Hero icon & Question -->
+          <div class="setup-hero">
+            <div class="setup-hero-icon-wrap">
+              <img src="./assets/icons/key.png" alt="Ключ" style="width: 54px; height: 54px; object-fit: contain;" />
+            </div>
+            <h3 class="setup-hero-title">Где настраиваем?</h3>
+            <p class="setup-hero-subtitle">Выберите устройство для установки ключа</p>
+          </div>
+
+          <!-- Options Section -->
+          <div class="setup-options-section">
+            <div class="setup-section-label">ВЫБЕРИТЕ ВАРИАНТ</div>
+            
+            <div class="setup-options-group">
+              <label class="setup-option-card active" id="opt-this-device">
+                <input type="radio" name="setup-target" value="this-device" checked />
+                <div class="setup-option-left">
+                  <div class="option-icon-badge">
+                    <img src="./assets/icons/phone.png" alt="Телефон" style="width: 48px; height: 48px; object-fit: contain;" />
+                  </div>
+                  <div class="option-text-group">
+                    <strong class="option-title">На этом устройстве</strong>
+                    <span class="option-subtitle">Настроить прямо сейчас</span>
+                  </div>
+                </div>
+                <div class="option-radio-mark checked" id="mark-this-device">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                </div>
+              </label>
+
+              <label class="setup-option-card" id="opt-other-device">
+                <input type="radio" name="setup-target" value="other-device" />
+                <div class="setup-option-left">
+                  <div class="option-icon-badge">
+                    <img src="./assets/icons/pc.png" alt="Компьютер" style="width: 55px; height: 55px; object-fit: contain;" />
+                  </div>
+                  <div class="option-text-group">
+                    <strong class="option-title">На другом устройстве</strong>
+                    <span class="option-subtitle">Телефон, компьютер или ТВ</span>
+                  </div>
+                </div>
+                <div class="option-radio-mark" id="mark-other-device"></div>
+              </label>
+            </div>
+          </div>
+
+          <!-- Info Note -->
+          <div class="setup-info-note">
+            <span class="info-icon">i</span>
+            <span>Можно добавить ключ на несколько устройств</span>
+          </div>
+        </div>
+
+        <!-- Fixed Bottom Bar -->
+        <div class="setup-bottom-bar">
+          <button type="button" class="btn-confirm-pay" id="btn-setup-continue">
+            <span>Продолжить</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Экран: Выбор приложения -->
+      <section id="page-app-select" class="page-overlay hidden">
+        <header class="page-header">
+          <button class="btn-back" id="btn-app-select-back" aria-label="Назад">
+            <img src="./assets/icons/back.svg" alt="Назад" />
+          </button>
+        </header>
+
+        <div class="app-select-content">
+          <!-- Hero icon & Title -->
+          <div class="app-select-hero">
+            <div class="app-select-hero-icon">
+              <img src="./assets/icons/donwloud.png" alt="Скачать" style="width: 52px; height: 52px; object-fit: contain;" />
+            </div>
+            <h3 class="app-select-title">Какое приложение?</h3>
+            <p class="app-select-subtitle">Установите приложение, которое подходит под ваши задачи</p>
+          </div>
+
+          <!-- Cards Grid: INCY & Karing (Side-by-side 2 columns) -->
+          <div class="app-cards-grid">
+            <!-- Card 1: INCY (Main Recommended) -->
+            <label class="app-card active" id="app-card-incy">
+              <input type="radio" name="app-choice" value="incy" checked />
+              <strong class="app-card-title">INCY</strong>
+              <div class="app-card-preview-area" id="incy-preview-container">
+                <img src="./assets/icons/incy_phone.png" alt="INCY" class="app-card-img" />
+              </div>
+              <div class="app-badge-pill recommended">Рекомендуем</div>
+            </label>
+
+            <!-- Card 2: Karing (Reserve) -->
+            <label class="app-card" id="app-card-karing">
+              <input type="radio" name="app-choice" value="karing" />
+              <strong class="app-card-title">Karing</strong>
+              <div class="app-card-preview-area" id="karing-preview-container">
+                <img src="./assets/icons/karing_phone.png" alt="Karing" class="app-card-img" />
+              </div>
+              <div class="app-badge-pill reserve" style="background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.7); border-color: rgba(255,255,255,0.15);">Резерв</div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Fixed Bottom Actions -->
+        <div class="app-select-bottom-bar">
+          <button type="button" class="btn-white-action" id="btn-install-app">
+            <img src="./assets/icons/donwloud_2.svg" alt="Скачать" style="width: 22px; height: 22px; object-fit: contain; filter: brightness(0);" />
+            <span id="install-app-btn-text">Установить INCY</span>
+          </button>
+          <button type="button" class="btn-outline-action" id="btn-already-have-app">
+            <span>У меня уже есть приложение</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Экран: Ваш ключ / Добавить в приложение -->
+      <section id="page-key-view" class="page-overlay hidden">
+        <header class="page-header">
+          <button class="btn-back" id="btn-key-view-back" aria-label="Назад">
+            <img src="./assets/icons/back.svg" alt="Назад" />
+          </button>
+        </header>
+
+        <div class="key-view-content">
+          <!-- Hero Icon & Text -->
+          <div class="key-view-hero">
+            <div class="key-view-hero-icon">
+              <!-- Link SVG Icon matching mockup -->
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+              </svg>
+            </div>
+            <h3 class="key-view-title">Ваш ключ</h3>
+            <p class="key-view-subtitle">Нажмите «Добавить в приложение», чтобы автоматически добавить ключ</p>
+          </div>
+
+          <!-- Key Copy Field -->
+          <div class="key-box-container">
+            <div class="key-box-field" id="key-box-field">
+              <span class="key-box-text" id="user-key-url">vless://ghostlink-key-8fa492b...#GhostLink-1</span>
+              <div class="key-box-copy-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="9" y="9" width="13" height="13" rx="3" ry="3"/>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                </svg>
+              </div>
+            </div>
+            <p class="key-box-subnote">Или нажмите на поле, чтобы скопировать ключ</p>
+          </div>
+
+          <!-- Кнопка вызова пошаговой инструкции в боте Telegram -->
+          <div class="guide-banner-card" id="btn-open-bot-guide" style="display: none;">
+            <div class="guide-banner-icon">
+              <img src="./assets/icons/tg.svg" alt="Telegram" style="width: 22px; height: 22px; object-fit: contain;" />
+            </div>
+            <div class="guide-banner-info">
+              <span class="guide-banner-title">Инструкция по настройке</span>
+              <span class="guide-banner-sub">Пошаговый гайд с фото в боте Telegram</span>
+            </div>
+            <div class="guide-banner-arrow">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Fixed Bottom Actions -->
+        <div class="key-view-bottom-bar">
+          <button type="button" class="btn-lime-import" id="btn-add-to-app">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+              <polyline points="10 17 15 12 10 7"/>
+              <line x1="15" y1="12" x2="3" y2="12"/>
+            </svg>
+            <span>Добавить в приложение</span>
+          </button>
+          <button type="button" class="btn-outline-action" id="btn-key-view-finish">
+            <span>Завершить</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Экран: На другом устройстве -->
+      <section id="page-other-device" class="page-overlay hidden">
+        <header class="page-header">
+          <button class="btn-back" id="btn-other-device-back" aria-label="Назад">
+            <img src="./assets/icons/back.svg" alt="Назад" />
+          </button>
+        </header>
+
+        <div class="other-device-content">
+          <!-- Hero Icon & Text -->
+          <div class="other-device-hero">
+            <div class="other-device-hero-icon">
+              <!-- Perfectly Symmetrical Line-Art Monitor Transfer Icon -->
+              <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="var(--lime)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="3" width="20" height="13" rx="2.5" ry="2.5"/>
+                <line x1="12" y1="16" x2="12" y2="19"/>
+                <line x1="7" y1="19" x2="17" y2="19"/>
+                <line x1="7.5" y1="9.5" x2="15.5" y2="9.5"/>
+                <polyline points="13 7 15.5 9.5 13 12"/>
+              </svg>
+            </div>
+            <h3 class="other-device-title">На другом устройстве</h3>
+            <p class="other-device-subtitle">Скачайте приложение на ваше устройство и импортируйте ключ-ссылку</p>
+          </div>
+
+          <!-- Key Copy Field -->
+          <div class="key-box-container" style="margin-top: 24px;">
+            <div class="key-box-field" id="other-device-key-field">
+              <span class="key-box-text" id="other-device-key-text">vless://ghostlink-key-8fa492b...#GhostLink-1</span>
+              <div class="key-box-copy-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="9" y="9" width="13" height="13" rx="3" ry="3"/>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                </svg>
+              </div>
+            </div>
+            <p class="key-box-subnote">Или нажмите на поле, чтобы скопировать ключ</p>
+          </div>
+
+          <!-- Devices Selection List -->
+          <div class="devices-section">
+            <h4 class="devices-section-title">Устройства</h4>
+            <div class="devices-grid">
+              <!-- iOS -->
+              <div class="platform-card" data-platform="ios">
+                <div class="platform-card-left">
+                  <div class="platform-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+                  </div>
+                  <div class="platform-info">
+                    <span class="platform-name">iOS</span>
+                    <span class="platform-subtext">App Store</span>
+                  </div>
+                </div>
+                <div class="platform-arrow">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 18 15 12 9 6"/>
+                  </svg>
+                </div>
+              </div>
+
+              <!-- Android (Google Play Triangle) -->
+              <div class="platform-card" data-platform="android">
+                <div class="platform-card-left">
+                  <div class="platform-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M17.523 15.3414L20.355 12.5094C20.9205 11.9439 20.9205 11.0255 20.355 10.4601L17.523 7.62805L14.288 10.8631L17.523 15.3414ZM3.45508 3.19043C3.16108 3.48443 3 3.91443 3 4.45543V19.5444C3 20.0854 3.16108 20.5154 3.45508 20.8094L3.52408 20.8784L12.5691 11.8334V11.6364L3.52408 2.59143L3.45508 3.19043ZM13.629 12.8934L4.76709 21.7554C5.10909 21.9124 5.51609 21.9474 5.92209 21.7144L16.2921 15.7274L13.629 12.8934ZM13.629 10.8024L16.2921 7.96843L5.92209 1.98143C5.51609 1.74843 5.10909 1.78343 4.76709 1.94043L13.629 10.8024Z"/>
+                    </svg>
+                  </div>
+                  <div class="platform-info">
+                    <span class="platform-name">Android</span>
+                    <span class="platform-subtext">Google Play</span>
+                  </div>
+                </div>
+                <div class="platform-arrow">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 18 15 12 9 6"/>
+                  </svg>
+                </div>
+              </div>
+
+              <!-- macOS -->
+              <div class="platform-card" data-platform="macos">
+                <div class="platform-card-left">
+                  <div class="platform-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                  </div>
+                  <div class="platform-info">
+                    <span class="platform-name">macOS</span>
+                    <span class="platform-subtext">App Store</span>
+                  </div>
+                </div>
+                <div class="platform-arrow">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 18 15 12 9 6"/>
+                  </svg>
+                </div>
+              </div>
+
+              <!-- TV -->
+              <div class="platform-card" data-platform="tv">
+                <div class="platform-card-left">
+                  <div class="platform-icon">
+                    <svg width="20" height="20" viewBox="0 0 28 28" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M17.0336 4.25C18.4053 4.25 19.4807 4.24999 20.3451 4.32061C21.2252 4.39252 21.9523 4.54138 22.6104 4.87671C23.6924 5.42798 24.572 6.30762 25.1233 7.38955C25.4586 8.04769 25.6075 8.77479 25.6794 9.65494C25.75 10.5192 25.75 11.5947 25.75 12.9663V13.0336C25.75 14.4052 25.75 15.4808 25.6794 16.3451C25.6075 17.2252 25.4586 17.9523 25.1233 18.6104C24.572 19.6924 23.6924 20.572 22.6104 21.1233C21.9523 21.4586 21.2252 21.6075 20.3451 21.6794C19.4808 21.75 18.4053 21.75 17.0337 21.75H14.75V23.584C15.3744 23.6276 15.9959 23.7259 16.6073 23.8787L18.1819 24.2724C18.5837 24.3729 18.8281 24.7801 18.7276 25.1819C18.6271 25.5837 18.2199 25.8281 17.8181 25.7276L16.2435 25.3339C15.507 25.1498 14.7535 25.0578 14 25.0578C13.2465 25.0578 12.493 25.1498 11.7565 25.3339L10.1819 25.7276C9.78006 25.8281 9.37285 25.5837 9.27239 25.1819C9.17193 24.7801 9.41625 24.3729 9.8181 24.2724L11.3927 23.8787C12.0041 23.7259 12.6256 23.6276 13.25 23.584V21.75H10.9664C9.59476 21.75 8.51924 21.75 7.65494 21.6794C6.77479 21.6075 6.04769 21.4586 5.38955 21.1233C4.30762 20.572 3.42798 19.6924 2.87671 18.6104C2.54138 17.9523 2.39252 17.2252 2.32061 16.3451C2.24999 15.4807 2.25 14.4053 2.25 13.0336V12.9664C2.25 11.5947 2.24999 10.5193 2.32061 9.65494C2.39252 8.7748 2.54138 8.04769 2.87671 7.38955C3.42798 6.30762 4.30762 5.42798 5.38955 4.87671C6.04769 4.54138 6.77479 4.39252 7.65494 4.32061C8.51929 4.24999 9.59472 4.25 10.9664 4.25H17.0336ZM13.25 18C13.25 18.4142 13.5858 18.75 14 18.75L20 18.75C20.4142 18.75 20.75 18.4142 20.75 18C20.75 17.5858 20.4142 17.25 20 17.25L14 17.25C13.5858 17.25 13.25 17.5858 13.25 18ZM10 18C10 18.5523 9.55229 19 9 19C8.44772 19 8 18.5523 8 18C8 17.4477 8.44772 17 9 17C9.55229 17 10 17.4477 10 18Z"/></svg>
+                  </div>
+                  <div class="platform-info">
+                    <span class="platform-name">TV</span>
+                    <span class="platform-subtext">Android / Apple TV</span>
+                  </div>
+                </div>
+                <div class="platform-arrow">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 18 15 12 9 6"/>
+                  </svg>
+                </div>
+              </div>
+
+              <!-- Windows -->
+              <div class="platform-card" data-platform="windows">
+                <div class="platform-card-left">
+                  <div class="platform-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M3 5.5L10.5 4v8H3V5.5zM11.5 4L21 2.5V12H11.5V4zM3 13h7.5v8L3 19.5V13zM11.5 13H21v9.5L11.5 21V13z"/></svg>
+                  </div>
+                  <div class="platform-info">
+                    <span class="platform-name">Windows</span>
+                    <span class="platform-subtext">Installer</span>
+                  </div>
+                </div>
+                <div class="platform-arrow">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 18 15 12 9 6"/>
+                  </svg>
+                </div>
+              </div>
+
+              <!-- Linux (Tux Penguin) -->
+              <div class="platform-card" data-platform="linux">
+                <div class="platform-card-left">
+                  <div class="platform-icon">
+                    <img src="./assets/icons/Linux.svg" style="width: 22px; height: 22px; filter: brightness(0) invert(1);" alt="Linux" />
+                  </div>
+                  <div class="platform-info">
+                    <span class="platform-name">Linux</span>
+                    <span class="platform-subtext">Client / CLI</span>
+                  </div>
+                </div>
+                <div class="platform-arrow">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 18 15 12 9 6"/>
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section: Device Detail Setup Modal (#page-device-detail) -->
+      <section id="page-device-detail" class="page-overlay hidden" aria-label="Настройка устройства">
+        <header class="page-header">
+          <button class="btn-back" id="btnBackDeviceDetail" aria-label="Назад">
+            <img src="./assets/icons/back.svg" alt="Назад" />
+          </button>
+        </header>
+
+        <div class="device-detail-content">
+          <!-- Hero Icon & Title -->
+          <div class="device-detail-hero">
+            <div class="device-detail-hero-icon" id="deviceDetailHeroIcon">
+              <!-- Platform Icon rendered dynamically via JS -->
+            </div>
+            <h3 class="device-detail-title" id="deviceDetailTitle">Настроить на iOS</h3>
+          </div>
+
+          <!-- Step 1: App Choice & Download -->
+          <div class="setup-step-block">
+            <div class="step-header">
+              <div class="step-number">1</div>
+              <div class="step-info">
+                <div class="step-title" id="step1Title">Скачайте приложение Karing</div>
+                <div class="step-subtitle">Установите наше приложение на устройство, чтобы подключить VPN</div>
+              </div>
+            </div>
+
+            <!-- App choice is hidden on platforms supported only by Karing. -->
+            <div class="app-choice-segment" id="deviceAppChoice">
+              <button class="app-choice-tab active" id="btnSelectIncy" data-app="incy">
+                <span>INCY</span>
+              </button>
+              <button class="app-choice-tab" id="btnSelectKaring" data-app="karing">
+                <span>Karing</span>
+              </button>
+            </div>
+
+            <!-- Dark Glass Download Button with cloud icon -->
+            <a class="btn-download-dark" id="btnDeviceDownload" href="#" target="_blank" rel="noopener">
+              <img src="./assets/icons/donwloud_2.svg" alt="Скачать" class="download-cloud-icon" />
+              <span id="btnDeviceDownloadText">App Store</span>
+            </a>
+
+            <!-- Кнопка инструкции Karing в боте (показывается только при выборе Karing) -->
+            <div class="guide-banner-card" id="btnDeviceKaringGuide" style="display: none; margin-top: 14px;">
+              <div class="guide-banner-icon">
+                <img src="./assets/icons/tg.svg" alt="Telegram" style="width: 22px; height: 22px; object-fit: contain;" />
+              </div>
+              <div class="guide-banner-info">
+                <span class="guide-banner-title">Инструкция по настройке Karing</span>
+                <span class="guide-banner-sub">Пошаговый гайд с фото в боте Telegram</span>
+              </div>
+              <div class="guide-banner-arrow">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="9 18 15 12 9 6"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 2: Copy Key Link -->
+          <div class="setup-step-block">
+            <div class="step-header">
+              <div class="step-number">2</div>
+              <div class="step-info">
+                <div class="step-title">Добавьте ключ-ссылку</div>
+                <div class="step-subtitle">Скопируйте ссылку и вставьте её на экране подключения</div>
+              </div>
+            </div>
+
+            <div class="detail-key-box" id="deviceDetailKeyText">
+              vless://ghostlink-key-8fa492b...#GhostLink-1
+            </div>
+
+            <!-- Lime Action Copy Button (Matching Pay button) -->
+            <button class="btn-copy-lime" id="btnDeviceCopyKey">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+              </svg>
+              <span>Скопировать ключ-ссылку</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================================================================
+           OVERLAY: список устройств и детализация устройства.
+           ================================================================ -->
+      <!-- Экран: Управление устройствами (#page-devices-list) -->
+      <section id="page-devices-list" class="page-overlay hidden" aria-label="Управление устройствами">
+        <header class="page-header" style="flex-direction: row; justify-content: space-between; align-items: center;">
+          <button class="btn-back" id="btn-devices-back" aria-label="Назад">
+            <img src="./assets/icons/back.svg" alt="Назад" />
+          </button>
+          <div class="settings-pill-badge" style="margin: 0; display: flex; align-items: center; gap: 8px;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--lime)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+            <span style="font-size: 17px; font-weight: 700; line-height: 1;">Устройства</span>
+          </div>
+          <button class="devices-refresh-button" id="btn-devices-refresh" type="button" aria-label="Обновить список устройств">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 1-15.4 6.3L3 16"/><path d="M3 12A9 9 0 0 1 18.4 5.7L21 8"/><path d="M3 16v-4h4"/><path d="M21 8v4h-4"/></svg>
+          </button>
+        </header>
+
+        <div class="devices-page-content">
+          <section class="devices-slot-summary" aria-label="Лимит устройств">
+            <span class="devices-slot-eyebrow">Устройства</span>
+            <strong id="devices-slot-summary">Получаем данные…</strong>
+            <span id="devices-slot-free">Свободные места появятся после загрузки</span>
+          </section>
+
+          <p class="devices-list-status" id="devices-list-status" role="status" aria-live="polite">Получаем список устройств…</p>
+          <!-- Список карточек устройств с изящными корзинками -->
+          <div id="active-devices-container" class="devices-list-container" aria-live="polite"></div>
+
+
+          <section id="devices-empty-state" class="devices-list-state hidden" aria-live="polite">
+            <strong>Устройств пока нет</strong>
+            <span>Добавьте первое устройство, чтобы получить ключ для подключения.</span>
+          </section>
+
+          <section id="devices-unavailable-state" class="devices-list-state hidden" aria-live="polite">
+            <strong>Не удалось обновить список</strong>
+            <span>Последние подтверждённые устройства остаются на экране. Повторите обновление позже.</span>
+          </section>
+
+          <button class="devices-add-button" id="btn-devices-add" type="button">Добавить устройство</button>
+        </div>
+      </section>

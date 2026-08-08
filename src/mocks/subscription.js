@@ -56,7 +56,7 @@
             throw error;
           }
 
-          return clone(SCENARIOS[mode] || SCENARIOS.active);
+          return { isMock: true, ...clone(SCENARIOS[mode] || SCENARIOS.active) };
         }).finally(() => {
           inFlight = null;
         });

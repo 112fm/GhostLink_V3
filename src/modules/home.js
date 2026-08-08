@@ -16,6 +16,14 @@
     return Number.isFinite(number) ? Math.max(0, Math.floor(number)) : fallback;
   }
 
+  function getLoadingSubscriptionPresentation() {
+    return {
+      state: 'loading', planTitle: '', emoji: '', remainingDays: null,
+      daysLabel: '', deviceLabel: '', progress: 100, actionLabel: 'Продлить подписку',
+      isDemo: false, progressKnown: true,
+    };
+  }
+
   // This presentation is the stable UI contract for the future profile endpoint.
   function getSubscriptionPresentation(snapshot) {
     const error = snapshot?.error;
@@ -23,14 +31,14 @@
       return {
         state: 'auth', planTitle: 'ТРЕБУЕТСЯ ВХОД', emoji: '🔐', remainingDays: null,
         daysLabel: '', deviceLabel: 'Откройте Mini App через Telegram ещё раз', progress: 0,
-        actionLabel: 'Повторить вход',
+        actionLabel: 'Повторить вход', isDemo: false,
       };
     }
     if (error?.status === 403) {
       return {
         state: 'denied', planTitle: 'ДОСТУП ЗАКРЫТ', emoji: '🔒', remainingDays: null,
         daysLabel: '', deviceLabel: 'Доступ к профилю ограничен', progress: 0,
-        actionLabel: 'Понятно',
+        actionLabel: 'Понятно', isDemo: false,
       };
     }
 
@@ -39,11 +47,13 @@
       return {
         state: 'unavailable', planTitle: 'ПОДПИСКА', emoji: '…', remainingDays: null,
         daysLabel: '', deviceLabel: 'Данные временно недоступны', progress: 0,
-        actionLabel: 'Выбрать тариф',
+        actionLabel: 'Выбрать тариф', isDemo: false,
       };
     }
 
-    const totalDays = toNonNegativeInteger(subscription.totalDays, 0);
+    const rawTotalDays = Number(subscription.totalDays);
+    const hasTotalDays = Number.isFinite(rawTotalDays) && rawTotalDays > 0;
+    const totalDays = hasTotalDays ? Math.floor(rawTotalDays) : 0;
     const remainingDays = toNonNegativeInteger(subscription.remainingDays ?? subscription.daysLeft, 0);
     const deviceLimit = toNonNegativeInteger(subscription.deviceLimit ?? subscription.deviceCount, 0);
     const usedDevices = Math.min(toNonNegativeInteger(subscription.usedDevices, 0), deviceLimit);
@@ -51,44 +61,48 @@
     const isAccessClosed = subscription.state === 'none' || subscription.state === 'denied';
     const isNew = subscription.state === 'new';
     const isActive = Boolean(subscription.active) && remainingDays > 0;
-    const progress = totalDays > 0 ? Math.min(100, Math.round((remainingDays / totalDays) * 100)) : 0;
+    const progress = hasTotalDays ? Math.min(100, Math.round((remainingDays / totalDays) * 100)) : null;
 
     let state = 'active';
     if (isPending) state = 'pending';
     else if (isAccessClosed) state = 'denied';
     else if (isNew) state = 'new';
     else if (!isActive) state = 'expired';
-    else if (progress <= 15) state = 'critical';
-    else if (progress <= 35) state = 'warning';
+    else if (progress !== null && progress <= 15) state = 'critical';
+    else if (progress !== null && progress <= 35) state = 'warning';
 
     const plan = subscription.plan || {};
     if (state === 'pending') {
       return {
         state, planTitle: 'ОЖИДАЕТ ПОДТВЕРЖДЕНИЯ', emoji: '⏳', remainingDays: null,
         daysLabel: '', deviceLabel: 'Заявка на подписку уже отправлена', progress: 0,
-        actionLabel: 'Проверить статус',
+        actionLabel: 'Проверить статус', isDemo: Boolean(snapshot?.isMock),
       };
     }
     if (state === 'denied') {
       return {
         state, planTitle: 'ДОСТУП ЗАКРЫТ', emoji: '🔒', remainingDays: null,
         daysLabel: '', deviceLabel: 'Для доступа требуется приглашение', progress: 0,
-        actionLabel: 'Понятно',
+        actionLabel: 'Понятно', isDemo: Boolean(snapshot?.isMock),
       };
     }
 
     const requiresTariff = state === 'new' || state === 'expired';
+    const isDemo = snapshot?.isMock === true;
+    const title = plan.title || (requiresTariff ? 'ВЫБЕРИТЕ ТАРИФ' : 'GHOSTLINK');
     return {
       state,
-      planTitle: plan.title || (requiresTariff ? 'ВЫБЕРИТЕ ТАРИФ' : 'GHOSTLINK'),
+      planTitle: isDemo ? `ДЕМО · ${title}` : title,
       emoji: plan.emoji || (requiresTariff ? '👻' : '👻'),
       remainingDays,
       daysLabel: requiresTariff ? '' : pluralize(remainingDays, ['ДЕНЬ', 'ДНЯ', 'ДНЕЙ']),
       deviceLabel: deviceLimit > 0
-        ? `${usedDevices} из ${deviceLimit} ${pluralize(deviceLimit, ['устройства', 'устройств', 'устройств'])}`
+        ? `${isDemo ? 'Демо: ' : ''}${usedDevices} из ${deviceLimit} ${pluralize(deviceLimit, ['устройства', 'устройств', 'устройств'])}`
         : 'Устройства появятся после выбора тарифа',
       progress,
       actionLabel: requiresTariff ? 'Выбрать тариф' : 'Продлить подписку',
+      isDemo,
+      progressKnown: progress !== null,
     };
   }
 
@@ -97,19 +111,23 @@
     if (element) element.textContent = text;
   }
 
-  function renderSubscriptionStatus(snapshot, documentRef = root.document) {
+  function renderSubscriptionStatus(snapshot, documentRef = root.document, { loading = false } = {}) {
     if (!documentRef) return;
 
     const island = documentRef.getElementById('subscriptionStatus');
     if (!island) return;
 
-    const presentation = getSubscriptionPresentation(snapshot);
+    const presentation = loading ? getLoadingSubscriptionPresentation() : getSubscriptionPresentation(snapshot);
     const isUnavailable = presentation.state === 'unavailable';
     island.dataset.subscriptionState = presentation.state;
+    island.setAttribute('aria-busy', String(loading));
+    island.classList.toggle('is-subscription-loading', loading);
+    island.classList.toggle('is-subscription-demo', presentation.isDemo);
     island.classList.toggle('is-subscription-warning', presentation.state === 'warning');
     island.classList.toggle('is-subscription-critical', ['critical', 'expired'].includes(presentation.state));
     island.classList.toggle('is-subscription-unavailable', presentation.state === 'unavailable');
-    island.style.setProperty('--subscription-progress', `${presentation.progress}%`);
+    island.classList.toggle('is-subscription-progress-unknown', presentation.progressKnown === false);
+    island.style.setProperty('--subscription-progress', `${presentation.progress ?? 0}%`);
 
     setElementText(documentRef, 'subscriptionEmoji', presentation.emoji);
     setElementText(documentRef, 'subscriptionPlanName', presentation.planTitle);
@@ -119,22 +137,6 @@
     setElementText(documentRef, 'homeSubscriptionActionText', presentation.actionLabel);
   }
 
-  function renderProfileStatus(snapshot, documentRef = root.document) {
-    const profileName = documentRef?.getElementById('homeProfileName');
-    if (!profileName) return;
-    if (snapshot?.error?.status === 401) {
-      profileName.textContent = 'Требуется повторный вход';
-      return;
-    }
-    if (snapshot?.error?.status === 403) {
-      profileName.textContent = 'Доступ к профилю закрыт';
-      return;
-    }
-    profileName.textContent = snapshot?.profile?.displayName
-      ? `Привет, ${snapshot.profile.displayName}`
-      : 'Профиль временно недоступен';
-  }
-
   function initHomeModule(dependencies = {}) {
     const documentRef = root.document;
     if (!documentRef) return null;
@@ -142,27 +144,26 @@
     const profileSubscription = dependencies.profileSubscription || GhostLinkV3.createMockProfileSubscription?.();
     let requestSequence = 0;
     let currentLoad = null;
+    const minimumLoadingMs = 720;
 
     function renderLoading() {
-      renderProfileStatus(null, documentRef);
-      renderSubscriptionStatus(null, documentRef);
+      renderSubscriptionStatus(null, documentRef, { loading: true });
     }
 
     function loadProfileSubscription() {
       if (!profileSubscription || currentLoad) return currentLoad;
       const currentRequest = ++requestSequence;
       renderLoading();
-      currentLoad = profileSubscription.fetchProfileSubscription()
-        .then((snapshot) => {
+      const waitForLoadingAnimation = new Promise((resolve) => root.setTimeout(resolve, minimumLoadingMs));
+      currentLoad = Promise.all([profileSubscription.fetchProfileSubscription(), waitForLoadingAnimation])
+        .then(([snapshot]) => {
           if (currentRequest === requestSequence) {
-            renderProfileStatus(snapshot, documentRef);
             renderSubscriptionStatus(snapshot, documentRef);
           }
           return snapshot;
         })
         .catch((error) => {
           if (currentRequest === requestSequence) {
-            renderProfileStatus({ error }, documentRef);
             renderSubscriptionStatus({ error }, documentRef);
           }
           return null;
@@ -202,7 +203,7 @@
     return { loadProfileSubscription };
   }
 
-  const exported = { getSubscriptionPresentation, renderSubscriptionStatus, initHomeModule };
+  const exported = { getLoadingSubscriptionPresentation, getSubscriptionPresentation, renderSubscriptionStatus, initHomeModule };
   if (typeof module !== 'undefined' && module.exports) module.exports = exported;
   Object.assign(GhostLinkV3, exported);
 })(typeof window !== 'undefined' ? window : globalThis);

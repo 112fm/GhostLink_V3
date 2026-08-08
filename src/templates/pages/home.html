@@ -1,0 +1,36 @@
+      <!-- ================================================================
+           ГЛАВНАЯ ВКЛАДКА: статус подписки, два главных действия, навигация.
+           Будущий контракт подписки: тариф, emoji, оставшиеся/всего дни,
+           устройства и статус прогресса. Разметка здесь, логика в home.js.
+           ================================================================ -->
+      <section id="tab-home" class="tab-content active">
+        <!-- Островок подписки. Порог прогресса: >35% зелёный, 16-35% жёлтый,
+             <=15% красный. До этапа API данные остаются mock. -->
+        <section class="status-island is-subscription-loading" id="subscriptionStatus" aria-label="Статус подписки" aria-busy="true">
+          <div class="status-content">
+            <div class="status-left">
+              <span class="tariff-emoji" id="subscriptionEmoji"></span>
+              <span class="status-tariff" id="subscriptionPlanName"></span>
+            </div>
+            <div class="status-right">
+              <strong class="status-days"><span id="subscriptionDays"></span> <span id="subscriptionDaysLabel"></span></strong>
+            </div>
+          </div>
+          <div class="status-progress" aria-hidden="true"><span id="subscriptionProgress"></span></div>
+        </section>
+        
+        <div class="device-count-text" id="subscriptionDeviceCount"></div>
+
+        <!-- Главные действия: продлить подписку и настроить ключи. -->
+        <div class="home-bottom-content bento-layout">
+          <button class="bento-card bento-extend" type="button">
+            <img src="./assets/icons/card-icon.png" class="bento-icon" alt="" aria-hidden="true" />
+            <span class="bento-title" id="homeSubscriptionActionText">Продлить<br>подписку</span>
+          </button>
+          
+          <button class="bento-card bento-setup" type="button">
+            <img src="./assets/icons/key-icon.png" class="bento-icon" alt="" aria-hidden="true" />
+            <span class="bento-title">Настроить<br>мои ключи</span>
+          </button>
+        </div>
+      </section>

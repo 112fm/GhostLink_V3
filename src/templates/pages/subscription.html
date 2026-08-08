@@ -1,0 +1,113 @@
+      <!-- ================================================================
+           OVERLAY FLOW: продление подписки и оплата.
+           ================================================================ -->
+      <!-- Экран: Продлить подписку -->
+      <section id="page-extend" class="page-overlay hidden">
+        <header class="page-header">
+          <button class="btn-back" id="btn-extend-back" aria-label="Назад">
+            <img src="./assets/icons/back.svg" alt="Назад" />
+          </button>
+          <div class="page-header-text">
+            <h2>Продление подписки</h2>
+            <p>Выберите тарифный план и количество устройств</p>
+          </div>
+        </header>
+
+        <div class="extend-content">
+          <!-- Горизонтальный список тарифов -->
+          <div class="tariff-scroll-container">
+            <label class="tariff-card">
+              <input type="radio" name="tariff-period" value="1" />
+              <div class="tariff-card-inner">
+                <span class="t-title">1 месяц</span>
+                <strong class="t-price" id="price-card-1">150 ₽</strong>
+                <span class="t-subprice" id="subprice-card-1">150 ₽ / мес</span>
+              </div>
+            </label>
+
+            <label class="tariff-card">
+              <input type="radio" name="tariff-period" value="2" />
+              <div class="tariff-card-inner">
+                <span class="t-title">2 месяца</span>
+                <strong class="t-price" id="price-card-2">290 ₽</strong>
+                <span class="t-subprice" id="subprice-card-2">145 ₽ / мес</span>
+              </div>
+            </label>
+
+            <label class="tariff-card">
+              <input type="radio" name="tariff-period" value="3" checked />
+              <div class="tariff-card-inner">
+                <span class="t-badge-top">HIT</span>
+                <span class="t-title">3 месяца</span>
+                <strong class="t-price" id="price-card-3">430 ₽</strong>
+                <span class="t-subprice" id="subprice-card-3">143 ₽ / мес</span>
+              </div>
+            </label>
+          </div>
+
+          <!-- Выбор устройств -->
+          <div class="devices-section">
+            <div class="devices-header">
+              <h3>Выберите нужное<br>количество устройств</h3>
+              <div class="device-icons">
+                <img src="./assets/icons/Phone_icon.svg" id="icon-phone" class="active" alt="Телефон" />
+                <img src="./assets/icons/pc_icon.svg" id="icon-laptop" class="active" alt="Ноутбук" />
+                <img src="./assets/icons/tv_icon.svg" id="icon-tv" alt="ТВ" />
+              </div>
+            </div>
+
+            <p class="devices-desc" id="devices-desc">Базовый тариф — всего 2 устройства</p>
+
+            <!-- Свайпер для карточек устройств -->
+            <div class="device-swiper-container" id="device-swiper">
+              <label class="device-slide">
+                <input type="radio" name="device-type" value="solo" checked />
+                <div class="slide-content">
+                  <span class="slide-title">Solo Ghost</span>
+                  <strong class="slide-count">2</strong>
+                </div>
+              </label>
+              
+              <label class="device-slide">
+                <input type="radio" name="device-type" value="flex" />
+                <div class="slide-content flex-squad-content">
+                  <span class="slide-title">Flex Squad</span>
+                  <div class="counter-control">
+                    <button type="button" class="btn-counter minus" id="btn-dev-minus">–</button>
+                    <strong class="slide-count" id="flex-dev-count">3</strong>
+                    <button type="button" class="btn-counter plus" id="btn-dev-plus">+</button>
+                  </div>
+                </div>
+              </label>
+            </div>
+
+            <!-- Индикаторы свайпа (точки) -->
+            <div class="swiper-pagination" id="device-pagination">
+              <span class="dot active"></span>
+              <span class="dot"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Итоги и оплата -->
+        <div class="checkout-bottom">
+          <div class="checkout-summary">
+            <div class="summary-row">
+              <div class="summary-label">
+                <img src="./assets/icons/calendar.svg" alt="" />
+                <span id="summary-details">3 месяца · 2 устройства</span>
+              </div>
+              <span class="summary-val" id="summary-day-cost">4,78 ₽ / день</span>
+            </div>
+          </div>
+          
+          <button class="btn-pay" id="btn-pay">
+            <span class="pay-text">Оплатить</span>
+            <span class="pay-price-wrap">
+              <strong id="pay-total">999 ₽</strong>
+              <del id="pay-old">1194 ₽</del>
+              <span class="pay-badge" id="pay-discount">-15%</span>
+            </span>
+          </button>
+        </div>
+      </section>

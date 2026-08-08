@@ -95,7 +95,7 @@
         fetchCount += 1;
         inFlight = wait().then(() => {
           throwForMode();
-          return { session: openSession(), ...createScenarioSnapshot(mode) };
+          return { isMock: true, session: openSession(), ...createScenarioSnapshot(mode) };
         }).finally(() => {
           inFlight = null;
         });

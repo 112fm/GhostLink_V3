@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="ru" data-v3-mode="mock">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#111211" />
+    <title>GhostLink V3</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./src/css/variables.css" />
+    <link rel="stylesheet" href="./src/css/base.css" />
+    <link rel="stylesheet" href="./src/css/components.css" />
+    <link rel="stylesheet" href="./src/css/page-extend.css" />
+    <link rel="stylesheet" href="./src/css/page-checkout.css" />
+    <link rel="stylesheet" href="./src/css/page-setup.css" />
+    <link rel="stylesheet" href="./src/css/page-app-select.css" />
+    <link rel="stylesheet" href="./src/css/page-key-view.css" />
+    <link rel="stylesheet" href="./src/css/page-other-device.css" />
+    <link rel="stylesheet" href="./src/css/page-device-detail.css" />
+    <link rel="stylesheet" href="./src/css/page-referral.css" />
+    <link rel="stylesheet" href="./src/css/page-chat.css" />
+    <link rel="stylesheet" href="./src/css/page-settings.css" />
+    <link rel="stylesheet" href="./src/css/page-admin.css" />
+    <link rel="stylesheet" href="./src/css/context-help.css" />
+    <link rel="stylesheet" href="./src/css/animations.css" />
+  </head>
+  <body>
+    <main class="app-shell" aria-labelledby="appTitle">
+      <header class="topbar">
+        <div class="brand" id="appTitle" aria-label="GhostLink">
+          <span class="brand-word">
+            GH<span class="brand-icon-wrapper">
+              <img class="brand-icon-inline" src="./assets/icons/ghost-icon-generated.png" alt="O" />
+              <img class="brand-icon-inline brand-icon-shine" src="./assets/icons/ghost-icon-generated.png" alt="" aria-hidden="true" />
+            </span>STLINK
+          </span>
+        </div>
+      </header>
+
+      <!-- Единая контекстная помощь только для клиентских экранов. -->
+      <button class="icon-button context-help-trigger" id="helpButton" type="button"
+        aria-label="Помощь по текущему экрану" aria-controls="contextHelpAnnotation" aria-expanded="false">
+        <span class="icon-question" aria-hidden="true">?</span>
+      </button>
+
+<!-- @include src/templates/pages/home.html -->
+<!-- @include src/templates/pages/invites.html -->
+<!-- @include src/templates/pages/support.html -->
+<!-- @include src/templates/pages/settings.html -->
+      <!-- Нижнее навигационное меню -->
+      <!-- Постоянная нижняя навигация: главная, рефералы, поддержка, настройки. -->
+      <nav class="bottom-nav">
+        <div class="nav-indicator"></div>
+        <button class="nav-item active" data-target="tab-home" aria-label="Главная">
+          <img class="nav-icon-img" src="./assets/icons/home.svg" alt="Главная">
+        </button>
+        <button class="nav-item" data-target="tab-referral" aria-label="Рефералы">
+          <img class="nav-icon-img" src="./assets/icons/рефералка.svg" alt="Рефералы">
+        </button>
+        <button class="nav-item" data-target="tab-support" aria-label="Поддержка">
+          <img class="nav-icon-img" src="./assets/icons/поддержка.svg" alt="Поддержка">
+        </button>
+        <button class="nav-item" data-target="tab-settings" aria-label="Настройки">
+          <img class="nav-icon-img" src="./assets/icons/settings.svg" alt="Настройки">
+        </button>
+      </nav>
+
+      <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+      <!-- Контекстная помощь: один sketchbook-тур только для текущей клиентской страницы. -->
+      <div class="context-help-backdrop hidden" id="contextHelpBackdrop" aria-hidden="true">
+        <span class="context-help-shade" id="contextHelpShadeTop" aria-hidden="true"></span>
+        <span class="context-help-shade" id="contextHelpShadeLeft" aria-hidden="true"></span>
+        <span class="context-help-shade" id="contextHelpShadeRight" aria-hidden="true"></span>
+        <span class="context-help-shade" id="contextHelpShadeBottom" aria-hidden="true"></span>
+      </div>
+      <div class="context-tour-spotlight hidden" id="contextTourSpotlight" aria-hidden="true"></div>
+
+      <section class="context-help-annotation hidden" id="contextHelpAnnotation" role="dialog"
+        aria-modal="true" aria-labelledby="contextHelpTitle" aria-describedby="contextHelpDescription">
+        <span class="context-help-arrow" id="contextHelpArrow" aria-hidden="true"></span>
+        <div class="context-help-heading">
+          <span class="context-help-eyebrow" id="contextHelpStepCounter">1 / 3</span>
+          <button class="context-help-close" id="contextHelpClose" type="button" aria-label="Закрыть подсказку">×</button>
+        </div>
+        <h2 id="contextHelpTitle">Подсказка</h2>
+        <p class="context-help-description" id="contextHelpDescription"></p>
+        <div class="context-tour-controls">
+          <button type="button" class="context-tour-prev" id="contextTourPrevBtn">Назад</button>
+          <button type="button" class="context-tour-next" id="contextTourNextBtn">Далее</button>
+        </div>
+      </section>
+
+<!-- @include src/templates/pages/subscription.html -->
+<!-- @include src/templates/pages/checkout.html -->
+<!-- @include src/templates/pages/devices.html -->
+<!-- @include src/templates/pages/legal.html -->
+<!-- @include src/templates/pages/admin.html -->    </main>
+    <!-- Runtime order is intentional: shared UI, Block 1 reads, local mocks, page modules, boot. -->
+    <script src="./src/payment-config.js?v=3"></script>
+    <script src="./src/ui/components.js?v=3"></script>
+    <script src="./src/ui/router.js?v=3"></script>
+    <script src="./src/api/real-block1-adapter.js?v=4"></script>
+    <script src="./src/mocks/device-list.js?v=3"></script>
+    <script src="./src/api/local-block2-device-list-adapter.js?v=3"></script>
+    <script src="./src/mocks/device-operations.js?v=3"></script>
+    <script src="./src/mocks/device-mutations.js?v=3"></script>
+    <script src="./src/mocks/invites.js?v=3"></script>
+    <script src="./src/mocks/support.js?v=3"></script>
+    <script src="./src/mocks/admin-security.js?v=3"></script>
+    <script src="./src/modules/home.js?v=3"></script>
+    <script src="./src/modules/subscription.js?v=3"></script>
+    <script src="./src/modules/devices.js?v=3"></script>
+    <script src="./src/modules/invites.js?v=3"></script>
+    <script src="./src/modules/support.js?v=3"></script>
+    <script src="./src/modules/context-help.js?v=3"></script>
+    <script src="./src/modules/admin-payment-settings.js?v=3"></script>
+    <script src="./src/modules/admin.js?v=3"></script>
+    <script src="./src/main.js?v=3"></script>
+  </body>
+</html>

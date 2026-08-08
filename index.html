@@ -50,23 +50,22 @@
            устройства и статус прогресса. Разметка здесь, логика в home.js.
            ================================================================ -->
       <section id="tab-home" class="tab-content active">
-        <p class="home-profile" id="homeProfileName" aria-live="polite">Профиль загружается…</p>
         <!-- Островок подписки. Порог прогресса: >35% зелёный, 16-35% жёлтый,
              <=15% красный. До этапа API данные остаются mock. -->
-        <section class="status-island" id="subscriptionStatus" aria-label="Статус подписки">
+        <section class="status-island is-subscription-loading" id="subscriptionStatus" aria-label="Статус подписки" aria-busy="true">
           <div class="status-content">
             <div class="status-left">
-              <span class="tariff-emoji" id="subscriptionEmoji">💎</span>
-              <span class="status-tariff" id="subscriptionPlanName">VIP DIAMOND</span>
+              <span class="tariff-emoji" id="subscriptionEmoji"></span>
+              <span class="status-tariff" id="subscriptionPlanName"></span>
             </div>
             <div class="status-right">
-              <strong class="status-days"><span id="subscriptionDays">29</span> <span id="subscriptionDaysLabel">ДНЕЙ</span></strong>
+              <strong class="status-days"><span id="subscriptionDays"></span> <span id="subscriptionDaysLabel"></span></strong>
             </div>
           </div>
           <div class="status-progress" aria-hidden="true"><span id="subscriptionProgress"></span></div>
         </section>
         
-        <div class="device-count-text" id="subscriptionDeviceCount">0 устройств</div>
+        <div class="device-count-text" id="subscriptionDeviceCount"></div>
 
         <!-- Главные действия: продлить подписку и настроить ключи. -->
         <div class="home-bottom-content bento-layout">
@@ -3360,12 +3359,11 @@
         </div>
       </section>
     </main>
-    <!-- Runtime order is intentional: shared UI, mock data, page modules, boot. -->
+    <!-- Runtime order is intentional: shared UI, Block 1 reads, local mocks, page modules, boot. -->
     <script src="./src/payment-config.js?v=3"></script>
     <script src="./src/ui/components.js?v=3"></script>
     <script src="./src/ui/router.js?v=3"></script>
-    <script src="./src/mocks/subscription.js?v=3"></script>
-    <script src="./src/api/local-block1-adapter.js?v=3"></script>
+    <script src="./src/api/real-block1-adapter.js?v=4"></script>
     <script src="./src/mocks/device-list.js?v=3"></script>
     <script src="./src/api/local-block2-device-list-adapter.js?v=3"></script>
     <script src="./src/mocks/device-operations.js?v=3"></script>

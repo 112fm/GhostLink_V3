@@ -1,0 +1,117 @@
+      <!-- Вкладка: Настройки -->
+      <!-- ================================================================
+           ВКЛАДКА НИЖНЕЙ НАВИГАЦИИ: настройки и управление аккаунтом.
+           ================================================================ -->
+      <section id="tab-settings" class="tab-content">
+        <div class="settings-container">
+          
+          <!-- СЕКЦИЯ 1: АККАУНТ -->
+          <div class="settings-clean-section">
+            <div class="settings-section-title">Аккаунт</div>
+            <div class="settings-clean-list">
+              <!-- Уведомления -->
+              <div class="settings-clean-row" id="btnSettingsNotifications">
+                <div class="settings-clean-left">
+                  <div class="settings-clean-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                  </div>
+                  <div class="settings-clean-info">
+                    <span class="settings-clean-label">Уведомления</span>
+                  </div>
+                </div>
+                <div class="settings-clean-right">
+                  <svg class="settings-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </div>
+                <div class="row-tooltip-popover" id="notificationsPopover">В разработке 🔔</div>
+              </div>
+
+              <!-- Устройства -->
+              <div class="settings-clean-row" id="btnSettingsDevices">
+                <div class="settings-clean-left">
+                  <div class="settings-clean-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                  </div>
+                  <div class="settings-clean-info">
+                    <span class="settings-clean-label">Устройства</span>
+                    <span class="settings-clean-sub" id="settings-devices-subtitle">Подключено: 3 устройства</span>
+                  </div>
+                </div>
+                <div class="settings-clean-right">
+                  <svg class="settings-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </div>
+              </div>
+              
+              <!-- Админка (Скрыто по умолчанию) -->
+              <div class="settings-clean-row" id="btnSettingsAdmin" style="display: none;">
+                <div class="settings-clean-left">
+                  <div class="settings-clean-icon" style="background: rgba(184, 255, 0, 0.15); color: var(--lime);">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+                    </svg>
+                  </div>
+                  <div class="settings-clean-info">
+                    <span class="settings-clean-label">Управление Клубом</span>
+                  </div>
+                </div>
+                <div class="settings-clean-right">
+                  <svg class="settings-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- СЕКЦИЯ 2: СПОСОБЫ ВХОДА -->
+          <div class="settings-clean-section">
+            <div class="settings-section-title">Способы входа</div>
+            <div class="settings-clean-list">
+              <!-- Telegram -->
+              <div class="settings-clean-row" style="cursor: default;">
+                <div class="settings-clean-left">
+                  <div class="settings-clean-icon icon-tg">
+                    <img src="./assets/icons/tg.svg" alt="Telegram" style="width: 20px; height: 20px; object-fit: contain;" />
+                  </div>
+                  <div class="settings-clean-info">
+                    <span class="settings-clean-label">Telegram</span>
+                    <span class="settings-clean-sub">Основной способ входа</span>
+                  </div>
+                </div>
+                <div class="settings-clean-right">
+                  <div class="status-badge-connected">
+                    <span class="status-badge-dot"></span>
+                    <span>Подключено</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- СЕКЦИЯ 3: О ПРИЛОЖЕНИИ -->
+          <div class="settings-clean-section">
+            <div class="settings-section-title">О приложении</div>
+            <div class="settings-clean-list">
+              <!-- Политика конфиденциальности -->
+              <div class="settings-clean-row" id="btnSettingsPrivacy">
+                <div class="settings-clean-left">
+                  <div class="settings-clean-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                  </div>
+                  <div class="settings-clean-info">
+                    <span class="settings-clean-label">Политика конфиденциальности</span>
+                  </div>
+                </div>
+                <div class="settings-clean-right">
+                  <svg class="settings-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Нижний брендинг (убирает пустоту) -->
+          <div class="settings-app-footer">
+            <div class="footer-brand-title">GhostLink</div>
+            <div class="footer-brand-version">v3.1.1</div>
+            <div class="footer-brand-tag">Made with 👻</div>
+          </div>
+
+        </div>
+      </section>

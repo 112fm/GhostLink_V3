@@ -9,10 +9,12 @@
   const { show: showToast } = createToast(document.getElementById("toast"));
   const copyText = createClipboard();
   const overlayNavigator = createOverlayNavigator();
-  // Block 1 uses an in-memory adapter with the future session/profile response
-  // shape. It never sends Telegram initData or keys to persistent browser storage.
-  const profileSubscription = GhostLinkV3.createLocalBlock1Adapter?.()
-    || GhostLinkV3.createMockProfileSubscription?.();
+  // Block 1 keeps credentials in memory only and reads profile data from the
+  // confirmed API contract. The remaining modules intentionally stay mock.
+  const profileSubscription = GhostLinkV3.createRealBlock1Adapter?.();
+  if (!profileSubscription) {
+    throw new Error("GhostLink V3 real Block 1 adapter is missing");
+  }
   // Block 2 maps the future /api/device/list shape in memory. It does not
   // retain raw device responses, UUIDs, or subscription URLs in browser storage.
   const deviceList = GhostLinkV3.createLocalDeviceListAdapter?.()

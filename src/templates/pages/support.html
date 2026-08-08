@@ -1,0 +1,235 @@
+      <!-- Вкладка: Поддержка (Клиентский чат) -->
+      <!-- ================================================================
+           ВКЛАДКА НИЖНЕЙ НАВИГАЦИИ: поддержка и FAQ.
+           ================================================================ -->
+      <section id="tab-support" class="tab-content support-chat-wrapper" data-support-runtime="v3-local">
+
+        <!-- КЛИЕНТСКИЙ ЧАТ ПОДДЕРЖКИ (по умолчанию) -->
+        <div class="client-chat-view" id="clientChatView" style="display: flex; flex-direction: column; flex: 1; height: 100%;">
+          <header class="chat-header">
+            <div class="chat-user-info">
+              <div class="chat-avatar">
+                <img src="./assets/mascot/ava.png" alt="GhostLink Support Official" />
+              </div>
+              <div class="chat-title-block">
+                <div class="chat-title-row">
+                  <span class="chat-title">GhostLink Support</span>
+                  <span class="chat-badge-official">Official</span>
+                </div>
+                <span class="chat-status"><span class="status-dot"></span>В сети</span>
+              </div>
+            </div>
+          </header>
+
+          <div class="chat-history" id="supportChatHistory">
+            <div class="chat-date-divider"><span>Сегодня</span></div>
+
+            <div class="chat-message in">
+              <div class="message-sender">👻 Support</div>
+              <div class="message-text">Здравствуйте! 👋<br>Я оператор поддержки GhostLink.<br>Чем могу помочь?</div>
+              <div class="message-meta">
+                <span class="message-time">14:00</span>
+              </div>
+            </div>
+
+            <div class="chat-system-notice" id="supportLocalStatus" role="status" aria-live="polite" hidden></div>
+
+            <!-- Typing indicator -->
+            <div class="chat-typing-indicator" id="supportTypingIndicator" style="display: none;">
+              <span class="typing-ghost">👻</span>
+              <div class="typing-dots">
+                <span></span><span></span><span></span>
+              </div>
+            </div>
+          </div>
+
+          <input type="file" id="chatFileInput" accept="image/*,video/*" multiple style="display:none;" />
+
+          <!-- Telegram-style Reply Preview Bar -->
+          <div class="chat-reply-bar" id="chatReplyBar" style="display: none;">
+            <div class="reply-bar-border"></div>
+            <div class="reply-bar-content">
+              <span class="reply-bar-title" id="replyBarTitle">👻 Support</span>
+              <span class="reply-bar-text" id="replyBarText">Сообщение...</span>
+            </div>
+            <button class="reply-bar-close" id="btnCancelReply" aria-label="Отменить ответ">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+          </div>
+
+          <div class="chat-input-area">
+            <button class="chat-attach-btn" id="btnSupportChatAttach" aria-label="Прикрепить">
+              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+            </button>
+            <div class="chat-input-wrapper">
+              <textarea class="chat-input" id="supportChatInput" rows="1" maxlength="1000" placeholder="Сообщение..."></textarea>
+            </div>
+            <button class="chat-send-btn" id="btnSupportChatSend" aria-label="Отправить">
+              <img src="./assets/icons/tg.svg" alt="Отправить" style="width: 25px; height: 25px; object-fit: contain;" />
+            </button>
+          </div>
+        </div>
+
+        <!-- ЭКРАН ТИКЕТОВ АДМИНА (СКРЫТ ДЛЯ КЛИЕНТА) -->
+        <div class="admin-tickets-container" id="adminTicketList" style="display: none;">
+          <div class="admin-tickets-header">
+            <div class="admin-search-wrapper">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              <input type="text" class="admin-search-input" id="adminUserSearchInput" placeholder="Поиск по ID или @username..." autocomplete="off" />
+            </div>
+            <button class="admin-new-ticket-btn" id="btnAdminNewTicket">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              <span>Новый</span>
+            </button>
+          </div>
+
+          <div class="admin-users-dropdown" id="adminUsersDropdown" style="display: none;">
+            <div class="users-dropdown-title">Пользователи поддержки</div>
+            <div class="users-dropdown-list" id="usersDropdownList">
+              <div class="dropdown-user-item" data-username="@alex_ghost" data-user-id="9814201">
+                <span class="user-item-name">@alex_ghost</span>
+                <span class="user-item-id">ID: 9814201</span>
+              </div>
+              <div class="dropdown-user-item" data-username="@maria_vpn" data-user-id="4491204">
+                <span class="user-item-name">@maria_vpn</span>
+                <span class="user-item-id">ID: 4491204</span>
+              </div>
+              <div class="dropdown-user-item" data-username="@dmitry_tech" data-user-id="1029412">
+                <span class="user-item-name">@dmitry_tech</span>
+                <span class="user-item-id">ID: 1029412</span>
+              </div>
+              <div class="dropdown-user-item" data-username="@sergey_ghost" data-user-id="5519208">
+                <span class="user-item-name">@sergey_ghost</span>
+                <span class="user-item-id">ID: 5519208</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="admin-filter-tabs">
+            <button class="admin-filter-btn active" data-filter="all">Все (3)</button>
+            <button class="admin-filter-btn" data-filter="active">Открытые (2)</button>
+            <button class="admin-filter-btn" data-filter="closed">Закрытые (1)</button>
+          </div>
+
+          <div class="admin-tickets-list" id="adminTicketsList">
+            <div class="admin-ticket-card" data-username="@alex_ghost" data-user-id="9814201">
+              <div class="ticket-user-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--lime)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              </div>
+              <div class="ticket-info">
+                <div class="ticket-top-row">
+                  <span class="ticket-user-name">@alex_ghost</span>
+                  <span class="ticket-time">19:54</span>
+                </div>
+                <div class="ticket-bottom-row">
+                  <span class="ticket-snippet">Не подключается VPN на iPhone 15...</span>
+                  <span class="ticket-unread-badge">1</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="admin-ticket-card" data-username="@maria_vpn" data-user-id="4491204">
+              <div class="ticket-user-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--lime)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              </div>
+              <div class="ticket-info">
+                <div class="ticket-top-row">
+                  <span class="ticket-user-name">@maria_vpn</span>
+                  <span class="ticket-time">18:30</span>
+                </div>
+                <div class="ticket-bottom-row">
+                  <span class="ticket-snippet">Как продлить подписку на 3 месяца?</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="admin-ticket-card is-closed" data-username="@dmitry_tech" data-user-id="1029412">
+              <div class="ticket-user-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              </div>
+              <div class="ticket-info">
+                <div class="ticket-top-row">
+                  <span class="ticket-user-name">@dmitry_tech</span>
+                  <span class="ticket-time">Вчера</span>
+                </div>
+                <div class="ticket-bottom-row">
+                  <span class="ticket-snippet">Спасибо, всё заработало!</span>
+                  <span class="ticket-status-tag">Закрыт</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ЧАТ АДМИНА С ВЫБРАННЫМ КЛИЕНТОМ (СКРЫТ) -->
+        <div class="admin-chat-view" id="adminChatView" style="display: none;">
+          <header class="chat-header admin-chat-header">
+            <button class="btn-back" id="btnAdminBackToList" aria-label="Назад">
+              <img src="./assets/icons/back.svg" alt="Назад" />
+            </button>
+            <div class="chat-user-info">
+              <div class="ticket-user-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--lime)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              </div>
+              <div class="chat-title-block">
+                <div class="chat-title-row">
+                  <span class="chat-title" id="adminActiveTitle">@alex_ghost</span>
+                  <span class="chat-badge-official" id="adminActiveIdBadge" style="background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.8); border-color: rgba(255,255,255,0.15);">ID: 9814201</span>
+                </div>
+                <span class="chat-status"><span class="status-dot"></span>В сети</span>
+              </div>
+            </div>
+            <button class="admin-close-ticket-btn" id="btnAdminCloseTicket">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Закрыть тикет</span>
+            </button>
+          </header>
+
+          <div class="chat-history" id="adminSupportChatHistory">
+            <div class="chat-date-divider"><span>Сегодня</span></div>
+
+            <div class="chat-message in">
+              <div class="message-sender">👤 @alex_ghost</div>
+              <div class="message-text">Здравствуйте! У меня не подключается VPN на iPhone 15 после обновления...</div>
+              <div class="message-meta">
+                <span class="message-time">19:54</span>
+              </div>
+            </div>
+
+            <!-- Typing indicator -->
+            <div class="chat-typing-indicator" id="adminSupportTypingIndicator">
+              <span class="typing-ghost">👤</span>
+              <div class="typing-dots">
+                <span></span><span></span><span></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="chat-input-area">
+            <button class="chat-attach-btn" aria-label="Прикрепить">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+            </button>
+            <div class="chat-input-wrapper">
+              <textarea class="chat-input" rows="1" maxlength="1000" placeholder="Ответ клиенту..."></textarea>
+            </div>
+            <button class="chat-send-btn" aria-label="Отправить">
+              <img src="./assets/icons/tg.svg" alt="Отправить" style="width: 20px; height: 20px; object-fit: contain;" />
+            </button>
+          </div>
+        </div>
+
+        <!-- Telegram-style Context Menu -->
+        <div class="chat-context-menu" id="chatContextMenu" style="display: none;">
+          <div class="context-menu-backdrop" id="chatContextMenuBackdrop"></div>
+          <div class="context-menu-content">
+            <button class="context-menu-item" id="ctxBtnReply">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--lime)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"></polyline><path d="M20 18v-2a4 4 0 0 0-4-4H4"></path></svg>
+              <span>Ответить</span>
+            </button>
+            <button class="context-menu-item" id="ctxBtnCopy">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+              <span>Скопировать</span>
+            </button>
+          </div>
+        </div>
+      </section>
