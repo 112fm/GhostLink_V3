@@ -131,7 +131,7 @@
 
     setElementText(documentRef, 'subscriptionEmoji', presentation.emoji);
     setElementText(documentRef, 'subscriptionPlanName', presentation.planTitle);
-    setElementText(documentRef, 'subscriptionDays', isUnavailable || presentation.state === 'new' ? '--' : String(presentation.remainingDays));
+    setElementText(documentRef, 'subscriptionDays', isUnavailable || presentation.state === 'new' || presentation.remainingDays === null ? '--' : String(presentation.remainingDays));
     setElementText(documentRef, 'subscriptionDaysLabel', presentation.daysLabel);
     setElementText(documentRef, 'subscriptionDeviceCount', presentation.deviceLabel);
     setElementText(documentRef, 'homeSubscriptionActionText', presentation.actionLabel);
