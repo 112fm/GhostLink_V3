@@ -292,10 +292,10 @@
 
 /* Настройки для Карты (Продлить) */
 .bento-extend .bento-icon {
-  top: -15px;
-  right: -20px;
-  width: 140px;
-  height: 140px;
+  top: -35px;
+  right: -24px;
+  width: 150px;
+  height: 150px;
   transform: scale(1);
 }
 .bento-extend:hover .bento-icon,
@@ -305,10 +305,10 @@
 
 /* Настройки для Ключа (Настроить) */
 .bento-setup .bento-icon {
-  top: -20px;
-  right: -20px;
-  width: 110px;
-  height: 110px;
+  top: -23px;
+  right: -28px;
+  width: 120px;
+  height: 120px;
   transform: rotate(35deg);
   filter: none; /* Убираем тень, чтобы не подсвечивать артефакты PNG */
 }
