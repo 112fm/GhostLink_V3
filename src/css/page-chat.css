@@ -144,6 +144,10 @@
   margin: 12px 0 8px;
 }
 
+.chat-system-notice[hidden] {
+  display: none !important;
+}
+
 .chat-date-divider span,
 .chat-system-notice {
   background: rgba(255, 255, 255, 0.05);
