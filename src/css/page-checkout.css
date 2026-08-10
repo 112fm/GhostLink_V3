@@ -1,6 +1,7 @@
 /* Minimal payment sheet. Behavior remains in src/modules/subscription.js. */
 
 #page-checkout {
+  overflow-y: hidden;
   --bank-accent: var(--lime);
   overflow: hidden;
   overscroll-behavior: none;
@@ -45,6 +46,7 @@
   flex-direction: column;
   gap: 21px;
   min-height: 0;
+  overflow-y: auto;
   padding: 16px 18px 34px;
   position: relative;
 }
