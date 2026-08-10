@@ -11,8 +11,8 @@
     <link rel="stylesheet" href="./src/css/variables.css" />
     <link rel="stylesheet" href="./src/css/base.css" />
     <link rel="stylesheet" href="./src/css/components.css" />
-    <link rel="stylesheet" href="./src/css/page-extend.css" />
-    <link rel="stylesheet" href="./src/css/page-checkout.css" />
+    <link rel="stylesheet" href="./src/css/page-extend.css?v=2" />
+    <link rel="stylesheet" href="./src/css/page-checkout.css?v=2" />
     <link rel="stylesheet" href="./src/css/page-setup.css" />
     <link rel="stylesheet" href="./src/css/page-app-select.css" />
     <link rel="stylesheet" href="./src/css/page-key-view.css" />
@@ -848,9 +848,11 @@
               </div>
             </section>
 
-            <button type="button" class="btn-confirm-pay" id="btn-submit-payment">
-              <span>Я оплатил</span>
-            </button>
+            <div class="checkout-action-bar">
+              <button type="button" class="btn-confirm-pay" id="btn-submit-payment">
+                <span>Я оплатил</span>
+              </button>
+            </div>
           </div>
 
           <!-- View 1: Платеж на проверке (Ожидает) -->

@@ -116,6 +116,8 @@ if (payerNameInput) {
 
 function setCheckoutView(state) {
   if (!checkoutFormView) return;
+  // CSS uses this state to keep receipt screens static while the form can scroll.
+  if (pageCheckout) pageCheckout.dataset.checkoutView = state;
   checkoutFormView.style.display = state === 'form' ? 'flex' : 'none';
   checkoutPendingView.style.display = state === 'pending' ? 'flex' : 'none';
   checkoutApprovedView.style.display = state === 'approved' ? 'flex' : 'none';

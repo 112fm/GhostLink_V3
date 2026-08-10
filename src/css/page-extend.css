@@ -6,7 +6,7 @@
 
 .page-overlay {
   position: absolute;
-  inset: 0;
+  inset: 0; height: 100%;
   z-index: 100;
   background:
     radial-gradient(circle at 80% 20%, rgba(184, 255, 0, 0.12), transparent 40%),

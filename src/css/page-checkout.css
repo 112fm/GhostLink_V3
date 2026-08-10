@@ -1,9 +1,10 @@
 /* Minimal payment sheet. Behavior remains in src/modules/subscription.js. */
 
 #page-checkout {
-  overflow-y: hidden;
-  --bank-accent: var(--lime);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   overflow: hidden;
+  --bank-accent: var(--lime);
   overscroll-behavior: none;
 }
 
@@ -42,7 +43,6 @@
 
 .checkout-page-content {
   display: flex;
-  flex: 1;
   flex-direction: column;
   gap: 21px;
   min-height: 0;
@@ -53,6 +53,7 @@
 
 .checkout-view-state {
   width: 100%;
+  min-height: 100%;
   flex: 1 0 auto;
   display: flex;
   flex-direction: column;
@@ -63,13 +64,43 @@
   flex: 1;
   flex-direction: column;
   gap: 21px;
-  height: 100%;
-  min-height: 0;
-  overflow: hidden;
+  min-height: 100%;
+  overflow: visible;
 }
 
 #checkout-pending-view {
   height: 100%;
+}
+
+/* A receipt is a finished, static screen: only the payment form is scrollable. */
+#page-checkout[data-checkout-view="pending"],
+#page-checkout[data-checkout-view="approved"],
+#page-checkout[data-checkout-view="rejected"] {
+  overflow: hidden;
+}
+
+#page-checkout[data-checkout-view="pending"] .checkout-page-content,
+#page-checkout[data-checkout-view="approved"] .checkout-page-content,
+#page-checkout[data-checkout-view="rejected"] .checkout-page-content {
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+#page-checkout[data-checkout-view="pending"] .checkout-view-state,
+#page-checkout[data-checkout-view="approved"] .checkout-view-state,
+#page-checkout[data-checkout-view="rejected"] .checkout-view-state,
+#page-checkout[data-checkout-view="pending"] .pending-layout,
+#page-checkout[data-checkout-view="approved"] .pending-layout,
+#page-checkout[data-checkout-view="rejected"] .pending-layout {
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+#page-checkout[data-checkout-view="pending"] .pending-home-button,
+#page-checkout[data-checkout-view="approved"] .pending-home-button,
+#page-checkout[data-checkout-view="rejected"] .pending-home-button {
+  flex: 0 0 auto;
+  margin-top: auto;
 }
 
 .checkout-sheet {
@@ -310,9 +341,19 @@
   transition: transform 160ms ease, opacity 160ms ease;
 }
 
-#checkout-form-view > .btn-confirm-pay {
-  width: 100%;
+.checkout-action-bar {
+  position: sticky;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 2;
   margin-top: auto;
+  padding: 22px 0 calc(8px + env(safe-area-inset-bottom));
+  background: linear-gradient(to bottom, rgba(15, 18, 15, 0), var(--bg) 28%);
+}
+
+.checkout-action-bar .btn-confirm-pay {
+  width: 100%;
 }
 
 .btn-confirm-pay:active {
@@ -644,6 +685,29 @@
 .pending-home-button {
   min-height: 54px;
   margin-top: auto;
+}
+
+/* Desktop has one reliable outer scroll area; no nested scrollbars or sticky bar. */
+@media (min-width: 600px) {
+  .checkout-page-content {
+    width: min(100%, 720px);
+    min-height: auto;
+    margin: 0 auto;
+    padding-bottom: calc(36px + env(safe-area-inset-bottom));
+  }
+
+  .checkout-view-state,
+  #checkout-form-view {
+    min-height: auto;
+    flex: 0 0 auto;
+  }
+
+  .checkout-action-bar {
+    position: static;
+    margin-top: 12px;
+    padding: 0;
+    background: none;
+  }
 }
 
 .status-kicker {
