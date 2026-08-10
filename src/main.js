@@ -9,6 +9,7 @@
   const { show: showToast } = createToast(document.getElementById("toast"));
   const copyText = createClipboard();
   const overlayNavigator = createOverlayNavigator();
+  GhostLinkV3.initTelegramWebApp?.(window);
   // Block 1 keeps credentials in memory only and reads profile data from the
   // confirmed API contract. The remaining modules intentionally stay mock.
   const profileSubscription = GhostLinkV3.createRealBlock1Adapter?.();
