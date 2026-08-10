@@ -269,3 +269,18 @@
 .btn-outline-action:active {
   transform: scale(0.98);
 }
+
+/* Keep mobile actions pinned, but do not let them cover app cards in Telegram
+   Desktop. The whole overlay becomes the one natural scroll surface there. */
+@media (min-width: 600px) {
+  #page-app-select { overflow-y: auto; }
+  .app-select-content { padding-bottom: 28px; }
+  .app-select-bottom-bar {
+    position: static;
+    margin: 0 20px calc(28px + env(safe-area-inset-bottom));
+    padding: 0;
+    border-top: 0;
+    background: transparent;
+    backdrop-filter: none;
+  }
+}

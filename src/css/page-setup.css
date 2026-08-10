@@ -237,3 +237,18 @@
   justify-content: center;
   text-align: center;
 }
+
+/* Desktop has less vertical room in Telegram: include the action bar in the
+   document flow, so the overlay can scroll instead of covering a choice card. */
+@media (min-width: 600px) {
+  #page-setup { overflow-y: auto; }
+  .setup-content { padding-bottom: 28px; }
+  .setup-bottom-bar {
+    position: static;
+    margin: 0 20px calc(28px + env(safe-area-inset-bottom));
+    padding: 0;
+    border-top: 0;
+    background: transparent;
+    backdrop-filter: none;
+  }
+}

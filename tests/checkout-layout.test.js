@@ -9,15 +9,14 @@ const template = readFileSync(join(root, 'src/templates/pages/checkout.html'), '
 const subscription = readFileSync(join(root, 'src/modules/subscription.js'), 'utf8');
 const contextHelpCss = readFileSync(join(root, 'src/css/context-help.css'), 'utf8');
 
-test('checkout uses the overlay as the only scroll container', () => {
+test('checkout uses one dedicated scroll container for the payment form', () => {
   const checkoutRule = css.match(/#page-checkout\s*\{([\s\S]*?)\n\}/);
   const contentRule = css.match(/\.checkout-page-content\s*\{([\s\S]*?)\n\}/);
 
   assert.ok(checkoutRule);
-  assert.match(checkoutRule[1], /overflow-y:\s*auto/);
-  assert.doesNotMatch(checkoutRule[1], /overflow:\s*hidden/);
+  assert.match(checkoutRule[1], /overflow:\s*hidden/);
   assert.ok(contentRule);
-  assert.doesNotMatch(contentRule[1], /overflow-y:\s*auto/);
+  assert.match(contentRule[1], /overflow-y:\s*auto/);
 });
 
 test('checkout has a dedicated mobile action bar and releases it on desktop', () => {

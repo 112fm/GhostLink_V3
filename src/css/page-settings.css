@@ -191,6 +191,24 @@
   overscroll-behavior: none;
 }
 
+.devices-list-header {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+}
+
+.devices-list-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+@media (min-width: 600px) {
+  .devices-list-header { padding-right: 110px; }
+}
+
 .devices-page-content {
   display: flex;
   flex-direction: column;

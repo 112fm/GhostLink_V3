@@ -25,13 +25,14 @@ function assertBridgeEnvelope(value) {
   ]);
 }
 
-test('standard referral snapshot exposes local mock statistics', async () => {
+test('standard referral snapshot starts without fictional invitation data', async () => {
   const invites = createMockInvites();
   const snapshot = await invites.getSnapshot();
 
   assert.equal(snapshot.isMock, true);
   assert.match(snapshot.standardInvitation.url, /^ghostlink-mock:\/\/invite\/ref_/);
-  assert.deepEqual(snapshot.stats, { invited: 3, subscribed: 1, pending: 1, expired: 1, rewardDays: 14 });
+  assert.deepEqual(snapshot.invitations, []);
+  assert.deepEqual(snapshot.stats, { invited: 0, subscribed: 0, pending: 0, expired: 0, rewardDays: 0 });
 });
 
 test('empty invite list remains an honest empty state', async () => {

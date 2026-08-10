@@ -180,16 +180,20 @@
     function renderSnapshot(snapshot) {
       state.snapshot = snapshot;
       const { stats } = snapshot;
-      if (refs.rewardDays) refs.rewardDays.textContent = `+${stats.rewardDays}`;
-      if (refs.subscribed) refs.subscribed.textContent = String(stats.subscribed);
-      if (refs.pending) refs.pending.textContent = String(stats.pending);
-      if (refs.expired) refs.expired.textContent = String(stats.expired);
-      if (refs.count) refs.count.textContent = stats.invited ? `${stats.invited} приглашения` : 'Пока нет приглашений';
+      const hasLiveData = !snapshot.isMock;
+      if (refs.rewardDays) refs.rewardDays.textContent = hasLiveData ? `+${stats.rewardDays}` : '—';
+      if (refs.subscribed) refs.subscribed.textContent = hasLiveData ? String(stats.subscribed) : '—';
+      if (refs.pending) refs.pending.textContent = hasLiveData ? String(stats.pending) : '—';
+      if (refs.expired) refs.expired.textContent = hasLiveData ? String(stats.expired) : '—';
+      if (refs.count) {
+        refs.count.textContent = hasLiveData && stats.invited ? `${stats.invited} приглашения` : '';
+        setHidden(refs.count, !hasLiveData || !stats.invited);
+      }
       renderChain(stats.rewardDays);
       if (refs.list) {
         refs.list.innerHTML = snapshot.invitations.length
           ? snapshot.invitations.map(invitationView).join('')
-          : '<div class="referral-empty-card"><strong class="empty-title">Пока нет приглашений</strong><span class="empty-subtitle">Отправьте ссылку другу, чтобы здесь появилась его заявка.</span></div>';
+          : '<div class="referral-empty-card"><strong class="empty-title">Приглашений пока нет</strong><span class="empty-subtitle">Реальные приглашения появятся здесь после подключения данных.</span></div>';
       }
       if (state.mode === 'standard' && refs.linkText) refs.linkText.textContent = snapshot.standardInvitation.url;
     }

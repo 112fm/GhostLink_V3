@@ -2,12 +2,9 @@
   const STORAGE_KEY = 'ghostlink-v3-mock-bridge-owner-contract-v1';
   const TTL_SECONDS = 24 * 60 * 60;
   const ACTIVE_STATUSES = new Set(['created', 'transferred', 'waiting_join']);
-  // Fixtures are deliberately fictional and only power the local V3 preview.
-  const DEFAULT_INVITATIONS = Object.freeze([
-    { id: 'mock-invite-subscribed-01', name: 'Друг 1', handle: '@mock_friend_1', status: 'subscribed', createdAt: '8 дней назад' },
-    { id: 'mock-invite-pending-01', name: 'Друг 2', handle: '@mock_friend_2', status: 'pending', createdAt: '2 дня назад' },
-    { id: 'mock-invite-expired-01', name: 'Друг 3', handle: '@mock_friend_3', status: 'expired', createdAt: '20 дней назад' },
-  ]);
+  // Preview starts without fictional people or bonus history. Real invitation
+  // data will arrive only through the future API contract.
+  const DEFAULT_INVITATIONS = Object.freeze([]);
   const ALLOWED_TRANSITIONS = Object.freeze({
     created: new Set(['transferred', 'failed', 'expired']),
     transferred: new Set(['waiting_join', 'failed', 'expired']),
