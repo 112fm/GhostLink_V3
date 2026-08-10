@@ -45,7 +45,6 @@
   flex-direction: column;
   gap: 21px;
   min-height: 0;
-  overflow: hidden;
   padding: 16px 18px 34px;
   position: relative;
 }
@@ -309,12 +308,8 @@
 }
 
 #checkout-form-view > .btn-confirm-pay {
-  position: absolute;
-  right: 18px;
-  bottom: 34px;
-  left: 18px;
-  width: auto;
-  margin-top: 0;
+  width: 100%;
+  margin-top: auto;
 }
 
 .btn-confirm-pay:active {
