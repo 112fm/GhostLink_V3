@@ -23,6 +23,15 @@
     element.classList.toggle('is-error', value !== 'not_started' && value !== 200 && value !== true);
   }
 
+  function setInitDataStatus(documentRef, present, elapsed) {
+    const element = documentRef.getElementById('diagnostics-init-data');
+    if (!element) return;
+    const resolved = present === true || elapsed >= 3000;
+    element.textContent = present === true ? 'Получен' : (resolved ? 'Не получен' : 'Проверяем…');
+    element.classList.toggle('is-ok', present === true);
+    element.classList.toggle('is-error', resolved && present !== true);
+  }
+
   function initDiagnosticsModule({ profileSubscription, documentRef = root.document } = {}) {
     if (!isEnabled() || !documentRef || !profileSubscription?.getDiagnostics) return null;
 
@@ -40,18 +49,19 @@
     };
     const refresh = () => {
       const diagnostics = profileSubscription.getDiagnostics();
-      setStatus(documentRef, 'diagnostics-init-data', diagnostics?.initData_present === true ? true : 'not_started');
+      const elapsed = Date.now() - startedAt;
+      setInitDataStatus(documentRef, diagnostics?.initData_present === true, elapsed);
       setStatus(documentRef, 'diagnostics-session', diagnostics?.session_status || 'not_started');
       setStatus(documentRef, 'diagnostics-user', diagnostics?.user_status || 'not_started');
       setStatus(documentRef, 'diagnostics-tariffs', diagnostics?.tariffs_status || 'not_started');
 
-      const elapsed = Date.now() - startedAt;
       const completed = diagnostics && diagnostics.session_status !== 'not_started'
         && diagnostics.user_status !== 'not_started' && diagnostics.tariffs_status !== 'not_started';
-      note.textContent = completed
+      const finished = completed || elapsed >= 10500;
+      note.textContent = finished
         ? `Проверка завершена за ${Math.round(elapsed / 100) / 10} с.`
         : `Проверяем запуск: ${Math.min(10, Math.round(elapsed / 100) / 10)} с из 10 с.`;
-      if (completed || elapsed >= 10500) stop();
+      if (finished) stop();
     };
 
     documentRef.getElementById('btn-diagnostics-close')?.addEventListener('click', () => {

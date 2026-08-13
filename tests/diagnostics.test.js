@@ -20,6 +20,7 @@ test('diagnostics screen has no credentials, profile data, or network requests',
   assert.doesNotMatch(template, /session_token|X-PWA-Token|displayName|tariff_name/i);
   assert.doesNotMatch(source, /\bfetch\s*\(/);
   assert.doesNotMatch(source, /session_token|X-PWA-Token|init_data/);
+  assert.match(source, /Не получен/);
 });
 
 test('runtime graph includes the diagnostics template and module', () => {
