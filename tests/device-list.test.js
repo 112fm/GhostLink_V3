@@ -99,3 +99,11 @@ test('device template exposes the current dynamic list controls', () => {
   });
   assert.doesNotMatch(template, /legacy-device-list-markup|btnToggleDevicesHistory|historyAccordionContent|btn-delete-device-action/);
 });
+
+test('settings never shows a made-up device count before the list loads', () => {
+  const settingsTemplate = fs.readFileSync(path.join(root, 'src/templates/pages/settings.html'), 'utf8');
+  const subtitle = settingsTemplate.match(/id="settings-devices-subtitle">([^<]+)</);
+
+  assert.ok(subtitle);
+  assert.equal(subtitle[1].trim(), 'Проверяем устройства…');
+});

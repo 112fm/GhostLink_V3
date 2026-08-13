@@ -341,6 +341,11 @@
   flex-direction: column;
 }
 
+.app-shell.is-access-denied .home-bottom-content,
+.app-shell.is-access-denied .bottom-nav {
+  display: none;
+}
+
 
 /* Bottom Navigation Bar (Floating Pill) */
 .bottom-nav {

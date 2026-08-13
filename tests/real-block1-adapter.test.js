@@ -52,6 +52,58 @@ test('real Block 1 opens an ephemeral session then reads profile and tariffs', a
   assert.equal(snapshot.subscription.usedDevices, 1);
   assert.equal(snapshot.subscription.totalDays, null);
   assert.equal(adapter.getSession().token, undefined);
+  assert.deepEqual(adapter.getDiagnostics().initData_present, true);
+  assert.equal(adapter.getDiagnostics().session_status, 200);
+  assert.equal(adapter.getDiagnostics().user_status, 200);
+  assert.equal(adapter.getDiagnostics().tariffs_status, 200);
+});
+
+test('real Block 1 waits briefly for delayed Telegram initData before opening a session', async () => {
+  let initDataReads = 0;
+  const adapter = createRealBlock1Adapter({
+    apiBase: 'https://api.example.test',
+    getInitData: () => (++initDataReads < 3 ? '' : 'delayed-init-data'),
+    sleep: async () => {},
+    fetch: async (url) => {
+      if (url.endsWith('/api/miniapp/session')) return response(200, { session_token: 'secret-token' });
+      if (url.endsWith('/api/user')) return response(200, {
+        user: { id: '1', name: 'Delayed User' },
+        subscription: { active: true, status: 'active', days_left: 5 },
+        device_limit: 2,
+        connected_devices: 1,
+        tariff_name: 'Solo Ghost',
+      });
+      return response(200, { period_prices: {} });
+    },
+  });
+
+  const snapshot = await adapter.fetchProfileSubscription();
+
+  assert.equal(snapshot.profile.displayName, 'Delayed User');
+  assert.equal(initDataReads, 3);
+  assert.equal(adapter.getDiagnostics().initData_present, true);
+});
+
+test('real Block 1 reports a missing Telegram initData without making a session request', async () => {
+  let nowMs = 0;
+  let fetchCalls = 0;
+  const adapter = createRealBlock1Adapter({
+    getInitData: () => '',
+    initDataWaitMs: 300,
+    totalTimeoutMs: 1000,
+    nowMs: () => nowMs,
+    sleep: async (duration) => { nowMs += duration; },
+    fetch: async () => {
+      fetchCalls += 1;
+      return response(200, {});
+    },
+  });
+
+  await assert.rejects(adapter.fetchProfileSubscription(), (error) => error.type === 'auth' && error.status === 401);
+
+  assert.equal(fetchCalls, 0);
+  assert.equal(adapter.getDiagnostics().initData_present, false);
+  assert.equal(adapter.getDiagnostics().session_status, 'not_started');
 });
 
 test('real Block 1 keeps 401 and 403 distinct from a new profile', async () => {

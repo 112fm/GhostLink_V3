@@ -106,6 +106,27 @@ test('authentication and access errors remain distinct and never become a new us
   assert.notEqual(forbidden.state, 'new');
 });
 
+test('denied access hides client club actions instead of exposing a stale club interface', () => {
+  const homeSource = fs.readFileSync(path.join(root, 'src/modules/home.js'), 'utf8');
+  const componentStyles = fs.readFileSync(path.join(root, 'src/css/components.css'), 'utf8');
+
+  assert.match(homeSource, /is-access-denied/);
+  assert.match(componentStyles, /\.app-shell\.is-access-denied \.home-bottom-content/);
+  assert.match(componentStyles, /\.app-shell\.is-access-denied \.bottom-nav/);
+});
+
+test('timeout and network errors do not turn into an expired subscription or fake device data', () => {
+  const timeout = getSubscriptionPresentation({ error: { type: 'timeout' } });
+  const network = getSubscriptionPresentation({ error: { type: 'network' } });
+
+  assert.equal(timeout.state, 'unavailable');
+  assert.equal(timeout.remainingDays, null);
+  assert.equal(timeout.deviceLabel, 'Загрузка заняла слишком долго. Попробуйте ещё раз.');
+  assert.equal(network.state, 'unavailable');
+  assert.equal(network.remainingDays, null);
+  assert.equal(network.deviceLabel, 'Не удалось связаться с GhostLink. Проверьте подключение');
+});
+
 test('offline and timeout states reject without replacing the saved mock scenario', async () => {
   const adapter = createMockProfileSubscription();
   const active = await adapter.fetchProfileSubscription();

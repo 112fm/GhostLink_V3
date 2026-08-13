@@ -41,6 +41,20 @@
         actionLabel: 'Понятно', isDemo: false,
       };
     }
+    if (error?.type === 'timeout') {
+      return {
+        state: 'unavailable', planTitle: 'ЗАГРУЗКА НЕ УДАЛАСЬ', emoji: '…', remainingDays: null,
+        daysLabel: '', deviceLabel: 'Загрузка заняла слишком долго. Попробуйте ещё раз.', progress: 0,
+        actionLabel: 'Повторить', isDemo: false,
+      };
+    }
+    if (error?.type === 'network') {
+      return {
+        state: 'unavailable', planTitle: 'НЕТ СОЕДИНЕНИЯ', emoji: '…', remainingDays: null,
+        daysLabel: '', deviceLabel: 'Не удалось связаться с GhostLink. Проверьте подключение', progress: 0,
+        actionLabel: 'Повторить', isDemo: false,
+      };
+    }
 
     const subscription = snapshot?.subscription ?? snapshot;
     if (!subscription) {
@@ -119,6 +133,7 @@
 
     const presentation = loading ? getLoadingSubscriptionPresentation() : getSubscriptionPresentation(snapshot);
     const isUnavailable = presentation.state === 'unavailable';
+    documentRef.querySelector('.app-shell')?.classList.toggle('is-access-denied', presentation.state === 'denied');
     island.dataset.subscriptionState = presentation.state;
     island.setAttribute('aria-busy', String(loading));
     island.classList.toggle('is-subscription-loading', loading);

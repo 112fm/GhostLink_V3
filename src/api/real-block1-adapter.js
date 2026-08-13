@@ -1,6 +1,8 @@
 (function registerRealBlock1Adapter(globalScope) {
   const DEFAULT_API_BASE = 'https://api.112prd.ru';
-  const DEFAULT_TIMEOUT_MS = 8000;
+  const DEFAULT_TOTAL_TIMEOUT_MS = 10000;
+  const DEFAULT_INIT_DATA_WAIT_MS = 3000;
+  const INIT_DATA_RETRY_MS = 150;
 
   function createError(type, message, status, data) {
     const error = new Error(message || type);
@@ -30,14 +32,21 @@
   async function requestJson(fetchImpl, url, options, timeoutMs) {
     const controller = typeof AbortController === 'function' ? new AbortController() : null;
     let timedOut = false;
-    const timeoutId = controller ? globalScope.setTimeout(() => {
-      timedOut = true;
-      controller.abort();
-    }, timeoutMs) : null;
+    let timeoutId = null;
+    const timeoutPromise = new Promise((_, reject) => {
+      timeoutId = globalScope.setTimeout(() => {
+        timedOut = true;
+        controller?.abort();
+        reject(createError('timeout', 'Сервер отвечает слишком долго. Попробуйте ещё раз.'));
+      }, Math.max(1, timeoutMs));
+    });
 
     try {
-      const response = await fetchImpl(url, { ...options, signal: controller?.signal });
-      const raw = await response.text();
+      const response = await Promise.race([
+        fetchImpl(url, { ...options, signal: controller?.signal }),
+        timeoutPromise,
+      ]);
+      const raw = await Promise.race([response.text(), timeoutPromise]);
       let data;
       try {
         data = raw ? JSON.parse(raw) : null;
@@ -64,6 +73,11 @@
     } finally {
       if (timeoutId) globalScope.clearTimeout(timeoutId);
     }
+  }
+
+  function getErrorStatus(error) {
+    if (Number.isFinite(Number(error?.status))) return Number(error.status);
+    return error?.type || 'error';
   }
 
   function mapProfile(userResponse, tariffsResponse, now) {
@@ -113,28 +127,82 @@
     const fetchImpl = options.fetch || globalScope.fetch?.bind(globalScope);
     const getInitData = options.getInitData || (() => globalScope.Telegram?.WebApp?.initData || '');
     const now = options.now || (() => new Date());
-    const timeoutMs = toInteger(options.timeoutMs, DEFAULT_TIMEOUT_MS) || DEFAULT_TIMEOUT_MS;
+    const nowMs = options.nowMs || (() => Date.now());
+    const sleep = options.sleep || ((duration) => new Promise((resolve) => globalScope.setTimeout(resolve, duration)));
+    const totalTimeoutMs = toInteger(options.totalTimeoutMs ?? options.timeoutMs, DEFAULT_TOTAL_TIMEOUT_MS) || DEFAULT_TOTAL_TIMEOUT_MS;
+    const initDataWaitMs = Math.min(
+      toInteger(options.initDataWaitMs, DEFAULT_INIT_DATA_WAIT_MS),
+      totalTimeoutMs,
+    );
     let token = '';
     let inFlight = null;
     let sessionState = null;
+    let diagnostics = null;
 
     if (typeof fetchImpl !== 'function') {
       throw createError('network', 'Браузер не поддерживает сетевые запросы.');
     }
 
-    async function openSession() {
-      const initData = String(getInitData() || '').trim();
-      if (!initData) {
-        throw createError('auth', 'Откройте Mini App через Telegram ещё раз.', 401);
+    function createDiagnostics() {
+      return {
+        initData_present: false,
+        session_status: 'not_started',
+        user_status: 'not_started',
+        tariffs_status: 'not_started',
+        durations_ms: {},
+      };
+    }
+
+    function remainingTime(deadlineAt) {
+      return Math.max(0, deadlineAt - nowMs());
+    }
+
+    async function waitForInitData(deadlineAt) {
+      const initDataDeadline = Math.min(deadlineAt, nowMs() + initDataWaitMs);
+
+      while (nowMs() < initDataDeadline) {
+        const initData = String(getInitData() || '').trim();
+        if (initData) {
+          diagnostics.initData_present = true;
+          return initData;
+        }
+        await sleep(Math.max(1, Math.min(INIT_DATA_RETRY_MS, initDataDeadline - nowMs())));
       }
 
-      const session = await requestJson(fetchImpl, `${apiBase}/api/miniapp/session`, {
-        method: 'POST',
-        cache: 'no-store',
-        credentials: 'include',
-        headers: { Accept: 'application/json' },
-        body: new URLSearchParams({ init_data: initData }),
-      }, timeoutMs);
+      const initData = String(getInitData() || '').trim();
+      if (initData) {
+        diagnostics.initData_present = true;
+        return initData;
+      }
+      throw createError('auth', 'Telegram ещё не передал данные входа. Закройте и откройте Mini App ещё раз.', 401);
+    }
+
+    async function runStage(name, deadlineAt, request) {
+      const startedAt = nowMs();
+      try {
+        const remaining = remainingTime(deadlineAt);
+        if (remaining <= 0) throw createError('timeout', 'Загрузка заняла слишком долго. Попробуйте ещё раз.');
+        const result = await request(remaining);
+        diagnostics[`${name}_status`] = 200;
+        return result;
+      } catch (error) {
+        diagnostics[`${name}_status`] = getErrorStatus(error);
+        throw error;
+      } finally {
+        diagnostics.durations_ms[name] = Math.max(0, nowMs() - startedAt);
+      }
+    }
+
+    async function openSession(deadlineAt) {
+      const initData = await waitForInitData(deadlineAt);
+
+      const session = await runStage('session', deadlineAt, (timeoutMs) => requestJson(fetchImpl, `${apiBase}/api/miniapp/session`, {
+          method: 'POST',
+          cache: 'no-store',
+          credentials: 'include',
+          headers: { Accept: 'application/json' },
+          body: new URLSearchParams({ init_data: initData }),
+        }, timeoutMs));
       token = String(session.session_token || '');
       if (!token) throw createError('invalid_json', 'Сервер не подтвердил сессию.');
       sessionState = Object.freeze({ status: 'authenticated', transport: 'memory' });
@@ -148,15 +216,21 @@
       fetchProfileSubscription() {
         if (inFlight) return inFlight;
         inFlight = (async () => {
-          await openSession();
-          const [user, tariffs] = await Promise.all([
-            requestJson(fetchImpl, `${apiBase}/api/user`, {
+          diagnostics = createDiagnostics();
+          const deadlineAt = nowMs() + totalTimeoutMs;
+          await openSession(deadlineAt);
+          const [userResult, tariffsResult] = await Promise.allSettled([
+            runStage('user', deadlineAt, (timeoutMs) => requestJson(fetchImpl, `${apiBase}/api/user`, {
               method: 'GET', cache: 'no-store', credentials: 'include', headers: readHeaders(),
-            }, timeoutMs),
-            requestJson(fetchImpl, `${apiBase}/api/tariffs`, {
+            }, timeoutMs)),
+            runStage('tariffs', deadlineAt, (timeoutMs) => requestJson(fetchImpl, `${apiBase}/api/tariffs`, {
               method: 'GET', cache: 'no-store', credentials: 'include', headers: readHeaders(),
-            }, timeoutMs),
+            }, timeoutMs)),
           ]);
+          if (userResult.status === 'rejected') throw userResult.reason;
+          if (tariffsResult.status === 'rejected') throw tariffsResult.reason;
+          const user = userResult.value;
+          const tariffs = tariffsResult.value;
           return mapProfile(user, tariffs, now());
         })().finally(() => {
           inFlight = null;
@@ -164,6 +238,10 @@
         return inFlight;
       },
       getSession: () => sessionState ? { ...sessionState } : null,
+      getDiagnostics: () => diagnostics ? {
+        ...diagnostics,
+        durations_ms: { ...diagnostics.durations_ms },
+      } : null,
     });
   }
 
