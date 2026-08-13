@@ -35,6 +35,7 @@
   };
 
   GhostLinkV3.initHomeModule?.(dependencies);
+  GhostLinkV3.initDiagnosticsModule?.({ profileSubscription });
   GhostLinkV3.initSubscriptionModule?.(dependencies);
   GhostLinkV3.initDevicesModule?.(dependencies);
   GhostLinkV3.initInvitesModule?.(dependencies);

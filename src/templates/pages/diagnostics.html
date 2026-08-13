@@ -1,0 +1,20 @@
+<!-- Service-only view: visible exclusively with ?diagnostics=1. -->
+<section id="page-diagnostics" class="page-overlay diagnostics-page hidden" aria-label="Техническая диагностика">
+  <div class="diagnostics-page-content">
+    <div class="diagnostics-header">
+      <p class="diagnostics-eyebrow">GHOSTLINK V3</p>
+      <h1>Проверка запуска</h1>
+      <p>Здесь нет токенов, имени, тарифа или других данных профиля.</p>
+    </div>
+
+    <dl class="diagnostics-list" aria-live="polite">
+      <div class="diagnostics-row"><dt>Telegram initData</dt><dd id="diagnostics-init-data">Проверяем…</dd></div>
+      <div class="diagnostics-row"><dt>Сессия</dt><dd id="diagnostics-session">Не начато</dd></div>
+      <div class="diagnostics-row"><dt>Профиль</dt><dd id="diagnostics-user">Не начато</dd></div>
+      <div class="diagnostics-row"><dt>Тарифы</dt><dd id="diagnostics-tariffs">Не начато</dd></div>
+    </dl>
+
+    <p class="diagnostics-note" id="diagnostics-note">Ожидаем запуск проверки…</p>
+    <button class="diagnostics-close" id="btn-diagnostics-close" type="button">Закрыть</button>
+  </div>
+</section>

@@ -1,0 +1,82 @@
+/* Service-only diagnostics. It exposes request states, never credentials or profile data. */
+.diagnostics-page {
+  z-index: 500;
+  overflow-y: auto;
+  background: rgba(9, 12, 10, 0.98);
+}
+
+.diagnostics-page-content {
+  display: grid;
+  align-content: start;
+  min-height: 100%;
+  gap: 24px;
+  padding: 36px 24px calc(36px + env(safe-area-inset-bottom));
+}
+
+.diagnostics-header h1 {
+  margin: 6px 0 10px;
+  font-size: 28px;
+}
+
+.diagnostics-header p,
+.diagnostics-note {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.diagnostics-eyebrow {
+  color: var(--lime) !important;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.diagnostics-list {
+  display: grid;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--line-soft);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.diagnostics-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 16px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.diagnostics-row:last-child {
+  border-bottom: 0;
+}
+
+.diagnostics-row dt {
+  color: var(--muted);
+}
+
+.diagnostics-row dd {
+  margin: 0;
+  color: var(--text);
+  font-weight: 700;
+  text-align: right;
+}
+
+.diagnostics-row dd.is-ok {
+  color: var(--lime);
+}
+
+.diagnostics-row dd.is-error {
+  color: #ff9b92;
+}
+
+.diagnostics-close {
+  min-height: 48px;
+  border: 1px solid var(--line-soft);
+  border-radius: 14px;
+  background: transparent;
+  color: var(--text);
+  font-weight: 700;
+}

@@ -23,6 +23,7 @@
     <link rel="stylesheet" href="./src/css/page-settings.css" />
     <link rel="stylesheet" href="./src/css/page-admin.css" />
     <link rel="stylesheet" href="./src/css/context-help.css" />
+    <link rel="stylesheet" href="./src/css/page-diagnostics.css?v=1" />
     <link rel="stylesheet" href="./src/css/animations.css" />
   </head>
   <body>
@@ -1687,6 +1688,27 @@
         </div>
       </section>
 
+<!-- Service-only view: visible exclusively with ?diagnostics=1. -->
+<section id="page-diagnostics" class="page-overlay diagnostics-page hidden" aria-label="Техническая диагностика">
+  <div class="diagnostics-page-content">
+    <div class="diagnostics-header">
+      <p class="diagnostics-eyebrow">GHOSTLINK V3</p>
+      <h1>Проверка запуска</h1>
+      <p>Здесь нет токенов, имени, тарифа или других данных профиля.</p>
+    </div>
+
+    <dl class="diagnostics-list" aria-live="polite">
+      <div class="diagnostics-row"><dt>Telegram initData</dt><dd id="diagnostics-init-data">Проверяем…</dd></div>
+      <div class="diagnostics-row"><dt>Сессия</dt><dd id="diagnostics-session">Не начато</dd></div>
+      <div class="diagnostics-row"><dt>Профиль</dt><dd id="diagnostics-user">Не начато</dd></div>
+      <div class="diagnostics-row"><dt>Тарифы</dt><dd id="diagnostics-tariffs">Не начато</dd></div>
+    </dl>
+
+    <p class="diagnostics-note" id="diagnostics-note">Ожидаем запуск проверки…</p>
+    <button class="diagnostics-close" id="btn-diagnostics-close" type="button">Закрыть</button>
+  </div>
+</section>
+
 <section id="page-admin-dashboard" class="page-overlay hidden" aria-label="Управление Клубом">
         <header class="page-header" style="flex-direction: row; justify-content: space-between; align-items: center; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.05);">
           <div style="display: flex; align-items: center; gap: 12px;">
@@ -3322,6 +3344,7 @@
     <script src="./src/mocks/support.js?v=3"></script>
     <script src="./src/mocks/admin-security.js?v=3"></script>
     <script src="./src/modules/home.js?v=3"></script>
+    <script src="./src/modules/diagnostics.js?v=1"></script>
     <script src="./src/modules/subscription.js?v=3"></script>
     <script src="./src/modules/devices.js?v=3"></script>
     <script src="./src/modules/invites.js?v=3"></script>
