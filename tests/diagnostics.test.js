@@ -28,6 +28,6 @@ test('runtime graph includes the diagnostics template and module', () => {
   const main = fs.readFileSync(path.join(root, 'src', 'main.js'), 'utf8');
 
   assert.match(template, /pages\/diagnostics\.html/);
-  assert.match(template, /modules\/diagnostics\.js/);
+  assert.match(template, /modules\/diagnostics\.js\?v=2/);
   assert.match(main, /initDiagnosticsModule/);
 });
