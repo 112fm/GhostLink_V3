@@ -177,19 +177,19 @@
       throw createError('auth', 'Telegram ещё не передал данные входа. Закройте и откройте Mini App ещё раз.', 401);
     }
 
-    async function runStage(name, deadlineAt, request) {
+    async function runStage(name, deadlineAt, request, stageDiagnostics = diagnostics) {
       const startedAt = nowMs();
       try {
         const remaining = remainingTime(deadlineAt);
         if (remaining <= 0) throw createError('timeout', 'Загрузка заняла слишком долго. Попробуйте ещё раз.');
         const result = await request(remaining);
-        diagnostics[`${name}_status`] = 200;
+        stageDiagnostics[`${name}_status`] = 200;
         return result;
       } catch (error) {
-        diagnostics[`${name}_status`] = getErrorStatus(error);
+        stageDiagnostics[`${name}_status`] = getErrorStatus(error);
         throw error;
       } finally {
-        diagnostics.durations_ms[name] = Math.max(0, nowMs() - startedAt);
+        stageDiagnostics.durations_ms[name] = Math.max(0, nowMs() - startedAt);
       }
     }
 
@@ -217,21 +217,20 @@
         if (inFlight) return inFlight;
         inFlight = (async () => {
           diagnostics = createDiagnostics();
+          const requestDiagnostics = diagnostics;
           const deadlineAt = nowMs() + totalTimeoutMs;
           await openSession(deadlineAt);
-          const [userResult, tariffsResult] = await Promise.allSettled([
-            runStage('user', deadlineAt, (timeoutMs) => requestJson(fetchImpl, `${apiBase}/api/user`, {
-              method: 'GET', cache: 'no-store', credentials: 'include', headers: readHeaders(),
-            }, timeoutMs)),
-            runStage('tariffs', deadlineAt, (timeoutMs) => requestJson(fetchImpl, `${apiBase}/api/tariffs`, {
-              method: 'GET', cache: 'no-store', credentials: 'include', headers: readHeaders(),
-            }, timeoutMs)),
-          ]);
-          if (userResult.status === 'rejected') throw userResult.reason;
-          if (tariffsResult.status === 'rejected') throw tariffsResult.reason;
-          const user = userResult.value;
-          const tariffs = tariffsResult.value;
-          return mapProfile(user, tariffs, now());
+
+          // The home island needs only the user profile. Tariff catalog loading is
+          // diagnostic/background work and must not hide the current subscription.
+          void runStage('tariffs', deadlineAt, (timeoutMs) => requestJson(fetchImpl, `${apiBase}/api/tariffs`, {
+            method: 'GET', cache: 'no-store', credentials: 'include', headers: readHeaders(),
+          }, timeoutMs), requestDiagnostics).catch(() => null);
+
+          const user = await runStage('user', deadlineAt, (timeoutMs) => requestJson(fetchImpl, `${apiBase}/api/user`, {
+            method: 'GET', cache: 'no-store', credentials: 'include', headers: readHeaders(),
+          }, timeoutMs), requestDiagnostics);
+          return mapProfile(user, null, now());
         })().finally(() => {
           inFlight = null;
         });

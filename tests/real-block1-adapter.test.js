@@ -58,6 +58,45 @@ test('real Block 1 opens an ephemeral session then reads profile and tariffs', a
   assert.equal(adapter.getDiagnostics().tariffs_status, 200);
 });
 
+test('real Block 1 renders the profile while tariffs continue loading in the background', async () => {
+  let releaseTariffs = () => {};
+  const adapter = createRealBlock1Adapter({
+    apiBase: 'https://api.example.test',
+    getInitData: () => 'telegram-init-data',
+    fetch: async (url) => {
+      if (url.endsWith('/api/miniapp/session')) return response(200, { session_token: 'secret-token' });
+      if (url.endsWith('/api/user')) return response(200, {
+        user: { id: '1', name: 'Fast Profile' },
+        subscription: { active: true, status: 'active', days_left: 12 },
+        device_limit: 3,
+        connected_devices: 1,
+        tariff_name: 'Flex Squad',
+      });
+      if (url.endsWith('/api/tariffs')) {
+        return new Promise((resolve) => {
+          releaseTariffs = () => resolve(response(200, { period_prices: {} }));
+        });
+      }
+      throw new Error(`Unexpected URL: ${url}`);
+    },
+  });
+
+  let earlyResult;
+  try {
+    earlyResult = await Promise.race([
+      adapter.fetchProfileSubscription().then((snapshot) => ({ type: 'profile', snapshot })),
+      new Promise((resolve) => setTimeout(() => resolve({ type: 'blocked' }), 50)),
+    ]);
+  } finally {
+    releaseTariffs();
+  }
+
+  assert.equal(earlyResult.type, 'profile');
+  assert.equal(earlyResult.snapshot.profile.displayName, 'Fast Profile');
+  assert.equal(earlyResult.snapshot.subscription.remainingDays, 12);
+  assert.equal(adapter.getDiagnostics().tariffs_status, 'not_started');
+});
+
 test('real Block 1 waits briefly for delayed Telegram initData before opening a session', async () => {
   let initDataReads = 0;
   const adapter = createRealBlock1Adapter({
