@@ -1,0 +1,12 @@
+# Runtime repository must never publish local secrets or build residue.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+node_modules/
+.DS_Store
+._*
+coverage/
+dist/
