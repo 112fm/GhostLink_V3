@@ -20,7 +20,7 @@ test('active subscription uses one profile snapshot for tariff, days, and device
   assert.equal(presentation.planTitle, 'ДЕМО · VIP DIAMOND');
   assert.equal(presentation.remainingDays, 29);
   assert.equal(presentation.progress, 97);
-  assert.equal(presentation.deviceLabel, 'Демо: 3 из 5 устройств');
+  assert.equal(presentation.deviceLabel, 'Демо: 3 устройства · лимит 5');
   assert.equal(presentation.actionLabel, 'Продлить подписку');
   assert.equal(presentation.isDemo, true);
   assert.match(presentation.planTitle, /^ДЕМО · /);
@@ -84,6 +84,48 @@ test('a real subscription without a server total does not fabricate a progress p
   assert.equal(presentation.remainingDays, 10);
   assert.equal(presentation.progress, null);
   assert.equal(presentation.progressKnown, false);
+});
+
+test('a real VIP is timeless and keeps the actual device count above its tariff limit', () => {
+  const presentation = getSubscriptionPresentation({
+    isMock: false,
+    subscription: {
+      state: 'vip', active: true, isTimeless: true, totalDays: null, startedAt: null,
+      remainingDays: null, deviceLimit: 3, usedDevices: 5,
+      plan: { title: 'VIP', emoji: '💎' },
+    },
+  });
+
+  assert.equal(presentation.state, 'vip');
+  assert.equal(presentation.planTitle, 'VIP');
+  assert.equal(presentation.emoji, '💎');
+  assert.equal(presentation.daysValue, 'Без срока');
+  assert.equal(presentation.progress, 100);
+  assert.equal(presentation.progressKnown, true);
+  assert.equal(presentation.deviceLabel, '5 устройств · лимит 3');
+});
+
+test('real subscription colours progress only when the API provides a complete duration basis', () => {
+  const makePresentation = (remainingDays) => getSubscriptionPresentation({
+    isMock: false,
+    subscription: {
+      state: 'active', active: true, totalDays: 100, startedAt: '2026-08-01T00:00:00Z',
+      remainingDays, deviceLimit: 3, usedDevices: 5,
+      plan: { title: 'Flex Ghost', emoji: '⚡' },
+    },
+  });
+
+  assert.equal(makePresentation(51).state, 'active');
+  assert.equal(makePresentation(50).state, 'warning');
+  assert.equal(makePresentation(19).state, 'critical');
+  assert.equal(makePresentation(0).state, 'expired');
+});
+
+test('the home bar preserves the tariff name returned by the API', () => {
+  const componentStyles = fs.readFileSync(path.join(root, 'src/css/components.css'), 'utf8');
+  const tariffRule = componentStyles.match(/\.status-tariff\s*\{[^}]*\}/s)?.[0] || '';
+
+  assert.doesNotMatch(tariffRule, /text-transform:\s*uppercase/);
 });
 
 test('pending confirmation is not rendered as a new user or an expired subscription', () => {

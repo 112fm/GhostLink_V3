@@ -143,7 +143,6 @@
   font-size: 16px;
   font-weight: 600;
   letter-spacing: 0.05em;
-  text-transform: uppercase;
 }
 
 .status-right {
@@ -217,7 +216,11 @@
 }
 
 .status-island.is-subscription-progress-unknown .status-progress {
-  display: none;
+  background: rgba(184, 255, 0, 0.14);
+}
+
+.status-island.is-subscription-progress-unknown .status-progress span {
+  width: 100%;
 }
 
 .device-count-text {

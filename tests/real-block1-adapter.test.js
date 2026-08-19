@@ -97,6 +97,36 @@ test('real Block 1 renders the profile while tariffs continue loading in the bac
   assert.equal(adapter.getDiagnostics().tariffs_status, 'not_started');
 });
 
+test('real Block 1 maps a timeless VIP without inventing a date or a Ghost emoji', async () => {
+  const adapter = createRealBlock1Adapter({
+    apiBase: 'https://api.example.test',
+    getInitData: () => 'telegram-init-data',
+    fetch: async (url) => {
+      if (url.endsWith('/api/miniapp/session')) return response(200, { session_token: 'secret-token' });
+      if (url.endsWith('/api/user')) return response(200, {
+        user: { id: '1', name: 'VIP User' },
+        subscription: { active: true, status: 'vip', expiry: null, days_left: null },
+        device_limit: 3,
+        connected_devices: 5,
+        tariff_name: 'VIP',
+        member_tier: 'vip',
+      });
+      return response(200, { period_prices: {} });
+    },
+  });
+
+  const snapshot = await adapter.fetchProfileSubscription();
+
+  assert.equal(snapshot.subscription.state, 'vip');
+  assert.equal(snapshot.subscription.active, true);
+  assert.equal(snapshot.subscription.isTimeless, true);
+  assert.equal(snapshot.subscription.plan.title, 'VIP');
+  assert.equal(snapshot.subscription.plan.emoji, '💎');
+  assert.equal(snapshot.subscription.remainingDays, null);
+  assert.equal(snapshot.subscription.usedDevices, 5);
+  assert.equal(snapshot.subscription.deviceLimit, 3);
+});
+
 test('real Block 1 waits briefly for delayed Telegram initData before opening a session', async () => {
   let initDataReads = 0;
   const adapter = createRealBlock1Adapter({

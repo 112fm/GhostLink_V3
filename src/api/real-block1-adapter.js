@@ -21,14 +21,6 @@
     return Number.isFinite(number) ? Math.max(0, Math.floor(number)) : fallback;
   }
 
-  function daysUntil(expiry, now) {
-    if (!expiry) return null;
-    const end = new Date(`${expiry}T23:59:59Z`);
-    if (Number.isNaN(end.getTime())) return null;
-    const diff = end.getTime() - now.getTime();
-    return Math.max(0, Math.ceil(diff / 86400000));
-  }
-
   async function requestJson(fetchImpl, url, options, timeoutMs) {
     const controller = typeof AbortController === 'function' ? new AbortController() : null;
     let timedOut = false;
@@ -80,22 +72,40 @@
     return error?.type || 'error';
   }
 
-  function mapProfile(userResponse, tariffsResponse, now) {
+  function tariffEmoji(tariffName, memberTier, timeless) {
+    const identity = `${tariffName} ${memberTier}`.toLowerCase();
+    if (timeless || identity.includes('vip')) return '💎';
+    if (identity.includes('flex')) return '⚡';
+    if (identity.includes('solo')) return '👻';
+    return '';
+  }
+
+  function mapProfile(userResponse, tariffsResponse) {
     const user = userResponse?.user;
     const subscription = userResponse?.subscription;
     if (!user || !subscription || typeof subscription !== 'object') {
       throw createError('invalid_json', 'Профиль получен в неполном формате.');
     }
 
-    const remainingDays = subscription.days_left === null || subscription.days_left === undefined
-      ? daysUntil(subscription.expiry, now)
-      : toInteger(subscription.days_left);
-    const active = Boolean(subscription.active) && remainingDays !== null && remainingDays > 0;
-    const status = String(subscription.status || '').toLowerCase();
-    const state = status === 'pending' ? 'pending' : (active ? (status || 'active') : 'expired');
-    const totalDays = subscription.total_days === null || subscription.total_days === undefined
+    const status = String(subscription.status ?? userResponse.status ?? '').trim().toLowerCase();
+    const memberTier = String(userResponse.member_tier || '').trim().toLowerCase();
+    const tariffName = String(userResponse.tariff_name || '').trim();
+    const isTimeless = status === 'vip' || memberTier === 'vip';
+    const rawDaysLeft = subscription.days_left ?? userResponse.days_left;
+    const remainingDays = isTimeless || rawDaysLeft === null || rawDaysLeft === undefined
       ? null
-      : toInteger(subscription.total_days);
+      : toInteger(rawDaysLeft);
+    const active = isTimeless
+      ? Boolean(subscription.active) || status === 'vip'
+      : Boolean(subscription.active) && remainingDays !== null && remainingDays > 0;
+    const state = status === 'pending'
+      ? 'pending'
+      : (isTimeless && active ? 'vip' : (active ? (status || 'active') : 'expired'));
+    const rawTotalDays = subscription.total_days ?? userResponse.total_days;
+    const totalDays = rawTotalDays === null || rawTotalDays === undefined
+      ? null
+      : toInteger(rawTotalDays);
+    const startedAt = subscription.started_at ?? userResponse.started_at ?? null;
 
     return {
       isMock: false,
@@ -108,13 +118,15 @@
         state,
         active,
         plan: {
-          id: String(userResponse.tariff_name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-          title: String(userResponse.tariff_name || 'GHOSTLINK').toUpperCase(),
-          emoji: '👻',
+          id: tariffName.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+          title: tariffName || memberTier,
+          emoji: tariffEmoji(tariffName, memberTier, isTimeless),
         },
         totalDays,
+        startedAt,
         remainingDays,
         expiry: subscription.expiry || null,
+        isTimeless,
         deviceLimit: toInteger(userResponse.device_limit),
         usedDevices: toInteger(userResponse.connected_devices),
       },
@@ -230,7 +242,7 @@
           const user = await runStage('user', deadlineAt, (timeoutMs) => requestJson(fetchImpl, `${apiBase}/api/user`, {
             method: 'GET', cache: 'no-store', credentials: 'include', headers: readHeaders(),
           }, timeoutMs), requestDiagnostics);
-          return mapProfile(user, null, now());
+          return mapProfile(user, null);
         })().finally(() => {
           inFlight = null;
         });

@@ -19,7 +19,7 @@
   function getLoadingSubscriptionPresentation() {
     return {
       state: 'loading', planTitle: '', emoji: '', remainingDays: null,
-      daysLabel: '', deviceLabel: '', progress: 100, actionLabel: 'Продлить подписку',
+      daysValue: '', daysLabel: '', deviceLabel: '', progress: 100, actionLabel: 'Продлить подписку',
       isDemo: false, progressKnown: true,
     };
   }
@@ -68,22 +68,32 @@
     const rawTotalDays = Number(subscription.totalDays);
     const hasTotalDays = Number.isFinite(rawTotalDays) && rawTotalDays > 0;
     const totalDays = hasTotalDays ? Math.floor(rawTotalDays) : 0;
-    const remainingDays = toNonNegativeInteger(subscription.remainingDays ?? subscription.daysLeft, 0);
+    const rawRemainingDays = subscription.remainingDays ?? subscription.daysLeft;
+    const remainingDays = rawRemainingDays === null || rawRemainingDays === undefined
+      ? null
+      : toNonNegativeInteger(rawRemainingDays, 0);
     const deviceLimit = toNonNegativeInteger(subscription.deviceLimit ?? subscription.deviceCount, 0);
-    const usedDevices = Math.min(toNonNegativeInteger(subscription.usedDevices, 0), deviceLimit);
+    const usedDevices = toNonNegativeInteger(subscription.usedDevices, 0);
+    const isTimeless = Boolean(subscription.isTimeless) || subscription.state === 'vip';
     const isPending = subscription.state === 'pending';
     const isAccessClosed = subscription.state === 'none' || subscription.state === 'denied';
     const isNew = subscription.state === 'new';
-    const isActive = Boolean(subscription.active) && remainingDays > 0;
-    const progress = hasTotalDays ? Math.min(100, Math.round((remainingDays / totalDays) * 100)) : null;
+    const isActive = isTimeless
+      ? Boolean(subscription.active)
+      : Boolean(subscription.active) && remainingDays !== null && remainingDays > 0;
+    const hasProgressBasis = hasTotalDays
+      && remainingDays !== null
+      && (Boolean(subscription.startedAt) || snapshot?.isMock === true);
+    const progress = isTimeless ? 100 : (hasProgressBasis ? Math.min(100, Math.round((remainingDays / totalDays) * 100)) : null);
 
     let state = 'active';
     if (isPending) state = 'pending';
     else if (isAccessClosed) state = 'denied';
     else if (isNew) state = 'new';
     else if (!isActive) state = 'expired';
-    else if (progress !== null && progress <= 15) state = 'critical';
-    else if (progress !== null && progress <= 35) state = 'warning';
+    else if (isTimeless) state = 'vip';
+    else if (progress !== null && progress < 20) state = 'critical';
+    else if (progress !== null && progress <= 50) state = 'warning';
 
     const plan = subscription.plan || {};
     if (state === 'pending') {
@@ -103,16 +113,19 @@
 
     const requiresTariff = state === 'new' || state === 'expired';
     const isDemo = snapshot?.isMock === true;
-    const title = plan.title || (requiresTariff ? 'ВЫБЕРИТЕ ТАРИФ' : 'GHOSTLINK');
+    const title = plan.title || (requiresTariff ? 'ВЫБЕРИТЕ ТАРИФ' : 'ТАРИФ НЕ УКАЗАН');
     return {
       state,
       planTitle: isDemo ? `ДЕМО · ${title}` : title,
-      emoji: plan.emoji || (requiresTariff ? '👻' : '👻'),
+      emoji: plan.emoji || '',
       remainingDays,
-      daysLabel: requiresTariff ? '' : pluralize(remainingDays, ['ДЕНЬ', 'ДНЯ', 'ДНЕЙ']),
+      daysValue: isTimeless ? 'Без срока' : (requiresTariff || remainingDays === null ? '—' : String(remainingDays)),
+      daysLabel: requiresTariff || isTimeless || remainingDays === null
+        ? ''
+        : pluralize(remainingDays, ['ДЕНЬ', 'ДНЯ', 'ДНЕЙ']),
       deviceLabel: deviceLimit > 0
-        ? `${isDemo ? 'Демо: ' : ''}${usedDevices} из ${deviceLimit} ${pluralize(deviceLimit, ['устройства', 'устройств', 'устройств'])}`
-        : 'Устройства появятся после выбора тарифа',
+        ? `${isDemo ? 'Демо: ' : ''}${usedDevices} ${pluralize(usedDevices, ['устройство', 'устройства', 'устройств'])} · лимит ${deviceLimit}`
+        : (requiresTariff ? 'Устройства появятся после выбора тарифа' : `${usedDevices} ${pluralize(usedDevices, ['устройство', 'устройства', 'устройств'])} · лимит не указан`),
       progress,
       actionLabel: requiresTariff ? 'Выбрать тариф' : 'Продлить подписку',
       isDemo,
@@ -146,7 +159,7 @@
 
     setElementText(documentRef, 'subscriptionEmoji', presentation.emoji);
     setElementText(documentRef, 'subscriptionPlanName', presentation.planTitle);
-    setElementText(documentRef, 'subscriptionDays', isUnavailable || presentation.state === 'new' || presentation.remainingDays === null ? '--' : String(presentation.remainingDays));
+    setElementText(documentRef, 'subscriptionDays', presentation.daysValue ?? (isUnavailable || presentation.state === 'new' || presentation.remainingDays === null ? '--' : String(presentation.remainingDays)));
     setElementText(documentRef, 'subscriptionDaysLabel', presentation.daysLabel);
     setElementText(documentRef, 'subscriptionDeviceCount', presentation.deviceLabel);
     setElementText(documentRef, 'homeSubscriptionActionText', presentation.actionLabel);
