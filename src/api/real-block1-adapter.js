@@ -87,16 +87,19 @@
       throw createError('invalid_json', 'Профиль получен в неполном формате.');
     }
 
-    const status = String(subscription.status ?? userResponse.status ?? '').trim().toLowerCase();
-    const memberTier = String(userResponse.member_tier || '').trim().toLowerCase();
-    const tariffName = String(userResponse.tariff_name || '').trim();
-    const isTimeless = status === 'vip' || memberTier === 'vip';
+    const subscriptionStatus = String(subscription.status || '').trim().toLowerCase();
+    const responseStatus = String(userResponse.status || '').trim().toLowerCase();
+    const memberTier = String(userResponse.member_tier ?? subscription.member_tier ?? '').trim().toLowerCase();
+    // A VIP flag is authoritative even if a nested subscription snapshot is stale.
+    const isTimeless = subscriptionStatus === 'vip' || responseStatus === 'vip' || memberTier === 'vip';
+    const status = isTimeless ? 'vip' : (subscriptionStatus || responseStatus);
+    const tariffName = isTimeless ? 'VIP' : String(userResponse.tariff_name || subscription.tariff_name || '').trim();
     const rawDaysLeft = subscription.days_left ?? userResponse.days_left;
     const remainingDays = isTimeless || rawDaysLeft === null || rawDaysLeft === undefined
       ? null
       : toInteger(rawDaysLeft);
     const active = isTimeless
-      ? Boolean(subscription.active) || status === 'vip'
+      ? true
       : Boolean(subscription.active) && remainingDays !== null && remainingDays > 0;
     const state = status === 'pending'
       ? 'pending'
@@ -125,7 +128,7 @@
         totalDays,
         startedAt,
         remainingDays,
-        expiry: subscription.expiry || null,
+        expiry: isTimeless ? null : (subscription.expiry || null),
         isTimeless,
         deviceLimit: toInteger(userResponse.device_limit),
         usedDevices: toInteger(userResponse.connected_devices),
