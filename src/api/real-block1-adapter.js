@@ -76,7 +76,7 @@
     const identity = `${tariffName} ${memberTier}`.toLowerCase();
     if (timeless || identity.includes('vip')) return '💎';
     if (identity.includes('flex')) return '⚡';
-    if (identity.includes('trial') || identity.includes('пробн')) return '🎁';
+    if (identity.includes('trial') || identity.includes('пробн') || identity.includes('подар') || identity.includes('gift') || identity.includes('конкурс')) return '🎁';
     if (identity.includes('solo')) return '👻';
     return '👻';
   }
