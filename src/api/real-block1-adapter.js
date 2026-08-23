@@ -76,8 +76,9 @@
     const identity = `${tariffName} ${memberTier}`.toLowerCase();
     if (timeless || identity.includes('vip')) return '💎';
     if (identity.includes('flex')) return '⚡';
+    if (identity.includes('trial') || identity.includes('пробн')) return '🎁';
     if (identity.includes('solo')) return '👻';
-    return '';
+    return '👻';
   }
 
   function mapProfile(userResponse, tariffsResponse) {
@@ -90,25 +91,59 @@
     const subscriptionStatus = String(subscription.status || '').trim().toLowerCase();
     const responseStatus = String(userResponse.status || '').trim().toLowerCase();
     const memberTier = String(userResponse.member_tier ?? subscription.member_tier ?? '').trim().toLowerCase();
-    // A VIP flag is authoritative even if a nested subscription snapshot is stale.
-    const isTimeless = subscriptionStatus === 'vip' || responseStatus === 'vip' || memberTier === 'vip';
+    const rawExpiry = subscription.expiry || userResponse.expiry;
+    const isVip = subscriptionStatus === 'vip' || responseStatus === 'vip' || memberTier === 'vip';
+
+    // Бессрочный ТОЛЬКО если это VIP И у него НЕТ даты окончания в базе
+    const isTimeless = isVip && !rawExpiry;
     const status = isTimeless ? 'vip' : (subscriptionStatus || responseStatus);
-    const tariffName = isTimeless ? 'VIP' : String(userResponse.tariff_name || subscription.tariff_name || '').trim();
+    const rawTariffName = String(userResponse.tariff_name || subscription.tariff_name || '').trim();
+    
     const rawDaysLeft = subscription.days_left ?? userResponse.days_left;
-    const remainingDays = isTimeless || rawDaysLeft === null || rawDaysLeft === undefined
-      ? null
-      : toInteger(rawDaysLeft);
+    const remainingDays = isTimeless 
+      ? null 
+      : (rawDaysLeft === null || rawDaysLeft === undefined ? null : toInteger(rawDaysLeft));
+
+    // Активность: бессрочный активен всегда, датированный активен ТОЛЬКО пока remainingDays > 0
     const active = isTimeless
       ? true
       : Boolean(subscription.active) && remainingDays !== null && remainingDays > 0;
+
     const state = status === 'pending'
       ? 'pending'
-      : (isTimeless && active ? 'vip' : (active ? (status || 'active') : 'expired'));
+      : (isTimeless ? 'vip' : (active ? (status || 'active') : 'expired'));
     const rawTotalDays = subscription.total_days ?? userResponse.total_days;
     const totalDays = rawTotalDays === null || rawTotalDays === undefined
       ? null
       : toInteger(rawTotalDays);
     const startedAt = subscription.started_at ?? userResponse.started_at ?? null;
+
+    let tariffName = '';
+    const normTariff = rawTariffName.toLowerCase();
+    const isTrial = subscriptionStatus === 'trial'
+      || responseStatus === 'trial'
+      || normTariff === 'trial'
+      || normTariff === 'trial_7d'
+      || normTariff === 'trial-7d'
+      || normTariff.includes('пробн');
+
+    if (isVip) {
+      tariffName = 'VIP';
+    } else if (isTrial) {
+      tariffName = 'ПРОБНЫЙ ПЕРИОД';
+    } else if (rawTariffName) {
+      tariffName = rawTariffName;
+    } else if (active) {
+      tariffName = 'SOLO';
+    } else {
+      tariffName = memberTier ? memberTier.toUpperCase() : '';
+    }
+
+    const planId = isVip
+      ? 'vip'
+      : (isTrial
+        ? 'trial'
+        : (tariffName ? tariffName.toLowerCase().replace(/[^a-z0-9]+/g, '-') : (active ? 'solo' : 'ghostlink')));
 
     return {
       isMock: false,
@@ -121,14 +156,14 @@
         state,
         active,
         plan: {
-          id: tariffName.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-          title: tariffName || memberTier,
-          emoji: tariffEmoji(tariffName, memberTier, isTimeless),
+          id: planId,
+          title: tariffName,
+          emoji: tariffEmoji(tariffName || rawTariffName, memberTier, isTimeless || isVip),
         },
         totalDays,
         startedAt,
         remainingDays,
-        expiry: isTimeless ? null : (subscription.expiry || null),
+        expiry: isTimeless ? null : (subscription.expiry || userResponse.expiry || null),
         isTimeless,
         deviceLimit: toInteger(userResponse.device_limit),
         usedDevices: toInteger(userResponse.connected_devices),
@@ -173,6 +208,12 @@
     }
 
     async function waitForInitData(deadlineAt) {
+      const tgWebApp = globalScope.Telegram?.WebApp;
+      const isOutsideTelegram = !options.getInitData && (!tgWebApp || (tgWebApp.platform === 'unknown' && !globalScope.location?.hash?.includes('tgWebAppData')));
+      if (isOutsideTelegram) {
+        throw createError('auth', 'Откройте Mini App через Telegram ещё раз.', 401);
+      }
+
       const initDataDeadline = Math.min(deadlineAt, nowMs() + initDataWaitMs);
 
       while (nowMs() < initDataDeadline) {

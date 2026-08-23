@@ -55,6 +55,19 @@
         actionLabel: 'Повторить', isDemo: false,
       };
     }
+    if (error) {
+      return {
+        state: 'unavailable',
+        planTitle: error.status >= 500 ? 'СЕРВЕР НЕДОСТУПЕН' : (error.message || 'ОШИБКА СВЯЗИ'),
+        emoji: '⚠️',
+        remainingDays: null,
+        daysLabel: '',
+        deviceLabel: 'Не удалось загрузить данные. Попробуйте обновить',
+        progress: 0,
+        actionLabel: 'Повторить',
+        isDemo: false,
+      };
+    }
 
     const subscription = snapshot?.subscription ?? snapshot;
     if (!subscription) {
@@ -74,7 +87,8 @@
       : toNonNegativeInteger(rawRemainingDays, 0);
     const deviceLimit = toNonNegativeInteger(subscription.deviceLimit ?? subscription.deviceCount, 0);
     const usedDevices = toNonNegativeInteger(subscription.usedDevices, 0);
-    const isTimeless = Boolean(subscription.isTimeless) || subscription.state === 'vip';
+    const isTimeless = Boolean(subscription.isTimeless);
+    const isVip = isTimeless || subscription.state === 'vip' || (subscription.plan?.id === 'vip');
     const isPending = subscription.state === 'pending';
     const isAccessClosed = subscription.state === 'none' || subscription.state === 'denied';
     const isNew = subscription.state === 'new';
@@ -84,14 +98,14 @@
     const hasProgressBasis = hasTotalDays
       && remainingDays !== null
       && (Boolean(subscription.startedAt) || snapshot?.isMock === true);
-    const progress = isTimeless ? 100 : (hasProgressBasis ? Math.min(100, Math.round((remainingDays / totalDays) * 100)) : null);
+    const progress = isTimeless || (isVip && isActive) ? 100 : (hasProgressBasis ? Math.min(100, Math.round((remainingDays / totalDays) * 100)) : null);
 
     let state = 'active';
     if (isPending) state = 'pending';
     else if (isAccessClosed) state = 'denied';
     else if (isNew) state = 'new';
     else if (!isActive) state = 'expired';
-    else if (isTimeless) state = 'vip';
+    else if (isVip) state = 'vip';
     else if (progress !== null && progress < 20) state = 'critical';
     else if (progress !== null && progress <= 50) state = 'warning';
 
@@ -111,25 +125,36 @@
       };
     }
 
-    const requiresTariff = state === 'new' || state === 'expired';
+    const isNewUser = state === 'new';
+    const isExpired = state === 'expired';
     const isDemo = snapshot?.isMock === true;
-    const title = plan.title || (requiresTariff ? 'ВЫБЕРИТЕ ТАРИФ' : 'ТАРИФ НЕ УКАЗАН');
+    const title = plan.title || (isNewUser ? 'ВЫБЕРИТЕ ТАРИФ' : (isExpired ? 'SOLO' : 'ТАРИФ НЕ УКАЗАН'));
+    const emoji = plan.emoji || (isExpired ? '👻' : '');
+    const daysValue = isTimeless
+      ? 'Без срока'
+      : (isExpired || remainingDays === 0
+        ? '0'
+        : (isNewUser || remainingDays === null ? '—' : String(remainingDays)));
+    const daysLabel = isTimeless || isNewUser
+      ? ''
+      : (isExpired || remainingDays === 0
+        ? 'ДНЕЙ'
+        : (remainingDays === null ? '' : pluralize(remainingDays, ['ДЕНЬ', 'ДНЯ', 'ДНЕЙ'])));
+
     return {
       state,
       planTitle: isDemo ? `ДЕМО · ${title}` : title,
-      emoji: plan.emoji || '',
-      remainingDays,
-      daysValue: isTimeless ? 'Без срока' : (requiresTariff || remainingDays === null ? '—' : String(remainingDays)),
-      daysLabel: requiresTariff || isTimeless || remainingDays === null
-        ? ''
-        : pluralize(remainingDays, ['ДЕНЬ', 'ДНЯ', 'ДНЕЙ']),
+      emoji,
+      remainingDays: isExpired ? 0 : remainingDays,
+      daysValue,
+      daysLabel,
       deviceLabel: deviceLimit > 0
         ? `${isDemo ? 'Демо: ' : ''}${usedDevices} ${pluralize(usedDevices, ['устройство', 'устройства', 'устройств'])} · лимит ${deviceLimit}`
-        : (requiresTariff ? 'Устройства появятся после выбора тарифа' : `${usedDevices} ${pluralize(usedDevices, ['устройство', 'устройства', 'устройств'])} · лимит не указан`),
-      progress,
-      actionLabel: requiresTariff ? 'Выбрать тариф' : 'Продлить подписку',
+        : (isNewUser ? 'Устройства появятся после выбора тарифа' : `${usedDevices} ${pluralize(usedDevices, ['устройство', 'устройства', 'устройств'])} · лимит не указан`),
+      progress: isExpired ? 0 : progress,
+      actionLabel: isNewUser ? 'Выбрать тариф' : 'Продлить подписку',
       isDemo,
-      progressKnown: progress !== null,
+      progressKnown: isExpired ? true : progress !== null,
     };
   }
 
@@ -172,7 +197,7 @@
     const profileSubscription = dependencies.profileSubscription || GhostLinkV3.createMockProfileSubscription?.();
     let requestSequence = 0;
     let currentLoad = null;
-    const minimumLoadingMs = 720;
+    const minimumLoadingMs = 150;
 
     function renderLoading() {
       renderSubscriptionStatus(null, documentRef, { loading: true });

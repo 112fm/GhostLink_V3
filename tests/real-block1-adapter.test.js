@@ -135,7 +135,7 @@ test('real Block 1 keeps a member-tier VIP active when a nested subscription is 
       if (url.endsWith('/api/miniapp/session')) return response(200, { session_token: 'secret-token' });
       if (url.endsWith('/api/user')) return response(200, {
         user: { id: '1', name: 'VIP User' },
-        subscription: { active: false, status: 'active', expiry: '2026-08-21', days_left: 0 },
+        subscription: { active: false, status: 'active', expiry: null, days_left: null },
         status: 'vip',
         member_tier: 'vip',
         device_limit: 3,
@@ -153,6 +153,35 @@ test('real Block 1 keeps a member-tier VIP active when a nested subscription is 
   assert.equal(snapshot.subscription.isTimeless, true);
   assert.equal(snapshot.subscription.expiry, null);
   assert.equal(snapshot.subscription.remainingDays, null);
+  assert.equal(snapshot.subscription.plan.title, 'VIP');
+  assert.equal(snapshot.subscription.plan.emoji, '💎');
+});
+
+test('real Block 1 maps expired dated VIP to expired state with active false', async () => {
+  const adapter = createRealBlock1Adapter({
+    apiBase: 'https://api.example.test',
+    getInitData: () => 'telegram-init-data',
+    fetch: async (url) => {
+      if (url.endsWith('/api/miniapp/session')) return response(200, { session_token: 'secret-token' });
+      if (url.endsWith('/api/user')) return response(200, {
+        user: { id: '1', name: 'Expired VIP' },
+        subscription: { active: false, status: 'vip', expiry: '2026-08-20', days_left: 0 },
+        tariff_name: 'VIP',
+        member_tier: 'vip',
+        device_limit: 3,
+        connected_devices: 2,
+      });
+      return response(200, { period_prices: {} });
+    },
+  });
+
+  const snapshot = await adapter.fetchProfileSubscription();
+
+  assert.equal(snapshot.subscription.state, 'expired');
+  assert.equal(snapshot.subscription.active, false);
+  assert.equal(snapshot.subscription.isTimeless, false);
+  assert.equal(snapshot.subscription.expiry, '2026-08-20');
+  assert.equal(snapshot.subscription.remainingDays, 0);
   assert.equal(snapshot.subscription.plan.title, 'VIP');
   assert.equal(snapshot.subscription.plan.emoji, '💎');
 });
@@ -233,6 +262,169 @@ test('real Block 1 rejects empty and malformed JSON without silently using mock 
   }
 });
 
+test('real Block 1 normalizes trial tariffs to ПРОБНЫЙ ПЕРИОД with gift emoji', async () => {
+  for (const rawName of ['trial_7d', 'trial', 'TRIAL_7D', 'пробный']) {
+    const adapter = createRealBlock1Adapter({
+      apiBase: 'https://api.example.test',
+      getInitData: () => 'telegram-init-data',
+      fetch: async (url) => {
+        if (url.endsWith('/api/miniapp/session')) return response(200, { session_token: 'secret-token' });
+        if (url.endsWith('/api/user')) return response(200, {
+          user: { id: '1', name: 'Trial User' },
+          subscription: { active: true, status: 'active', days_left: 7 },
+          device_limit: 2,
+          connected_devices: 1,
+          tariff_name: rawName,
+        });
+        return response(200, { period_prices: {} });
+      },
+    });
+
+    const snapshot = await adapter.fetchProfileSubscription();
+    assert.equal(snapshot.subscription.plan.title, 'ПРОБНЫЙ ПЕРИОД');
+    assert.equal(snapshot.subscription.plan.emoji, '🎁');
+    assert.equal(snapshot.subscription.remainingDays, 7);
+  }
+});
+
+test('real Block 1 maps trial status to ПРОБНЫЙ ПЕРИОД even when tariff_name is empty', async () => {
+  const adapter = createRealBlock1Adapter({
+    apiBase: 'https://api.example.test',
+    getInitData: () => 'telegram-init-data',
+    fetch: async (url) => {
+      if (url.endsWith('/api/miniapp/session')) return response(200, { session_token: 'secret-token' });
+      if (url.endsWith('/api/user')) return response(200, {
+        user: { id: '1', name: 'Trial User' },
+        subscription: { active: true, status: 'trial', days_left: 7 },
+        status: 'trial',
+        device_limit: 2,
+        connected_devices: 1,
+        tariff_name: null,
+      });
+      return response(200, { period_prices: {} });
+    },
+  });
+
+  const snapshot = await adapter.fetchProfileSubscription();
+  assert.equal(snapshot.subscription.plan.title, 'ПРОБНЫЙ ПЕРИОД');
+  assert.equal(snapshot.subscription.plan.emoji, '🎁');
+  assert.equal(snapshot.subscription.plan.id, 'trial');
+});
+
+test('real Block 1 fast-fails with 401 when running outside Telegram without waiting 3 seconds', async () => {
+  const adapter = createRealBlock1Adapter({
+    apiBase: 'https://api.example.test',
+  });
+
+  await assert.rejects(adapter.fetchProfileSubscription(), (error) => {
+    assert.equal(error.type, 'auth');
+    assert.equal(error.status, 401);
+    return true;
+  });
+});
+
+test('real Block 1 defaults active subscription without tariff_name to SOLO with ghost emoji', async () => {
+  const adapter = createRealBlock1Adapter({
+    apiBase: 'https://api.example.test',
+    getInitData: () => 'telegram-init-data',
+    fetch: async (url) => {
+      if (url.endsWith('/api/miniapp/session')) return response(200, { session_token: 'secret-token' });
+      if (url.endsWith('/api/user')) return response(200, {
+        user: { id: '1', name: 'Solo User' },
+        subscription: { active: true, status: 'active', days_left: 30 },
+        device_limit: 2,
+        connected_devices: 1,
+        tariff_name: '',
+      });
+      return response(200, { period_prices: {} });
+    },
+  });
+
+  const snapshot = await adapter.fetchProfileSubscription();
+  assert.equal(snapshot.subscription.plan.title, 'SOLO');
+  assert.equal(snapshot.subscription.plan.emoji, '👻');
+  assert.equal(snapshot.subscription.remainingDays, 30);
+});
+
+test('real Block 1 maps Flex Squad to lightning emoji and dated VIP to diamond emoji', async () => {
+  const flexAdapter = createRealBlock1Adapter({
+    apiBase: 'https://api.example.test',
+    getInitData: () => 'telegram-init-data',
+    fetch: async (url) => {
+      if (url.endsWith('/api/miniapp/session')) return response(200, { session_token: 'secret-token' });
+      if (url.endsWith('/api/user')) return response(200, {
+        user: { id: '1', name: 'Flex User' },
+        subscription: { active: true, status: 'active', days_left: 15 },
+        device_limit: 3,
+        connected_devices: 1,
+        tariff_name: 'Flex Squad',
+      });
+      return response(200, { period_prices: {} });
+    },
+  });
+
+  const flexSnapshot = await flexAdapter.fetchProfileSubscription();
+  assert.equal(flexSnapshot.subscription.plan.title, 'Flex Squad');
+  assert.equal(flexSnapshot.subscription.plan.emoji, '⚡');
+
+  const vipAdapter = createRealBlock1Adapter({
+    apiBase: 'https://api.example.test',
+    getInitData: () => 'telegram-init-data',
+    fetch: async (url) => {
+      if (url.endsWith('/api/miniapp/session')) return response(200, { session_token: 'secret-token' });
+      if (url.endsWith('/api/user')) return response(200, {
+        user: { id: '2', name: 'Dated VIP' },
+        subscription: { active: true, status: 'active', days_left: 60, expiry: '2026-10-22' },
+        device_limit: 5,
+        connected_devices: 2,
+        tariff_name: 'VIP',
+      });
+      return response(200, { period_prices: {} });
+    },
+  });
+
+  const vipSnapshot = await vipAdapter.fetchProfileSubscription();
+  assert.equal(vipSnapshot.subscription.plan.title, 'VIP');
+  assert.equal(vipSnapshot.subscription.plan.emoji, '💎');
+  assert.equal(vipSnapshot.subscription.remainingDays, 60);
+});
+
+test('real Block 1 maps Nikita dated VIP preserving remaining days 119 and diamond emoji', async () => {
+  const adapter = createRealBlock1Adapter({
+    apiBase: 'https://api.example.test',
+    getInitData: () => 'telegram-init-data',
+    fetch: async (url) => {
+      if (url.endsWith('/api/miniapp/session')) return response(200, { session_token: 'secret-token' });
+      if (url.endsWith('/api/user')) return response(200, {
+        user: { id: '1019746211', name: 'Никита', username: 'Nikkall11' },
+        subscription: {
+          active: true,
+          expiry: '2026-12-20',
+          expiry_human: '20.12.2026',
+          days_left: 119,
+          status: 'vip',
+        },
+        tariff_name: 'VIP',
+        member_tier: 'vip',
+        device_limit: 3,
+        connected_devices: 2,
+      });
+      return response(200, { period_prices: {} });
+    },
+  });
+
+  const snapshot = await adapter.fetchProfileSubscription();
+  assert.equal(snapshot.subscription.state, 'vip');
+  assert.equal(snapshot.subscription.active, true);
+  assert.equal(snapshot.subscription.isTimeless, false);
+  assert.equal(snapshot.subscription.expiry, '2026-12-20');
+  assert.equal(snapshot.subscription.remainingDays, 119);
+  assert.equal(snapshot.subscription.plan.title, 'VIP');
+  assert.equal(snapshot.subscription.plan.emoji, '💎');
+  assert.equal(snapshot.subscription.deviceLimit, 3);
+  assert.equal(snapshot.subscription.usedDevices, 2);
+});
+
 test('real Block 1 never persists initData or session tokens', () => {
   const source = require('node:fs').readFileSync(path.join(root, 'src', 'api', 'real-block1-adapter.js'), 'utf8');
 
@@ -250,3 +442,4 @@ test('V3 runtime loads the real Block 1 adapter instead of the local profile moc
   assert.match(main, /createRealBlock1Adapter/);
   assert.doesNotMatch(main, /createLocalBlock1Adapter/);
 });
+

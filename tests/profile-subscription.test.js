@@ -48,10 +48,10 @@ test('expired subscription does not display stale plan or device data', async ()
   const presentation = await presentationFor('expired');
 
   assert.equal(presentation.state, 'expired');
-  assert.equal(presentation.planTitle, 'ДЕМО · ВЫБЕРИТЕ ТАРИФ');
   assert.equal(presentation.remainingDays, 0);
-  assert.equal(presentation.deviceLabel, 'Устройства появятся после выбора тарифа');
-  assert.equal(presentation.actionLabel, 'Выбрать тариф');
+  assert.equal(presentation.daysValue, '0');
+  assert.equal(presentation.daysLabel, 'ДНЕЙ');
+  assert.equal(presentation.actionLabel, 'Продлить подписку');
 });
 
 test('new user receives a tariff-selection state rather than a false active subscription', async () => {
@@ -100,9 +100,134 @@ test('a real VIP is timeless and keeps the actual device count above its tariff 
   assert.equal(presentation.planTitle, 'VIP');
   assert.equal(presentation.emoji, '💎');
   assert.equal(presentation.daysValue, 'Без срока');
+  assert.equal(presentation.daysLabel, '');
   assert.equal(presentation.progress, 100);
   assert.equal(presentation.progressKnown, true);
   assert.equal(presentation.deviceLabel, '5 устройств · лимит 3');
+});
+
+test('subscription presentation handles trial, solo, flex, and dated VIP categories correctly', () => {
+  const trialPresentation = getSubscriptionPresentation({
+    isMock: false,
+    subscription: {
+      state: 'active', active: true, isTimeless: false, totalDays: 7, startedAt: '2026-08-20T00:00:00Z',
+      remainingDays: 7, deviceLimit: 2, usedDevices: 1,
+      plan: { title: 'ПРОБНЫЙ ПЕРИОД', emoji: '🎁' },
+    },
+  });
+  assert.equal(trialPresentation.planTitle, 'ПРОБНЫЙ ПЕРИОД');
+  assert.equal(trialPresentation.emoji, '🎁');
+  assert.equal(trialPresentation.daysValue, '7');
+  assert.equal(trialPresentation.daysLabel, 'ДНЕЙ');
+
+  const soloPresentation = getSubscriptionPresentation({
+    isMock: false,
+    subscription: {
+      state: 'active', active: true, isTimeless: false, totalDays: 30, startedAt: '2026-08-01T00:00:00Z',
+      remainingDays: 20, deviceLimit: 2, usedDevices: 1,
+      plan: { title: 'SOLO', emoji: '👻' },
+    },
+  });
+  assert.equal(soloPresentation.planTitle, 'SOLO');
+  assert.equal(soloPresentation.emoji, '👻');
+  assert.equal(soloPresentation.daysValue, '20');
+  assert.equal(soloPresentation.daysLabel, 'ДНЕЙ');
+
+  const flexPresentation = getSubscriptionPresentation({
+    isMock: false,
+    subscription: {
+      state: 'active', active: true, isTimeless: false, totalDays: 90, startedAt: '2026-08-01T00:00:00Z',
+      remainingDays: 45, deviceLimit: 3, usedDevices: 2,
+      plan: { title: 'FLEX', emoji: '⚡' },
+    },
+  });
+  assert.equal(flexPresentation.planTitle, 'FLEX');
+  assert.equal(flexPresentation.emoji, '⚡');
+  assert.equal(flexPresentation.daysValue, '45');
+  assert.equal(flexPresentation.daysLabel, 'ДНЕЙ');
+
+  const datedVipPresentation = getSubscriptionPresentation({
+    isMock: false,
+    subscription: {
+      state: 'vip', active: true, isTimeless: false, totalDays: 365, startedAt: '2026-01-01T00:00:00Z',
+      remainingDays: 119, deviceLimit: 3, usedDevices: 2,
+      plan: { title: 'VIP', emoji: '💎' },
+    },
+  });
+  assert.equal(datedVipPresentation.planTitle, 'VIP');
+  assert.equal(datedVipPresentation.emoji, '💎');
+  assert.equal(datedVipPresentation.daysValue, '119');
+  assert.equal(datedVipPresentation.daysLabel, 'ДНЕЙ');
+  assert.equal(datedVipPresentation.state, 'vip');
+  assert.equal(datedVipPresentation.progress, 100);
+  assert.equal(datedVipPresentation.deviceLabel, '2 устройства · лимит 3');
+});
+
+test('TEST 1: timeless VIP (expiry: null) renders Без срока and active state', () => {
+  const presentation = getSubscriptionPresentation({
+    isMock: false,
+    subscription: {
+      state: 'vip', active: true, isTimeless: true, expiry: null, remainingDays: null,
+      deviceLimit: 5, usedDevices: 2,
+      plan: { title: 'VIP', emoji: '💎' },
+    },
+  });
+  assert.equal(presentation.state, 'vip');
+  assert.equal(presentation.planTitle, 'VIP');
+  assert.equal(presentation.emoji, '💎');
+  assert.equal(presentation.daysValue, 'Без срока');
+  assert.equal(presentation.daysLabel, '');
+  assert.equal(presentation.progress, 100);
+});
+
+test('TEST 2: active dated VIP (expiry: 2026-12-20, days_left: 119) renders 119 ДНЕЙ and active state', () => {
+  const presentation = getSubscriptionPresentation({
+    isMock: false,
+    subscription: {
+      state: 'vip', active: true, isTimeless: false, expiry: '2026-12-20', remainingDays: 119,
+      deviceLimit: 3, usedDevices: 2,
+      plan: { title: 'VIP', emoji: '💎' },
+    },
+  });
+  assert.equal(presentation.state, 'vip');
+  assert.equal(presentation.planTitle, 'VIP');
+  assert.equal(presentation.emoji, '💎');
+  assert.equal(presentation.daysValue, '119');
+  assert.equal(presentation.daysLabel, 'ДНЕЙ');
+  assert.equal(presentation.progress, 100);
+});
+
+test('TEST 3: expired dated VIP (expiry: 2026-08-20, days_left: 0) renders expired state with 0 ДНЕЙ', () => {
+  const presentation = getSubscriptionPresentation({
+    isMock: false,
+    subscription: {
+      state: 'expired', active: false, isTimeless: false, expiry: '2026-08-20', remainingDays: 0,
+      deviceLimit: 3, usedDevices: 2,
+      plan: { title: 'VIP', emoji: '💎' },
+    },
+  });
+  assert.equal(presentation.state, 'expired');
+  assert.equal(presentation.daysValue, '0');
+  assert.equal(presentation.daysLabel, 'ДНЕЙ');
+  assert.equal(presentation.planTitle, 'VIP');
+  assert.equal(presentation.actionLabel, 'Продлить подписку');
+});
+
+test('expired solo subscription displays 👻 SOLO 0 ДНЕЙ and renew action', () => {
+  const presentation = getSubscriptionPresentation({
+    isMock: false,
+    subscription: {
+      state: 'expired', active: false, isTimeless: false, remainingDays: 0,
+      deviceLimit: 2, usedDevices: 1,
+      plan: { title: 'SOLO', emoji: '👻' },
+    },
+  });
+  assert.equal(presentation.state, 'expired');
+  assert.equal(presentation.planTitle, 'SOLO');
+  assert.equal(presentation.emoji, '👻');
+  assert.equal(presentation.daysValue, '0');
+  assert.equal(presentation.daysLabel, 'ДНЕЙ');
+  assert.equal(presentation.actionLabel, 'Продлить подписку');
 });
 
 test('real subscription colours progress only when the API provides a complete duration basis', () => {
@@ -167,6 +292,27 @@ test('timeout and network errors do not turn into an expired subscription or fak
   assert.equal(network.state, 'unavailable');
   assert.equal(network.remainingDays, null);
   assert.equal(network.deviceLabel, 'Не удалось связаться с GhostLink. Проверьте подключение');
+});
+
+test('server errors (500, 502, JSON failure) render unavailable status instead of expired tariff selection', () => {
+  const serverError = getSubscriptionPresentation({ error: { status: 500, message: 'Internal Server Error' } });
+  const badGateway = getSubscriptionPresentation({ error: { status: 502, message: 'Bad Gateway' } });
+  const jsonError = getSubscriptionPresentation({ error: { type: 'invalid_json', message: 'Invalid JSON' } });
+
+  assert.equal(serverError.state, 'unavailable');
+  assert.equal(serverError.planTitle, 'СЕРВЕР НЕДОСТУПЕН');
+  assert.equal(serverError.emoji, '⚠️');
+  assert.equal(serverError.actionLabel, 'Повторить');
+  assert.equal(serverError.remainingDays, null);
+
+  assert.equal(badGateway.state, 'unavailable');
+  assert.equal(badGateway.planTitle, 'СЕРВЕР НЕДОСТУПЕН');
+  assert.equal(badGateway.emoji, '⚠️');
+
+  assert.equal(jsonError.state, 'unavailable');
+  assert.equal(jsonError.planTitle, 'Invalid JSON');
+  assert.equal(jsonError.emoji, '⚠️');
+  assert.equal(jsonError.actionLabel, 'Повторить');
 });
 
 test('offline and timeout states reject without replacing the saved mock scenario', async () => {
