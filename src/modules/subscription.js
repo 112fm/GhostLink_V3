@@ -43,20 +43,34 @@ function generateUuidV4() {
   });
 }
 
+function isValidPrice(val) {
+  if (typeof val === 'boolean' || val === null || val === undefined) return false;
+  const num = Number(val);
+  return Number.isFinite(num) && num > 0 && Math.floor(num) === num;
+}
+
 function getTariffPrice(totalDev, months, snapshot) {
   const tariffs = snapshot?.tariffs;
-  if (tariffs?.period_prices?.[months]?.[totalDev]?.price !== undefined && tariffs?.period_prices?.[months]?.[totalDev]?.price !== null) {
-    return Number(tariffs.period_prices[months][totalDev].price);
+  const rawPeriodPrice = tariffs?.period_prices?.[months]?.[totalDev]?.price;
+  if (isValidPrice(rawPeriodPrice)) {
+    return Number(rawPeriodPrice);
   }
-  if (months === 1 && tariffs?.flex?.[totalDev]?.price !== undefined && tariffs?.flex?.[totalDev]?.price !== null) {
-    return Number(tariffs.flex[totalDev].price);
-  }
-  if (months === 1 && totalDev <= 2 && tariffs?.solo?.price !== undefined && tariffs?.solo?.price !== null) {
-    return Number(tariffs.solo.price);
+  if (months === 1) {
+    const rawFlexPrice = tariffs?.flex?.[totalDev]?.price;
+    if (isValidPrice(rawFlexPrice)) {
+      return Number(rawFlexPrice);
+    }
+    if (totalDev <= 2) {
+      const rawSoloPrice = tariffs?.solo?.price;
+      if (isValidPrice(rawSoloPrice)) {
+        return Number(rawSoloPrice);
+      }
+    }
   }
   return null;
 }
 
+GhostLinkV3.isValidPrice = isValidPrice;
 GhostLinkV3.getTariffPrice = getTariffPrice;
 
 GhostLinkV3.initSubscriptionModule = function initSubscriptionModule(dependencies = {}) {
@@ -279,11 +293,24 @@ GhostLinkV3.initSubscriptionModule = function initSubscriptionModule(dependencie
         openOverlay(pageCheckout);
         return;
       }
+      calculateTotals();
       openOverlay(pageExtend);
     });
     
     btnExtendBack.addEventListener('click', () => {
       closeOverlay(pageExtend);
+    });
+  }
+
+  // Reactive auto-refresh when profile / tariffs update
+  if (typeof profileSubscription?.subscribe === 'function') {
+    profileSubscription.subscribe(() => {
+      calculateTotals();
+    });
+  }
+  if (typeof profileSubscription?.onUpdate === 'function') {
+    profileSubscription.onUpdate(() => {
+      calculateTotals();
     });
   }
 
@@ -463,7 +490,7 @@ if (btnPay && pageCheckout && btnCheckoutBack) {
     const currentSnapshot = profileSubscription?.getSnapshot?.() || profileSubscription?.getCachedProfile?.() || GhostLinkV3.homeModule?.getSnapshot?.() || GhostLinkV3.profileSubscription?.getSnapshot?.() || GhostLinkV3.profileSubscription?.getCachedProfile?.();
     const totalAmount = getTariffPrice(totalDev, months, currentSnapshot);
 
-    if (totalAmount === null || isNaN(totalAmount)) {
+    if (!isValidPrice(totalAmount)) {
       showToast('Тарифы ещё загружаются или недоступны. Подождите...');
       return;
     }
@@ -576,7 +603,7 @@ if (btnSubmitPayment && payerNameInput) {
     const currentSnapshot = profileSubscription?.getSnapshot?.() || profileSubscription?.getCachedProfile?.() || GhostLinkV3.homeModule?.getSnapshot?.() || GhostLinkV3.profileSubscription?.getSnapshot?.() || GhostLinkV3.profileSubscription?.getCachedProfile?.();
     const totalAmount = getTariffPrice(totalDev, months, currentSnapshot);
 
-    if (totalAmount === null || isNaN(totalAmount)) {
+    if (!isValidPrice(totalAmount)) {
       showToast('Ошибка тарифов: стоимость не определена. Повторите попытку.');
       return;
     }
@@ -727,12 +754,29 @@ function calculateTotals() {
   const subCard2 = document.getElementById('subprice-card-2');
   const subCard3 = document.getElementById('subprice-card-3');
 
-  if (pCard1) pCard1.textContent = price1 !== null ? `${price1} ₽` : '... ₽';
-  if (pCard2) pCard2.textContent = price2 !== null ? `${price2} ₽` : '... ₽';
-  if (pCard3) pCard3.textContent = price3 !== null ? `${price3} ₽` : '... ₽';
-  if (subCard1) subCard1.textContent = price1 !== null ? `${price1} ₽ / мес` : 'Загрузка...';
-  if (subCard2) subCard2.textContent = price2 !== null ? `${Math.round(price2 / 2)} ₽ / мес` : 'Загрузка...';
-  if (subCard3) subCard3.textContent = price3 !== null ? `${Math.round(price3 / 3)} ₽ / мес` : 'Загрузка...';
+  if (isValidPrice(price1)) {
+    if (pCard1) pCard1.textContent = `${price1} ₽`;
+    if (subCard1) subCard1.textContent = `${price1} ₽ / мес`;
+  } else {
+    if (pCard1) pCard1.textContent = '— ₽';
+    if (subCard1) subCard1.textContent = 'Загрузка…';
+  }
+
+  if (isValidPrice(price2)) {
+    if (pCard2) pCard2.textContent = `${price2} ₽`;
+    if (subCard2) subCard2.textContent = `${Math.round(price2 / 2)} ₽ / мес`;
+  } else {
+    if (pCard2) pCard2.textContent = '— ₽';
+    if (subCard2) subCard2.textContent = 'Загрузка…';
+  }
+
+  if (isValidPrice(price3)) {
+    if (pCard3) pCard3.textContent = `${price3} ₽`;
+    if (subCard3) subCard3.textContent = `${Math.round(price3 / 3)} ₽ / мес`;
+  } else {
+    if (pCard3) pCard3.textContent = '— ₽';
+    if (subCard3) subCard3.textContent = 'Загрузка…';
+  }
   
   const months = parseInt(activeTariff?.value || '1', 10);
   const totalPrice = getTariffPrice(totalDevices, months, currentSnapshot);
@@ -774,7 +818,7 @@ function calculateTotals() {
   
   const summaryDayCostEl = document.getElementById('summary-day-cost');
   if (summaryDayCostEl) {
-    if (totalPrice !== null) {
+    if (isValidPrice(totalPrice)) {
       const days = months * 30;
       const costPerDay = (totalPrice / days).toFixed(2).replace('.', ',');
       summaryDayCostEl.textContent = `${costPerDay} ₽ / день`;
@@ -788,7 +832,7 @@ function calculateTotals() {
   const payOldEl = document.getElementById('pay-old');
   const payDiscountEl = document.getElementById('pay-discount');
 
-  if (totalPrice !== null) {
+  if (isValidPrice(totalPrice)) {
     if (btnPay) {
       btnPay.disabled = false;
       btnPay.classList.remove('disabled');
@@ -797,7 +841,7 @@ function calculateTotals() {
     if (payTotalEl) payTotalEl.textContent = `${totalPrice} ₽`;
     
     // Discount badge / old price calculation
-    const baseFullPrice = price1 !== null ? price1 * months : null;
+    const baseFullPrice = isValidPrice(price1) ? price1 * months : null;
     if (baseFullPrice && baseFullPrice > totalPrice) {
       const oldPrice = baseFullPrice;
       const discountPct = Math.round((1 - totalPrice / baseFullPrice) * 100);
@@ -819,7 +863,7 @@ function calculateTotals() {
       btnPay.classList.add('disabled');
       btnPay.setAttribute('aria-disabled', 'true');
     }
-    if (payTotalEl) payTotalEl.textContent = 'Загрузка тарифов...';
+    if (payTotalEl) payTotalEl.textContent = 'Загрузка тарифов…';
     if (payOldEl) payOldEl.style.display = 'none';
     if (payDiscountEl) payDiscountEl.style.display = 'none';
   }
@@ -928,6 +972,7 @@ const exported = {
   startPendingPolling: () => root.GhostLinkPayment?.startPendingPolling?.(),
   stopPendingPolling: () => root.GhostLinkPayment?.stopPendingPolling?.(),
   getTariffPrice,
+  isValidPrice,
   generateUuidV4,
   formatBankName,
   isValidPayerName,

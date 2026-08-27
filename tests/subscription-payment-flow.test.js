@@ -9,6 +9,7 @@ const {
   formatBankName,
   isValidPayerName,
   getTariffPrice,
+  isValidPrice,
 } = require(path.join(root, 'src', 'modules', 'subscription.js'));
 
 function createMockElement(id = '', tagName = 'div') {
@@ -439,7 +440,41 @@ test('getTariffPrice strictly returns null when tariffs are absent (Strict API P
   assert.equal(getTariffPrice(3, 2, { tariffs: { period_prices: {} } }), null);
 });
 
-test('btnPay is disabled and shows loading text when tariffs are missing', async () => {
+test('isValidPrice strictly validates positive whole numbers and rejects invalid types', () => {
+  assert.equal(isValidPrice(150), true);
+  assert.equal(isValidPrice("350"), true);
+  assert.equal(isValidPrice(1), true);
+
+  assert.equal(isValidPrice("abc"), false);
+  assert.equal(isValidPrice(0), false);
+  assert.equal(isValidPrice(-100), false);
+  assert.equal(isValidPrice(null), false);
+  assert.equal(isValidPrice(undefined), false);
+  assert.equal(isValidPrice(NaN), false);
+  assert.equal(isValidPrice(Infinity), false);
+  assert.equal(isValidPrice(-Infinity), false);
+  assert.equal(isValidPrice(true), false);
+  assert.equal(isValidPrice(false), false);
+  assert.equal(isValidPrice(150.5), false);
+  assert.equal(isValidPrice(""), false);
+  assert.equal(isValidPrice({}), false);
+});
+
+test('getTariffPrice rejects invalid price types in period_prices and disables btnPay', async () => {
+  const malformedSnapshot = {
+    tariffs: {
+      period_prices: {
+        1: { 2: { price: "invalid_string" }, 3: { price: -50 } },
+        2: { 2: { price: null }, 3: { price: 0 } },
+      },
+    },
+  };
+
+  assert.equal(getTariffPrice(2, 1, malformedSnapshot), null);
+  assert.equal(getTariffPrice(3, 1, malformedSnapshot), null);
+  assert.equal(getTariffPrice(2, 2, malformedSnapshot), null);
+  assert.equal(getTariffPrice(3, 2, malformedSnapshot), null);
+
   const doc = createMockDocument();
   global.document = doc;
   global.Telegram = { WebApp: { initData: '' } };
@@ -450,26 +485,103 @@ test('btnPay is disabled and shows loading text when tariffs are missing', async
     GhostLinkV3: {},
   };
 
-  let openedOverlay = null;
   initSubscriptionModule({
-    openOverlay: (overlay) => { openedOverlay = overlay; },
     profileSubscription: {
-      getSnapshot: () => ({ tariffs: null }),
-      getCachedProfile: () => ({ tariffs: null }),
+      getSnapshot: () => malformedSnapshot,
+      getCachedProfile: () => malformedSnapshot,
     },
-    showToast: (msg) => { toastMsg = msg; },
   });
 
   const btnPay = doc.getElementById('btn-pay');
   assert.equal(btnPay.disabled, true);
-  assert.equal(doc.getElementById('pay-total').textContent, 'Загрузка тарифов...');
-  assert.equal(doc.getElementById('price-card-1').textContent, '... ₽');
-
-  // Attempting to click disabled pay button shows toast and blocks checkout
-  await btnPay.click();
-  assert.match(toastMsg, /Тарифы ещё загружаются/);
-  assert.equal(openedOverlay, null);
+  assert.equal(doc.getElementById('pay-total').textContent, 'Загрузка тарифов…');
+  assert.equal(doc.getElementById('price-card-1').textContent, '— ₽');
 });
+
+test('asynchronous arrival of tariffs triggers reactive UI recalculation and unlocks btnPay', async () => {
+  const doc = createMockDocument();
+  global.document = doc;
+  global.Telegram = { WebApp: { initData: '' } };
+  global.window = {
+    document: doc,
+    GhostLinkPaymentConfig: { banks: {}, get: () => ({}), set: () => {}, reset: () => {} },
+    Telegram: { WebApp: { initData: '' } },
+    GhostLinkV3: {},
+  };
+
+  let currentSnapshot = { tariffs: null };
+  const subscribers = [];
+
+  const mockProfileSub = {
+    getSnapshot: () => currentSnapshot,
+    getCachedProfile: () => currentSnapshot,
+    subscribe: (cb) => { subscribers.push(cb); },
+  };
+
+  initSubscriptionModule({
+    profileSubscription: mockProfileSub,
+  });
+
+  const btnPay = doc.getElementById('btn-pay');
+  // Initially disabled before tariffs arrive
+  assert.equal(btnPay.disabled, true);
+  assert.equal(doc.getElementById('pay-total').textContent, 'Загрузка тарифов…');
+  assert.equal(doc.getElementById('price-card-1').textContent, '— ₽');
+
+  // Tariffs arrive asynchronously from backend
+  currentSnapshot = {
+    tariffs: {
+      period_prices: {
+        1: { 2: { price: 150 }, 3: { price: 350 }, 4: { price: 450 }, 5: { price: 500 } },
+        2: { 2: { price: 290 }, 3: { price: 630 }, 4: { price: 810 }, 5: { price: 900 } },
+        3: { 2: { price: 430 }, 3: { price: 840 }, 4: { price: 1080 }, 5: { price: 1200 } },
+      },
+    },
+  };
+
+  // Notify subscribers
+  subscribers.forEach((cb) => cb(currentSnapshot));
+
+  // UI automatically recalculated and unlocked
+  assert.equal(btnPay.disabled, false);
+  assert.equal(doc.getElementById('pay-total').textContent, '150 ₽');
+  assert.equal(doc.getElementById('price-card-1').textContent, '150 ₽');
+  assert.equal(doc.getElementById('price-card-2').textContent, '290 ₽');
+  assert.equal(doc.getElementById('price-card-3').textContent, '430 ₽');
+});
+
+test('full production tariff matrix validates correctly (Solo 2 dev; Flex 3, 4, 5 dev across 1, 2, 3 months)', () => {
+  const prodSnapshot = {
+    tariffs: {
+      period_prices: {
+        1: { 2: { price: 150 }, 3: { price: 350 }, 4: { price: 450 }, 5: { price: 500 } },
+        2: { 2: { price: 290 }, 3: { price: 630 }, 4: { price: 810 }, 5: { price: 900 } },
+        3: { 2: { price: 430 }, 3: { price: 840 }, 4: { price: 1080 }, 5: { price: 1200 } },
+      },
+    },
+  };
+
+  // Solo Ghost (2 devices)
+  assert.equal(getTariffPrice(2, 1, prodSnapshot), 150);
+  assert.equal(getTariffPrice(2, 2, prodSnapshot), 290);
+  assert.equal(getTariffPrice(2, 3, prodSnapshot), 430);
+
+  // Flex Squad 3 devices
+  assert.equal(getTariffPrice(3, 1, prodSnapshot), 350);
+  assert.equal(getTariffPrice(3, 2, prodSnapshot), 630);
+  assert.equal(getTariffPrice(3, 3, prodSnapshot), 840);
+
+  // Flex Squad 4 devices
+  assert.equal(getTariffPrice(4, 1, prodSnapshot), 450);
+  assert.equal(getTariffPrice(4, 2, prodSnapshot), 810);
+  assert.equal(getTariffPrice(4, 3, prodSnapshot), 1080);
+
+  // Flex Squad 5 devices
+  assert.equal(getTariffPrice(5, 1, prodSnapshot), 500);
+  assert.equal(getTariffPrice(5, 2, prodSnapshot), 900);
+  assert.equal(getTariffPrice(5, 3, prodSnapshot), 1200);
+});
+
 
 
 
