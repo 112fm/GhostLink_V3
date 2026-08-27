@@ -317,16 +317,20 @@
           const deadlineAt = nowMs() + totalTimeoutMs;
           await openSession(deadlineAt);
 
-          // The home island needs only the user profile. Tariff catalog loading is
-          // diagnostic/background work and must not hide the current subscription.
+          let profileResult = null;
           void runStage('tariffs', deadlineAt, (timeoutMs) => requestJson(fetchImpl, `${apiBase}/api/tariffs`, {
             method: 'GET', cache: 'no-store', credentials: 'include', headers: readHeaders(),
-          }, timeoutMs), requestDiagnostics).catch(() => null);
+          }, timeoutMs), requestDiagnostics).then((tariffsData) => {
+            if (profileResult && tariffsData) {
+              profileResult.tariffs = tariffsData;
+            }
+          }).catch(() => null);
 
           const user = await runStage('user', deadlineAt, (timeoutMs) => requestJson(fetchImpl, `${apiBase}/api/user`, {
             method: 'GET', cache: 'no-store', credentials: 'include', headers: readHeaders(),
           }, timeoutMs), requestDiagnostics);
-          return mapProfile(user, null);
+          profileResult = mapProfile(user, null);
+          return profileResult;
         })().finally(() => {
           inFlight = null;
         });

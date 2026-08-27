@@ -43,25 +43,18 @@ function generateUuidV4() {
   });
 }
 
-const PRICE_TABLE = {
-  2: { 1: 150, 2: 290, 3: 430 },
-  3: { 1: 350, 2: 630, 3: 840 },
-  4: { 1: 450, 2: 810, 3: 1080 },
-  5: { 1: 500, 2: 900, 3: 1200 }
-};
-
 function getTariffPrice(totalDev, months, snapshot) {
   const tariffs = snapshot?.tariffs;
-  if (tariffs?.period_prices?.[months]?.[totalDev]?.price) {
+  if (tariffs?.period_prices?.[months]?.[totalDev]?.price !== undefined && tariffs?.period_prices?.[months]?.[totalDev]?.price !== null) {
     return Number(tariffs.period_prices[months][totalDev].price);
   }
-  if (months === 1 && tariffs?.flex?.[totalDev]?.price) {
+  if (months === 1 && tariffs?.flex?.[totalDev]?.price !== undefined && tariffs?.flex?.[totalDev]?.price !== null) {
     return Number(tariffs.flex[totalDev].price);
   }
-  if (months === 1 && totalDev <= 2 && tariffs?.solo?.price) {
+  if (months === 1 && totalDev <= 2 && tariffs?.solo?.price !== undefined && tariffs?.solo?.price !== null) {
     return Number(tariffs.solo.price);
   }
-  return PRICE_TABLE[totalDev]?.[months] || (PRICE_TABLE[2]?.[months] || 150);
+  return null;
 }
 
 GhostLinkV3.getTariffPrice = getTariffPrice;
@@ -467,10 +460,13 @@ if (btnPay && pageCheckout && btnCheckoutBack) {
     const activeDeviceType = document.querySelector('input[name="device-type"]:checked')?.value || 'solo';
     const months = activeTariff ? parseInt(activeTariff.value, 10) : 1;
     const totalDev = activeDeviceType === 'flex' ? flexDevCount : 2;
-    const currentSnapshot = profileSubscription?.getSnapshot?.() || GhostLinkV3.profileSubscription?.getSnapshot?.();
+    const currentSnapshot = profileSubscription?.getSnapshot?.() || profileSubscription?.getCachedProfile?.() || GhostLinkV3.homeModule?.getSnapshot?.() || GhostLinkV3.profileSubscription?.getSnapshot?.() || GhostLinkV3.profileSubscription?.getCachedProfile?.();
     const totalAmount = getTariffPrice(totalDev, months, currentSnapshot);
 
-
+    if (totalAmount === null || isNaN(totalAmount)) {
+      showToast('Тарифы ещё загружаются или недоступны. Подождите...');
+      return;
+    }
 
     const planName = activeDeviceType === 'flex' ? `Flex Squad ${totalDev}` : 'Solo Ghost';
     const periodText = `${months} ${months === 1 ? 'месяц' : 'месяца'} · ${totalDev} ${totalDev === 2 || totalDev === 3 || totalDev === 4 ? 'устройства' : 'устройств'}`;
@@ -577,7 +573,13 @@ if (btnSubmitPayment && payerNameInput) {
     const activeDeviceType = document.querySelector('input[name="device-type"]:checked')?.value || 'solo';
     const months = activeTariff ? parseInt(activeTariff.value, 10) : 1;
     const totalDev = activeDeviceType === 'flex' ? flexDevCount : 2;
-    const totalAmount = PRICE_TABLE[totalDev]?.[months] || 150;
+    const currentSnapshot = profileSubscription?.getSnapshot?.() || profileSubscription?.getCachedProfile?.() || GhostLinkV3.homeModule?.getSnapshot?.() || GhostLinkV3.profileSubscription?.getSnapshot?.() || GhostLinkV3.profileSubscription?.getCachedProfile?.();
+    const totalAmount = getTariffPrice(totalDev, months, currentSnapshot);
+
+    if (totalAmount === null || isNaN(totalAmount)) {
+      showToast('Ошибка тарифов: стоимость не определена. Повторите попытку.');
+      return;
+    }
     const planName = activeDeviceType === 'flex' ? `Flex Squad ${totalDev}` : 'Solo Ghost';
     
     // Prevent double submission
@@ -704,14 +706,14 @@ let flexDevCount = 3;
 
 function calculateTotals() {
   const activeTariff = document.querySelector('input[name="tariff-period"]:checked');
-  const activeDeviceType = document.querySelector('input[name="device-type"]:checked').value;
+  const activeDeviceType = document.querySelector('input[name="device-type"]:checked')?.value || 'solo';
   
   let totalDevices = 2; // Solo Ghost
   if (activeDeviceType === 'flex') {
     totalDevices = flexDevCount;
   }
 
-  const currentSnapshot = GhostLinkV3.homeModule?.getSnapshot?.() || GhostLinkV3.profileSubscription?.getSnapshot?.();
+  const currentSnapshot = profileSubscription?.getSnapshot?.() || profileSubscription?.getCachedProfile?.() || GhostLinkV3.homeModule?.getSnapshot?.() || GhostLinkV3.profileSubscription?.getSnapshot?.() || GhostLinkV3.profileSubscription?.getCachedProfile?.();
 
   // Update prices shown on the month cards dynamically based on totalDevices
   const price1 = getTariffPrice(totalDevices, 1, currentSnapshot);
@@ -725,16 +727,15 @@ function calculateTotals() {
   const subCard2 = document.getElementById('subprice-card-2');
   const subCard3 = document.getElementById('subprice-card-3');
 
-  if (pCard1) pCard1.textContent = `${price1} ₽`;
-  if (pCard2) pCard2.textContent = `${price2} ₽`;
-  if (pCard3) pCard3.textContent = `${price3} ₽`;
-  if (subCard1) subCard1.textContent = `${price1} ₽ / мес`;
-  if (subCard2) subCard2.textContent = `${Math.round(price2 / 2)} ₽ / мес`;
-  if (subCard3) subCard3.textContent = `${Math.round(price3 / 3)} ₽ / мес`;
+  if (pCard1) pCard1.textContent = price1 !== null ? `${price1} ₽` : '... ₽';
+  if (pCard2) pCard2.textContent = price2 !== null ? `${price2} ₽` : '... ₽';
+  if (pCard3) pCard3.textContent = price3 !== null ? `${price3} ₽` : '... ₽';
+  if (subCard1) subCard1.textContent = price1 !== null ? `${price1} ₽ / мес` : 'Загрузка...';
+  if (subCard2) subCard2.textContent = price2 !== null ? `${Math.round(price2 / 2)} ₽ / мес` : 'Загрузка...';
+  if (subCard3) subCard3.textContent = price3 !== null ? `${Math.round(price3 / 3)} ₽ / мес` : 'Загрузка...';
   
   const months = parseInt(activeTariff?.value || '1', 10);
   const totalPrice = getTariffPrice(totalDevices, months, currentSnapshot);
-
   
   // Dynamic Description Above Swiper
   const devicesDescEl = document.getElementById('devices-desc');
@@ -771,28 +772,56 @@ function calculateTotals() {
     summaryDetailsEl.textContent = `${monthText} · ${devText}`;
   }
   
-  const days = months * 30;
-  const costPerDay = (totalPrice / days).toFixed(2).replace('.', ',');
   const summaryDayCostEl = document.getElementById('summary-day-cost');
   if (summaryDayCostEl) {
-    summaryDayCostEl.textContent = `${costPerDay} ₽ / день`;
+    if (totalPrice !== null) {
+      const days = months * 30;
+      const costPerDay = (totalPrice / days).toFixed(2).replace('.', ',');
+      summaryDayCostEl.textContent = `${costPerDay} ₽ / день`;
+    } else {
+      summaryDayCostEl.textContent = '— ₽ / день';
+    }
   }
   
   // Update Pay Button
-  document.getElementById('pay-total').textContent = `${totalPrice} ₽`;
-  
-  // Discount badge / old price calculation
-  const baseFullPrice = price1 * months;
-  if (baseFullPrice > totalPrice) {
-    const oldPrice = baseFullPrice;
-    const discountPct = Math.round((1 - totalPrice / baseFullPrice) * 100);
-    document.getElementById('pay-old').textContent = `${oldPrice} ₽`;
-    document.getElementById('pay-old').style.display = 'inline';
-    document.getElementById('pay-discount').textContent = `-${discountPct}%`;
-    document.getElementById('pay-discount').style.display = 'inline-block';
+  const payTotalEl = document.getElementById('pay-total');
+  const payOldEl = document.getElementById('pay-old');
+  const payDiscountEl = document.getElementById('pay-discount');
+
+  if (totalPrice !== null) {
+    if (btnPay) {
+      btnPay.disabled = false;
+      btnPay.classList.remove('disabled');
+      btnPay.setAttribute('aria-disabled', 'false');
+    }
+    if (payTotalEl) payTotalEl.textContent = `${totalPrice} ₽`;
+    
+    // Discount badge / old price calculation
+    const baseFullPrice = price1 !== null ? price1 * months : null;
+    if (baseFullPrice && baseFullPrice > totalPrice) {
+      const oldPrice = baseFullPrice;
+      const discountPct = Math.round((1 - totalPrice / baseFullPrice) * 100);
+      if (payOldEl) {
+        payOldEl.textContent = `${oldPrice} ₽`;
+        payOldEl.style.display = 'inline';
+      }
+      if (payDiscountEl) {
+        payDiscountEl.textContent = `-${discountPct}%`;
+        payDiscountEl.style.display = 'inline-block';
+      }
+    } else {
+      if (payOldEl) payOldEl.style.display = 'none';
+      if (payDiscountEl) payDiscountEl.style.display = 'none';
+    }
   } else {
-    document.getElementById('pay-old').style.display = 'none';
-    document.getElementById('pay-discount').style.display = 'none';
+    if (btnPay) {
+      btnPay.disabled = true;
+      btnPay.classList.add('disabled');
+      btnPay.setAttribute('aria-disabled', 'true');
+    }
+    if (payTotalEl) payTotalEl.textContent = 'Загрузка тарифов...';
+    if (payOldEl) payOldEl.style.display = 'none';
+    if (payDiscountEl) payDiscountEl.style.display = 'none';
   }
 }
 
@@ -825,32 +854,48 @@ if (btnDevMinus && btnDevPlus) {
 // Initial calculation
 calculateTotals();
 
-// Sync Swiper Dots & Radio & Tap-to-Scroll
-const deviceSwiper = document.querySelector('.device-swiper-container');
-const deviceSlides = document.querySelectorAll('.device-slide');
-const paginationDots = document.querySelectorAll('#device-pagination .dot');
+// Swipe support for Device Type Swiper Cards
+const deviceSwiper = document.querySelector('.device-swiper');
+const deviceSlides = document.querySelectorAll('.device-swiper .bento-card');
+const paginationDots = document.querySelectorAll('.swiper-dot');
 
 if (deviceSwiper && deviceSlides.length > 0) {
-  // 1. Scroll listener for drag / swipe gestures
+  // 1. Listen to scroll event to update active dot & radio
+  let scrollTimeout;
   deviceSwiper.addEventListener('scroll', () => {
-    const scrollLeft = deviceSwiper.scrollLeft;
-    const width = deviceSwiper.clientWidth;
-    const activeIndex = Math.round(scrollLeft / (width * 0.88));
-    
-    paginationDots.forEach((dot, idx) => {
-      dot.classList.toggle('active', idx === activeIndex);
-    });
-    
-    const targetRadio = deviceRadios[activeIndex];
-    if (targetRadio && !targetRadio.checked) {
-      targetRadio.checked = true;
-      calculateTotals();
-    }
+    clearTimeout(scrollTimeout);
+    scrollTimeout = setTimeout(() => {
+      const scrollLeft = deviceSwiper.scrollLeft;
+      const slideWidth = deviceSlides[0].offsetWidth;
+      const activeIdx = Math.round(scrollLeft / slideWidth);
+
+      // Update dots
+      paginationDots.forEach((dot, idx) => {
+        dot.classList.toggle('active', idx === activeIdx);
+      });
+
+      // Update underlying radio button
+      const targetRadio = deviceSlides[activeIdx]?.querySelector('input[name="device-type"]');
+      if (targetRadio && !targetRadio.checked) {
+        targetRadio.checked = true;
+        calculateTotals();
+      }
+    }, 50);
   });
 
-  // 2. Click/Tap listener to smoothly center the clicked slide
+  // 2. Click listener on card directly
   deviceSlides.forEach((slide, idx) => {
-    slide.addEventListener('click', () => {
+    slide.addEventListener('click', (e) => {
+      // Avoid recursive change event loops if radio itself was clicked
+      if (e.target.tagName !== 'INPUT') {
+        const radio = slide.querySelector('input[name="device-type"]');
+        if (radio && !radio.checked) {
+          radio.checked = true;
+          calculateTotals();
+        }
+      }
+      
+      // Scroll into view centered
       const targetScroll = slide.offsetLeft - (deviceSwiper.clientWidth - slide.clientWidth) / 2;
       deviceSwiper.scrollTo({
         left: Math.max(0, targetScroll),
@@ -882,11 +927,11 @@ const exported = {
   setCheckoutView: (state) => root.GhostLinkPayment?.setCheckoutView?.(state),
   startPendingPolling: () => root.GhostLinkPayment?.startPendingPolling?.(),
   stopPendingPolling: () => root.GhostLinkPayment?.stopPendingPolling?.(),
+  getTariffPrice,
   generateUuidV4,
   formatBankName,
   isValidPayerName,
   BANK_NAMES,
-  PRICE_TABLE,
 };
 
 if (typeof module !== 'undefined' && module.exports) {

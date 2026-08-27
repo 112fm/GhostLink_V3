@@ -142,8 +142,9 @@ test('System tab exposes a dedicated payment settings overlay contract', () => {
   requiredIds.forEach((id) => {
     assert.match(html, new RegExp(`id=["']${id}["']`), `missing #${id}`);
   });
-  assert.match(html, /admin-payment-settings\.js\?v=3/);
+  assert.match(html, /admin-payment-settings\.js\?v=\d+/);
 });
+
 
 test('checkout adapter renders a request snapshot without persisting it', () => {
   const source = fs.readFileSync(paymentConfigPath, 'utf8');

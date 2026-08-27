@@ -244,9 +244,23 @@ test('payment request ID persists in sessionStorage and is passed to report and 
     return { ok: true, status: 200, json: async () => ({}) };
   };
 
+  const mockTariffsSnapshot = {
+    tariffs: {
+      period_prices: {
+        1: { 2: { price: 150 }, 3: { price: 350 }, 4: { price: 450 }, 5: { price: 500 } },
+        2: { 2: { price: 290 }, 3: { price: 630 }, 4: { price: 810 }, 5: { price: 900 } },
+        3: { 2: { price: 430 }, 3: { price: 840 }, 4: { price: 1080 }, 5: { price: 1200 } },
+      },
+    },
+  };
+
   initSubscriptionModule({
     fetch: mockFetch,
     showToast: () => {},
+    profileSubscription: {
+      getSnapshot: () => mockTariffsSnapshot,
+      getCachedProfile: () => mockTariffsSnapshot,
+    },
   });
 
   const payerInput = doc.getElementById('payer-name-input');

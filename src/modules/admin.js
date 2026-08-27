@@ -936,20 +936,18 @@ function setupAdminDashboardEntry() {
   const pageAdminDashboard = document.getElementById('page-admin-dashboard');
   const btnAdminBack = document.getElementById('btnAdminBack');
 
+  if (!IS_ADMIN) {
+    // Remove the local prototype from the user DOM instead of merely hiding it.
+    // This is not the final security boundary: the public build must exclude
+    // admin markup and logic, while the API enforces the actual role check.
+    btnSettingsAdmin?.remove();
+    pageAdminDashboard?.remove();
+    return;
+  }
+
   if (btnSettingsAdmin && pageAdminDashboard) {
+    btnSettingsAdmin.style.display = 'flex';
     btnSettingsAdmin.addEventListener('click', () => {
-      const snapshot = GhostLinkV3.homeModule?.getSnapshot?.() || GhostLinkV3.profileSubscription?.getSnapshot?.();
-      const isAdmin = Boolean(
-        snapshot?.user?.is_admin ||
-        snapshot?.profile?.isAdmin ||
-        snapshot?.profile?.is_admin ||
-        isCurrentUserAdmin() ||
-        adminMockSession?.isAdmin?.()
-      );
-      if (!isAdmin) {
-        showToast('Доступ только для администратора');
-        return;
-      }
       openOverlay(pageAdminDashboard);
       refreshDashboard();
     });
@@ -964,7 +962,6 @@ function setupAdminDashboardEntry() {
   const btnAdminRefresh = document.getElementById('btnAdminRefresh');
   btnAdminRefresh?.addEventListener('click', refreshActiveAdminTab);
 }
-
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', setupAdminDashboardEntry);

@@ -8,7 +8,7 @@ const {
   initSubscriptionModule,
   formatBankName,
   isValidPayerName,
-  PRICE_TABLE,
+  getTariffPrice,
 } = require(path.join(root, 'src', 'modules', 'subscription.js'));
 
 function createMockElement(id = '', tagName = 'div') {
@@ -239,12 +239,24 @@ test('POST /api/payment/report submits valid payment and switches to pending vie
     };
   };
 
+  const mockTariffsSnapshot = {
+    tariffs: {
+      period_prices: {
+        1: { 2: { price: 150 }, 3: { price: 350 }, 4: { price: 450 }, 5: { price: 500 } },
+        2: { 2: { price: 290 }, 3: { price: 630 }, 4: { price: 810 }, 5: { price: 900 } },
+        3: { 2: { price: 430 }, 3: { price: 840 }, 4: { price: 1080 }, 5: { price: 1200 } },
+      },
+    },
+  };
+
   initSubscriptionModule({
     fetch: mockFetch,
     apiBase: 'https://api.test.ru',
     showToast: (msg) => { toastMsg = msg; },
     profileSubscription: {
       getToken: () => 'token-456',
+      getSnapshot: () => mockTariffsSnapshot,
+      getCachedProfile: () => mockTariffsSnapshot,
     },
   });
 
@@ -350,9 +362,21 @@ test('POST /api/payment/report handles 400, 401, 500 server errors and network f
       };
     };
 
+    const mockTariffsSnapshot = {
+      tariffs: {
+        period_prices: {
+          1: { 2: { price: 150 } },
+        },
+      },
+    };
+
     initSubscriptionModule({
       fetch: mockFetch,
       showToast: (msg) => { toastMsg = msg; },
+      profileSubscription: {
+        getSnapshot: () => mockTariffsSnapshot,
+        getCachedProfile: () => mockTariffsSnapshot,
+      },
     });
 
     const payerInput = doc.getElementById('payer-name-input');
@@ -367,7 +391,7 @@ test('POST /api/payment/report handles 400, 401, 500 server errors and network f
   }
 });
 
-test('GET /api/payment/settings failure displays error state without mock values', async () => {
+test('btnPay click opens checkout overlay and calculates dynamic price correctly without ReferenceError', async () => {
   const doc = createMockDocument();
   global.document = doc;
   global.Telegram = { WebApp: { initData: '' } };
@@ -375,23 +399,77 @@ test('GET /api/payment/settings failure displays error state without mock values
     document: doc,
     GhostLinkPaymentConfig: { banks: {}, get: () => ({}), set: () => {}, reset: () => {} },
     Telegram: { WebApp: { initData: '' } },
+    GhostLinkV3: {},
   };
 
-  const mockFetch = async (url) => {
-    if (url.includes('/api/payment/settings')) {
-      return { ok: false, status: 500 };
-    }
-    return { ok: true, status: 200, json: async () => ({}) };
+  let openedOverlay = null;
+  const mockProfileSubscription = {
+    getSnapshot: () => ({
+      tariffs: {
+        period_prices: {
+          1: { 2: { price: 150 }, 3: { price: 350 }, 4: { price: 450 }, 5: { price: 500 } },
+          2: { 2: { price: 290 }, 3: { price: 630 }, 4: { price: 810 }, 5: { price: 900 } },
+          3: { 2: { price: 430 }, 3: { price: 840 }, 4: { price: 1080 }, 5: { price: 1200 } },
+        },
+      },
+    }),
   };
 
   initSubscriptionModule({
-    fetch: mockFetch,
+    openOverlay: (overlay) => { openedOverlay = overlay; },
+    profileSubscription: mockProfileSubscription,
+    fetch: async () => ({ ok: true, status: 200, json: async () => ({}) }),
   });
 
-  await new Promise((r) => setTimeout(r, 20));
+  const btnPay = doc.getElementById('btn-pay');
+  assert.ok(btnPay, 'btn-pay element must exist');
 
-  assert.equal(doc.getElementById('req-phone-num').textContent, 'Реквизиты временно недоступны');
-  assert.equal(doc.getElementById('req-bank-name').textContent, '⚠️ Ошибка связи');
-  assert.equal(doc.getElementById('req-recipient-name').textContent, 'Нажмите здесь, чтобы повторить попытку');
+  await btnPay.click();
+
+  assert.equal(openedOverlay?.id, 'page-checkout');
+  assert.equal(doc.getElementById('checkout-target-amount').textContent, '150 ₽');
+  assert.equal(doc.getElementById('checkout-target-plan').textContent, 'Solo Ghost');
+  assert.equal(doc.getElementById('checkout-form-view').style.display, 'flex');
 });
+
+test('getTariffPrice strictly returns null when tariffs are absent (Strict API Policy)', () => {
+  assert.equal(getTariffPrice(2, 1, null), null);
+  assert.equal(getTariffPrice(2, 1, {}), null);
+  assert.equal(getTariffPrice(2, 1, { tariffs: null }), null);
+  assert.equal(getTariffPrice(3, 2, { tariffs: { period_prices: {} } }), null);
+});
+
+test('btnPay is disabled and shows loading text when tariffs are missing', async () => {
+  const doc = createMockDocument();
+  global.document = doc;
+  global.Telegram = { WebApp: { initData: '' } };
+  global.window = {
+    document: doc,
+    GhostLinkPaymentConfig: { banks: {}, get: () => ({}), set: () => {}, reset: () => {} },
+    Telegram: { WebApp: { initData: '' } },
+    GhostLinkV3: {},
+  };
+
+  let openedOverlay = null;
+  initSubscriptionModule({
+    openOverlay: (overlay) => { openedOverlay = overlay; },
+    profileSubscription: {
+      getSnapshot: () => ({ tariffs: null }),
+      getCachedProfile: () => ({ tariffs: null }),
+    },
+    showToast: (msg) => { toastMsg = msg; },
+  });
+
+  const btnPay = doc.getElementById('btn-pay');
+  assert.equal(btnPay.disabled, true);
+  assert.equal(doc.getElementById('pay-total').textContent, 'Загрузка тарифов...');
+  assert.equal(doc.getElementById('price-card-1').textContent, '... ₽');
+
+  // Attempting to click disabled pay button shows toast and blocks checkout
+  await btnPay.click();
+  assert.match(toastMsg, /Тарифы ещё загружаются/);
+  assert.equal(openedOverlay, null);
+});
+
+
 
