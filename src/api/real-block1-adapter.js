@@ -337,6 +337,11 @@
           diagnostics = createDiagnostics();
           const requestDiagnostics = diagnostics;
           const deadlineAt = nowMs() + totalTimeoutMs;
+          latestTariffsResponse = null;
+          if (currentSnapshot) {
+            currentSnapshot.tariffs = null;
+            notifyListeners(currentSnapshot);
+          }
           await openSession(deadlineAt);
 
           void runStage('tariffs', deadlineAt, (timeoutMs) => requestJson(fetchImpl, `${apiBase}/api/tariffs`, {
@@ -348,8 +353,20 @@
                 currentSnapshot.tariffs = tariffsData;
                 notifyListeners(currentSnapshot);
               }
+            } else {
+              latestTariffsResponse = null;
+              if (currentSnapshot) {
+                currentSnapshot.tariffs = null;
+                notifyListeners(currentSnapshot);
+              }
             }
-          }).catch(() => null);
+          }).catch(() => {
+            latestTariffsResponse = null;
+            if (currentSnapshot) {
+              currentSnapshot.tariffs = null;
+              notifyListeners(currentSnapshot);
+            }
+          });
 
           const user = await runStage('user', deadlineAt, (timeoutMs) => requestJson(fetchImpl, `${apiBase}/api/user`, {
             method: 'GET', cache: 'no-store', credentials: 'include', headers: readHeaders(),
@@ -357,9 +374,7 @@
 
           latestUserResponse = user;
           const profileResult = mapProfile(user, null);
-          if (latestTariffsResponse) {
-            profileResult.tariffs = latestTariffsResponse;
-          }
+          profileResult.tariffs = latestTariffsResponse || null;
           currentSnapshot = profileResult;
           notifyListeners(profileResult);
           return profileResult;
@@ -367,6 +382,9 @@
           inFlight = null;
         });
         return inFlight;
+      },
+      refresh() {
+        return this.fetchProfileSubscription();
       },
       getSnapshot: () => currentSnapshot,
       getCachedProfile: () => currentSnapshot,
