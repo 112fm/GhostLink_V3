@@ -306,6 +306,8 @@
 
     const listeners = new Set();
     let currentSnapshot = null;
+    let latestTariffsResponse = null;
+    let latestUserResponse = null;
 
     function subscribe(callback) {
       if (typeof callback === 'function') {
@@ -337,21 +339,27 @@
           const deadlineAt = nowMs() + totalTimeoutMs;
           await openSession(deadlineAt);
 
-          let profileResult = null;
           void runStage('tariffs', deadlineAt, (timeoutMs) => requestJson(fetchImpl, `${apiBase}/api/tariffs`, {
             method: 'GET', cache: 'no-store', credentials: 'include', headers: readHeaders(),
           }, timeoutMs), requestDiagnostics).then((tariffsData) => {
-            if (profileResult && tariffsData) {
-              profileResult.tariffs = tariffsData;
-              currentSnapshot = profileResult;
-              notifyListeners(profileResult);
+            if (tariffsData) {
+              latestTariffsResponse = tariffsData;
+              if (currentSnapshot) {
+                currentSnapshot.tariffs = tariffsData;
+                notifyListeners(currentSnapshot);
+              }
             }
           }).catch(() => null);
 
           const user = await runStage('user', deadlineAt, (timeoutMs) => requestJson(fetchImpl, `${apiBase}/api/user`, {
             method: 'GET', cache: 'no-store', credentials: 'include', headers: readHeaders(),
           }, timeoutMs), requestDiagnostics);
-          profileResult = mapProfile(user, null);
+
+          latestUserResponse = user;
+          const profileResult = mapProfile(user, null);
+          if (latestTariffsResponse) {
+            profileResult.tariffs = latestTariffsResponse;
+          }
           currentSnapshot = profileResult;
           notifyListeners(profileResult);
           return profileResult;
