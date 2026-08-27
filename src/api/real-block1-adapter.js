@@ -304,6 +304,26 @@
       sessionState = Object.freeze({ status: 'authenticated', transport: 'memory' });
     }
 
+    const listeners = new Set();
+    let currentSnapshot = null;
+
+    function subscribe(callback) {
+      if (typeof callback === 'function') {
+        listeners.add(callback);
+        if (currentSnapshot) {
+          try { callback(currentSnapshot); } catch (_) {}
+        }
+        return () => listeners.delete(callback);
+      }
+      return () => {};
+    }
+
+    function notifyListeners(snapshot) {
+      listeners.forEach((cb) => {
+        try { cb(snapshot); } catch (_) {}
+      });
+    }
+
     function readHeaders() {
       return { Accept: 'application/json', 'X-PWA-Token': token };
     }
@@ -323,6 +343,8 @@
           }, timeoutMs), requestDiagnostics).then((tariffsData) => {
             if (profileResult && tariffsData) {
               profileResult.tariffs = tariffsData;
+              currentSnapshot = profileResult;
+              notifyListeners(profileResult);
             }
           }).catch(() => null);
 
@@ -330,12 +352,18 @@
             method: 'GET', cache: 'no-store', credentials: 'include', headers: readHeaders(),
           }, timeoutMs), requestDiagnostics);
           profileResult = mapProfile(user, null);
+          currentSnapshot = profileResult;
+          notifyListeners(profileResult);
           return profileResult;
         })().finally(() => {
           inFlight = null;
         });
         return inFlight;
       },
+      getSnapshot: () => currentSnapshot,
+      getCachedProfile: () => currentSnapshot,
+      subscribe,
+      onUpdate: subscribe,
       getSession: () => sessionState ? { ...sessionState } : null,
       getToken: () => token,
       getApiBase: () => apiBase,

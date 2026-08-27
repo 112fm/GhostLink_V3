@@ -11,6 +11,7 @@ const {
   getTariffPrice,
   isValidPrice,
 } = require(path.join(root, 'src', 'modules', 'subscription.js'));
+const { createRealBlock1Adapter } = require(path.join(root, 'src', 'api', 'real-block1-adapter.js'));
 
 function createMockElement(id = '', tagName = 'div') {
   const listeners = new Map();
@@ -581,6 +582,89 @@ test('full production tariff matrix validates correctly (Solo 2 dev; Flex 3, 4, 
   assert.equal(getTariffPrice(5, 2, prodSnapshot), 900);
   assert.equal(getTariffPrice(5, 3, prodSnapshot), 1200);
 });
+
+test('full integration: real Block 1 adapter reactive subscription auto-refreshes subscription UI when tariffs arrive', async () => {
+  const doc = createMockDocument();
+  global.document = doc;
+  global.Telegram = { WebApp: { initData: 'telegram-init-data' } };
+  global.window = {
+    document: doc,
+    GhostLinkPaymentConfig: { banks: {}, get: () => ({}), set: () => {}, reset: () => {} },
+    Telegram: { WebApp: { initData: 'telegram-init-data' } },
+    GhostLinkV3: {},
+  };
+
+  let resolveTariffs;
+  const tariffsPromise = new Promise((resolve) => {
+    resolveTariffs = resolve;
+  });
+
+  const mockResponse = (status, body) => ({
+    ok: status >= 200 && status < 300,
+    status,
+    text: async () => JSON.stringify(body),
+    json: async () => body,
+  });
+
+  const adapter = createRealBlock1Adapter({
+    apiBase: 'https://api.example.test',
+    getInitData: () => 'telegram-init-data',
+    fetch: async (url) => {
+      if (url.endsWith('/api/miniapp/session')) {
+        return mockResponse(200, { session_token: 'secret-token' });
+      }
+      if (url.endsWith('/api/user')) {
+        return mockResponse(200, {
+          user: { id: '123', name: 'Real User' },
+          subscription: { active: true, status: 'active', days_left: 30 },
+          tariff_name: 'Solo Ghost',
+          device_limit: 2,
+          connected_devices: 1,
+        });
+      }
+      if (url.endsWith('/api/tariffs')) {
+        const tariffsData = await tariffsPromise;
+        return mockResponse(200, tariffsData);
+      }
+      return mockResponse(200, {});
+    },
+  });
+
+  initSubscriptionModule({
+    profileSubscription: adapter,
+  });
+
+  const btnPay = doc.getElementById('btn-pay');
+  assert.ok(btnPay, 'btn-pay must exist');
+
+  // Initial load of profile (tariffs not yet resolved)
+  await adapter.fetchProfileSubscription();
+
+  // Button must be disabled and loading text shown
+  assert.equal(btnPay.disabled, true);
+  assert.equal(doc.getElementById('pay-total').textContent, 'Загрузка тарифов…');
+  assert.equal(doc.getElementById('price-card-1').textContent, '— ₽');
+
+  // Asynchronously resolve tariffs from server
+  resolveTariffs({
+    period_prices: {
+      1: { 2: { price: 150 }, 3: { price: 350 }, 4: { price: 450 }, 5: { price: 500 } },
+      2: { 2: { price: 290 }, 3: { price: 630 }, 4: { price: 810 }, 5: { price: 900 } },
+      3: { 2: { price: 430 }, 3: { price: 840 }, 4: { price: 1080 }, 5: { price: 1200 } },
+    },
+  });
+
+  // Allow microtasks to resolve background tariffs stage and notify listeners
+  await new Promise((r) => setTimeout(r, 20));
+
+  // Reactive subscription must have automatically updated UI and unlocked btnPay
+  assert.equal(btnPay.disabled, false);
+  assert.equal(doc.getElementById('pay-total').textContent, '150 ₽');
+  assert.equal(doc.getElementById('price-card-1').textContent, '150 ₽');
+  assert.equal(doc.getElementById('price-card-2').textContent, '290 ₽');
+  assert.equal(doc.getElementById('price-card-3').textContent, '430 ₽');
+});
+
 
 
 
