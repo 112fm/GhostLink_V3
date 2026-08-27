@@ -463,12 +463,13 @@ if (btnPay && pageCheckout && btnCheckoutBack) {
     resetPaymentRequestId();
     // Never reopen a stale pending screen when starting a new payment flow.
     setCheckoutView('form');
-    // Collect active values from Extend screen
     const activeTariff = document.querySelector('input[name="tariff-period"]:checked');
     const activeDeviceType = document.querySelector('input[name="device-type"]:checked')?.value || 'solo';
+    const months = activeTariff ? parseInt(activeTariff.value, 10) : 1;
     const totalDev = activeDeviceType === 'flex' ? flexDevCount : 2;
     const currentSnapshot = profileSubscription?.getSnapshot?.() || GhostLinkV3.profileSubscription?.getSnapshot?.();
     const totalAmount = getTariffPrice(totalDev, months, currentSnapshot);
+
 
 
     const planName = activeDeviceType === 'flex' ? `Flex Squad ${totalDev}` : 'Solo Ghost';
