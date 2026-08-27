@@ -115,21 +115,34 @@
     canDeactivateLastActive,
   });
 
-  if (typeof module !== 'undefined' && module.exports) {
-    module.exports = PaymentSettingsModel;
-  }
-
-  if (!globalScope?.document) return;
-
   const GhostLinkV3 = globalScope.GhostLinkV3 = globalScope.GhostLinkV3 || {};
   GhostLinkV3.PaymentSettingsModel = PaymentSettingsModel;
 
   GhostLinkV3.initAdminPaymentSettingsModule = function initAdminPaymentSettingsModule(dependencies = {}) {
-    const { showToast, openOverlay, closeOverlay } = dependencies;
-    const localAdminSession = GhostLinkV3.adminMockSession;
-    const isLocalAdmin = Boolean(localAdminSession?.isAdmin());
-    const openButton = document.getElementById('btnOpenPaymentSettings');
-    const page = document.getElementById('page-admin-payment-settings');
+    const {
+      showToast = () => {},
+      openOverlay = () => {},
+      closeOverlay = () => {},
+      profileSubscription,
+      fetch: customFetch,
+      apiBase: customApiBase,
+      getInitData: customGetInitData,
+    } = dependencies;
+
+    const DEFAULT_API_BASE = 'https://api.112prd.ru';
+    const apiBase = (customApiBase || profileSubscription?.getApiBase?.() || DEFAULT_API_BASE).replace(/\/+$/, '');
+    const fetchImpl = customFetch || (typeof fetch !== 'undefined' ? fetch.bind(globalScope) : globalScope.fetch?.bind(globalScope));
+    const getInitData = customGetInitData || (() => globalScope.Telegram?.WebApp?.initData || '');
+    const documentRef = dependencies.document || globalScope.document;
+    const localAdminSession = dependencies.adminMockSession || GhostLinkV3.adminMockSession || globalScope.GhostLinkV3?.adminMockSession;
+    const isLocalAdmin = Boolean(
+      dependencies.isAdmin ||
+      localAdminSession?.isAdmin?.() ||
+      profileSubscription?.getCachedProfile?.()?.user?.is_admin ||
+      profileSubscription?.getCachedProfile?.()?.profile?.isAdmin
+    );
+    const openButton = documentRef?.getElementById('btnOpenPaymentSettings');
+    const page = documentRef?.getElementById('page-admin-payment-settings');
 
     if (!isLocalAdmin) {
       openButton?.closest('#system-payment-settings')?.remove();
@@ -139,23 +152,23 @@
 
     if (!openButton || !page) return;
 
-    const form = document.getElementById('paymentSettingsForm');
-    const backButton = document.getElementById('btnPaymentSettingsBack');
-    const cancelButton = document.getElementById('btnCancelPaymentSettings');
-    const saveButton = document.getElementById('btnSavePaymentSettings');
-    const methodInput = document.getElementById('paymentSettingsMethod');
-    const bankInput = document.getElementById('paymentSettingsBank');
-    const phoneInput = document.getElementById('paymentSettingsPhone');
-    const cardInput = document.getElementById('paymentSettingsCard');
-    const firstNameInput = document.getElementById('paymentSettingsRecipientFirstName');
-    const lastInitialInput = document.getElementById('paymentSettingsRecipientLastInitial');
-    const instructionInput = document.getElementById('paymentSettingsInstruction');
-    const statusInput = document.getElementById('paymentSettingsStatus');
-    const phoneField = document.getElementById('paymentSettingsPhoneField');
-    const cardField = document.getElementById('paymentSettingsCardField');
-    const formStatus = document.getElementById('paymentSettingsFormStatus');
-    const entrySummary = document.getElementById('paymentSettingsEntrySummary');
-    const versionLabel = document.getElementById('paymentSettingsVersion');
+    const form = documentRef.getElementById('paymentSettingsForm');
+    const backButton = documentRef.getElementById('btnPaymentSettingsBack');
+    const cancelButton = documentRef.getElementById('btnCancelPaymentSettings');
+    const saveButton = documentRef.getElementById('btnSavePaymentSettings');
+    const methodInput = documentRef.getElementById('paymentSettingsMethod');
+    const bankInput = documentRef.getElementById('paymentSettingsBank');
+    const phoneInput = documentRef.getElementById('paymentSettingsPhone');
+    const cardInput = documentRef.getElementById('paymentSettingsCard');
+    const firstNameInput = documentRef.getElementById('paymentSettingsRecipientFirstName');
+    const lastInitialInput = documentRef.getElementById('paymentSettingsRecipientLastInitial');
+    const instructionInput = documentRef.getElementById('paymentSettingsInstruction');
+    const statusInput = documentRef.getElementById('paymentSettingsStatus');
+    const phoneField = documentRef.getElementById('paymentSettingsPhoneField');
+    const cardField = documentRef.getElementById('paymentSettingsCardField');
+    const formStatus = documentRef.getElementById('paymentSettingsFormStatus');
+    const entrySummary = documentRef.getElementById('paymentSettingsEntrySummary');
+    const versionLabel = documentRef.getElementById('paymentSettingsVersion');
     let saving = false;
     let activeProfilesCount = 1;
 
@@ -218,17 +231,28 @@
 
     function renderPreview(profile) {
       const isCard = profile.method === 'card_number';
-      document.getElementById('paymentSettingsPreviewMethod').textContent = METHODS[profile.method];
-      document.getElementById('paymentSettingsPreviewBank').textContent = BANKS[profile.bankKey];
-      document.getElementById('paymentSettingsPreviewDestinationLabel').textContent = isCard ? 'Карта' : 'Телефон';
-      document.getElementById('paymentSettingsPreviewDestination').textContent = isCard
-        ? (profile.cardNumber || 'Не указана')
-        : (profile.phone || 'Не указан');
-      document.getElementById('paymentSettingsPreviewRecipient').textContent = [
-        profile.recipientFirstName || 'Не указано',
-        profile.recipientLastInitial ? `${profile.recipientLastInitial}.` : '',
-      ].filter(Boolean).join(' ');
-      document.getElementById('paymentSettingsPreviewInstruction').textContent = profile.instruction || 'Инструкция не указана';
+      const previewMethod = documentRef.getElementById('paymentSettingsPreviewMethod');
+      const previewBank = documentRef.getElementById('paymentSettingsPreviewBank');
+      const previewDestLabel = documentRef.getElementById('paymentSettingsPreviewDestinationLabel');
+      const previewDest = documentRef.getElementById('paymentSettingsPreviewDestination');
+      const previewRecipient = documentRef.getElementById('paymentSettingsPreviewRecipient');
+      const previewInstruction = documentRef.getElementById('paymentSettingsPreviewInstruction');
+
+      if (previewMethod) previewMethod.textContent = METHODS[profile.method];
+      if (previewBank) previewBank.textContent = BANKS[profile.bankKey];
+      if (previewDestLabel) previewDestLabel.textContent = isCard ? 'Карта' : 'Телефон';
+      if (previewDest) {
+        previewDest.textContent = isCard
+          ? (profile.cardNumber || 'Не указана')
+          : (profile.phone || 'Не указан');
+      }
+      if (previewRecipient) {
+        previewRecipient.textContent = [
+          profile.recipientFirstName || 'Не указано',
+          profile.recipientLastInitial ? `${profile.recipientLastInitial}.` : '',
+        ].filter(Boolean).join(' ');
+      }
+      if (previewInstruction) previewInstruction.textContent = profile.instruction || 'Инструкция не указана';
     }
 
     function renderForm() {
@@ -251,10 +275,53 @@
       closeOverlay(page);
     }
 
-    openButton.addEventListener('click', () => {
+    async function loadLiveSettings() {
+      if (typeof fetchImpl !== 'function') return;
+      try {
+        const token = profileSubscription?.getToken?.() || '';
+        const initData = String(getInitData() || '').trim();
+        const headers = { Accept: 'application/json' };
+        if (token) headers['X-PWA-Token'] = token;
+        if (initData) headers['X-Telegram-InitData'] = initData;
+
+        const res = await fetchImpl(`${apiBase}/api/payment/settings`, {
+          method: 'GET',
+          headers,
+          cache: 'no-store',
+        });
+        if (res && res.ok) {
+          const data = await res.json();
+          if (data && (data.phone || data.bank || data.recipient)) {
+            const rawBank = String(data.bank || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+            const bankKey = Object.hasOwn(BANKS, rawBank)
+              ? rawBank
+              : (rawBank === 'alfa' ? 'alfabank' : (rawBank === 'sber' ? 'sberbank' : (rawBank === 'ozon' ? 'ozonbank' : 'tbank')));
+            const parts = String(data.recipient || '').trim().split(/\s+/);
+            const firstName = parts[0] || '';
+            const initial = parts[1] ? parts[1].replace(/\./g, '').slice(0, 1) : '';
+
+            currentProfile = createVersion(currentProfile, {
+              ...currentProfile,
+              bankKey,
+              phone: data.phone || currentProfile.phone,
+              recipientFirstName: firstName || currentProfile.recipientFirstName,
+              recipientLastInitial: initial || currentProfile.recipientLastInitial,
+            }, { actor: 'api' });
+            writeForm(currentProfile);
+            renderSavedProfile();
+          }
+        }
+      } catch (_) {
+        // Fallback to locally cached version
+      }
+    }
+
+    openButton.addEventListener('click', async () => {
       writeForm(currentProfile);
       openOverlay(page);
+      await loadLiveSettings();
     });
+
     backButton?.addEventListener('click', closeSettings);
     cancelButton?.addEventListener('click', closeSettings);
     form.addEventListener('input', () => {
@@ -268,7 +335,7 @@
       if (saving) return;
 
       try {
-        localAdminSession.assertAdmin('save_payment_settings');
+        localAdminSession?.assertAdmin?.('save_payment_settings');
       } catch {
         formStatus.textContent = 'Недостаточно прав администратора';
         return;
@@ -289,21 +356,58 @@
       saving = true;
       saveButton.disabled = true;
       saveButton.textContent = 'Сохраняю...';
-      formStatus.textContent = 'Создаём новую версию реквизитов...';
+      formStatus.textContent = 'Обновляем реквизиты в базе...';
+
+      const recipient = `${candidate.recipientFirstName} ${candidate.recipientLastInitial}.`.trim();
+      const payload = {
+        phone: candidate.phone,
+        bank: candidate.bankKey,
+        recipient,
+      };
 
       try {
-        await new Promise((resolve) => globalScope.setTimeout(resolve, 250));
+        const token = profileSubscription?.getToken?.() || '';
+        const initData = String(getInitData() || '').trim();
+        const headers = {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        };
+        if (token) headers['X-PWA-Token'] = token;
+        if (initData) headers['X-Telegram-InitData'] = initData;
+
+        if (typeof fetchImpl === 'function') {
+          const res = await fetchImpl(`${apiBase}/api/admin/payment/settings`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(payload),
+          });
+          if (!res || !res.ok) {
+            let errorMsg = 'Не удалось обновить реквизиты на сервере';
+            try {
+              const errData = await res.json();
+              if (errData?.detail) errorMsg = errData.detail;
+            } catch (_) {}
+            throw new Error(errorMsg);
+          }
+        }
+
         currentProfile = createVersion(currentProfile, candidate, {
-          actor: 'local-admin',
+          actor: 'admin',
         });
         versions.push(currentProfile);
         activeProfilesCount = currentProfile.status === 'active' ? 1 : activeProfilesCount;
         renderSavedProfile();
         writeForm(currentProfile);
-        formStatus.textContent = `Сохранена версия v${currentProfile.version}. Старые заявки не изменены.`;
-        showToast?.('Новая версия реквизитов сохранена локально');
+        formStatus.textContent = `Реквизиты успешно сохранены (v${currentProfile.version}).`;
+        showToast('Реквизиты успешно обновлены в базе');
+
+        // Sync live checkout if active
+        if (globalScope.GhostLinkPayment?.loadSettings) {
+          void globalScope.GhostLinkPayment.loadSettings();
+        }
       } catch (error) {
-        formStatus.textContent = 'Не удалось сохранить. Изменения не применены.';
+        formStatus.textContent = error?.message || 'Не удалось сохранить. Изменения не применены.';
+        showToast(error?.message || 'Ошибка сохранения реквизитов');
       } finally {
         saving = false;
         saveButton.disabled = false;
@@ -318,6 +422,17 @@
       getActive: () => currentProfile,
       getVersions: () => [...versions],
       createPaymentSnapshot: request => createPaymentSnapshot(request, currentProfile),
+      loadLiveSettings,
     });
   };
+
+  const exported = {
+    ...PaymentSettingsModel,
+    PaymentSettingsModel,
+    initAdminPaymentSettingsModule: GhostLinkV3.initAdminPaymentSettingsModule,
+  };
+
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = exported;
+  }
 }(typeof window !== 'undefined' ? window : globalThis));

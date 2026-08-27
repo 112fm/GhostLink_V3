@@ -1,72 +1,388 @@
 (() => {
-const GhostLinkV3 = window.GhostLinkV3 = window.GhostLinkV3 || {};
+const root = typeof window !== 'undefined' ? window : globalThis;
+const GhostLinkV3 = root.GhostLinkV3 = root.GhostLinkV3 || {};
 
-GhostLinkV3.initSubscriptionModule = function initSubscriptionModule(dependencies = {}) {
-  const { showToast, copyText, openOverlay, closeOverlay, returnToHome } = dependencies;
+const BANK_NAMES = {
+  tbank: 'Т-Банк',
+  tinkoff: 'Т-Банк',
+  alfa: 'Альфа-Банк',
+  alfabank: 'Альфа-Банк',
+  sber: 'Сбербанк',
+  sberbank: 'Сбербанк',
+  ozon: 'Озон-банк',
+  ozonbank: 'Озон-банк',
+  vtb: 'ВТБ',
+};
 
-// Extend Subscription Page Logic
-const bentoExtend = document.querySelector('.bento-extend');
-const pageExtend = document.getElementById('page-extend');
-const btnExtendBack = document.getElementById('btn-extend-back');
-
-if (bentoExtend && pageExtend && btnExtendBack) {
-  bentoExtend.addEventListener('click', () => {
-    openOverlay(pageExtend);
-  });
-  
-  btnExtendBack.addEventListener('click', () => {
-    closeOverlay(pageExtend);
-  });
-}
-
-// Checkout (Payment) Page State Machine & Logic
-const btnPay = document.getElementById('btn-pay');
-const pageCheckout = document.getElementById('page-checkout');
-const btnCheckoutBack = document.getElementById('btn-checkout-back');
-
-const checkoutFormView = document.getElementById('checkout-form-view');
-const checkoutPendingView = document.getElementById('checkout-pending-view');
-const checkoutApprovedView = document.getElementById('checkout-approved-view');
-const checkoutRejectedView = document.getElementById('checkout-rejected-view');
-const btnPendingHome = document.getElementById('btn-pending-home');
-
-const btnCopyPhone = document.getElementById('btn-copy-phone');
-const btnSubmitPayment = document.getElementById('btn-submit-payment');
-const btnRetryPayment = document.getElementById('btn-retry-payment');
-const payerNameInput = document.getElementById('payer-name-input');
-const reqBankName = document.getElementById('req-bank-name');
-const reqPhoneNum = document.getElementById('req-phone-num');
-const reqRecipientName = document.getElementById('req-recipient-name');
-const pendingBankEl = document.getElementById('pending-bank-val');
-const pendingPayerEl = document.getElementById('pending-payer-val');
-const pendingTimeEl = document.getElementById('pending-time-val');
-const approvedAmountEl = document.getElementById('approved-amount-val');
-const rejectedPlanEl = document.getElementById('rejected-plan-val');
-const rejectedAmountEl = document.getElementById('rejected-amount-val');
-const rejectedPayerEl = document.getElementById('rejected-payer-val');
-const confirmationNameDot = document.getElementById('confirmation-name-dot');
-const confirmationNameText = document.getElementById('confirmation-name-text');
-const confirmationBankName = document.getElementById('confirmation-bank-name');
-const paymentConfig = window.GhostLinkPaymentConfig;
-let currentPaymentRequest = null;
-
-function renderPaymentDetails(details) {
-  const bankLabel = paymentConfig?.banks[details.bankKey] || paymentConfig?.banks.tbank || 'Т-Банк';
-  if (pageCheckout) pageCheckout.dataset.bank = details.bankKey;
-  if (reqBankName) reqBankName.textContent = bankLabel;
-  if (confirmationBankName) confirmationBankName.textContent = bankLabel;
-  if (pendingBankEl) pendingBankEl.textContent = bankLabel;
-  if (reqPhoneNum) reqPhoneNum.textContent = details.destination || details.phone;
-  if (reqRecipientName) reqRecipientName.textContent = `Получатель: ${details.recipient}`;
-  if (btnCopyPhone) {
-    const destinationLabel = details.destinationLabel || 'Номер';
-    btnCopyPhone.setAttribute('aria-label', `Скопировать: ${destinationLabel.toLowerCase()}`);
-    btnCopyPhone.setAttribute('title', `Скопировать: ${destinationLabel.toLowerCase()}`);
-  }
+function formatBankName(rawBank) {
+  if (!rawBank) return 'Т-Банк';
+  const key = String(rawBank).toLowerCase().replace(/[^a-zа-я0-9]/g, '');
+  return BANK_NAMES[key] || rawBank;
 }
 
 function isValidPayerName(value) {
-  return /^\p{L}{2,}(?:[\s-]+\p{L}{1,}\.?)+$/u.test(value.trim());
+  return /^\p{L}{2,}(?:[\s-]+\p{L}{1,}\.?)+$/u.test(String(value || '').trim());
+}
+
+function generateUuidV4() {
+  if (typeof root.crypto?.randomUUID === 'function') {
+    return root.crypto.randomUUID();
+  }
+  if (typeof root.crypto?.getRandomValues === 'function') {
+    const buf = new Uint8Array(16);
+    root.crypto.getRandomValues(buf);
+    buf[6] = (buf[6] & 0x0f) | 0x40; // Version 4
+    buf[8] = (buf[8] & 0x3f) | 0x80; // Variant RFC4122
+    const hex = Array.from(buf, (b) => b.toString(16).padStart(2, '0')).join('');
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
+const PRICE_TABLE = {
+  2: { 1: 150, 2: 290, 3: 430 },
+  3: { 1: 350, 2: 630, 3: 840 },
+  4: { 1: 450, 2: 810, 3: 1080 },
+  5: { 1: 500, 2: 900, 3: 1200 }
+};
+
+function getTariffPrice(totalDev, months, snapshot) {
+  const tariffs = snapshot?.tariffs;
+  if (tariffs?.period_prices?.[months]?.[totalDev]?.price) {
+    return Number(tariffs.period_prices[months][totalDev].price);
+  }
+  if (months === 1 && tariffs?.flex?.[totalDev]?.price) {
+    return Number(tariffs.flex[totalDev].price);
+  }
+  if (months === 1 && totalDev <= 2 && tariffs?.solo?.price) {
+    return Number(tariffs.solo.price);
+  }
+  return PRICE_TABLE[totalDev]?.[months] || (PRICE_TABLE[2]?.[months] || 150);
+}
+
+GhostLinkV3.getTariffPrice = getTariffPrice;
+
+GhostLinkV3.initSubscriptionModule = function initSubscriptionModule(dependencies = {}) {
+
+  const {
+    showToast = () => {},
+    copyText = () => Promise.resolve(true),
+    openOverlay = () => {},
+    closeOverlay = () => {},
+    returnToHome = () => {},
+    profileSubscription,
+    fetch: customFetch,
+    apiBase: customApiBase,
+    getInitData: customGetInitData,
+  } = dependencies;
+
+  const DEFAULT_API_BASE = 'https://api.112prd.ru';
+  const apiBase = (customApiBase || profileSubscription?.getApiBase?.() || DEFAULT_API_BASE).replace(/\/+$/, '');
+  const fetchImpl = customFetch || (typeof fetch !== 'undefined' ? fetch.bind(root) : root.fetch?.bind(root));
+  const getInitData = customGetInitData || (() => root.Telegram?.WebApp?.initData || '');
+
+  // DOM Elements
+  const bentoExtend = document.querySelector('.bento-extend');
+  const pageExtend = document.getElementById('page-extend');
+  const btnExtendBack = document.getElementById('btn-extend-back');
+
+  const btnPay = document.getElementById('btn-pay');
+  const pageCheckout = document.getElementById('page-checkout');
+  const btnCheckoutBack = document.getElementById('btn-checkout-back');
+
+  const checkoutFormView = document.getElementById('checkout-form-view');
+  const checkoutPendingView = document.getElementById('checkout-pending-view');
+  const checkoutApprovedView = document.getElementById('checkout-approved-view');
+  const checkoutRejectedView = document.getElementById('checkout-rejected-view');
+  const btnPendingHome = document.getElementById('btn-pending-home');
+  const btnApprovedHome = document.getElementById('btn-approved-home');
+
+  const btnCopyPhone = document.getElementById('btn-copy-phone');
+  const btnSubmitPayment = document.getElementById('btn-submit-payment');
+  const btnRetryPayment = document.getElementById('btn-retry-payment');
+  const payerNameInput = document.getElementById('payer-name-input');
+  const reqBankName = document.getElementById('req-bank-name');
+  const reqPhoneNum = document.getElementById('req-phone-num');
+  const reqRecipientName = document.getElementById('req-recipient-name');
+  const pendingPlanEl = document.getElementById('pending-plan-val');
+  const pendingAmountEl = document.getElementById('pending-amount-val');
+  const pendingBankEl = document.getElementById('pending-bank-val');
+  const pendingPayerEl = document.getElementById('pending-payer-val');
+  const pendingTimeEl = document.getElementById('pending-time-val');
+  const approvedPlanEl = document.getElementById('approved-plan-val');
+  const approvedAmountEl = document.getElementById('approved-amount-val');
+  const approvedDevEl = document.getElementById('approved-dev-val');
+  const rejectedPlanEl = document.getElementById('rejected-plan-val');
+  const rejectedAmountEl = document.getElementById('rejected-amount-val');
+  const rejectedPayerEl = document.getElementById('rejected-payer-val');
+  const confirmationNameDot = document.getElementById('confirmation-name-dot');
+  const confirmationNameText = document.getElementById('confirmation-name-text');
+  const confirmationBankName = document.getElementById('confirmation-bank-name');
+  const paymentConfig = root.GhostLinkPaymentConfig;
+
+  let currentPaymentRequest = null;
+  let currentPaymentRequestId = null;
+  let liveRequisitesLoaded = false;
+  let settingsPromise = null;
+  let pendingPollTimer = null;
+
+  function startPendingPolling() {
+    if (pendingPollTimer) return;
+    pendingPollTimer = setInterval(async () => {
+      if (!profileSubscription?.fetchProfileSubscription) return;
+      try {
+        const freshProfile = await profileSubscription.fetchProfileSubscription();
+        if (!freshProfile) return;
+        const paymentStatus = freshProfile?.payment_status ||
+          freshProfile?.subscription?.payment_status ||
+          freshProfile?.profile?.payment_status ||
+          freshProfile?.payment?.status;
+
+        const incomingReqId = freshProfile?.subscription?.payment_request_id ||
+          freshProfile?.payment_request_id ||
+          freshProfile?.profile?.payment_request_id ||
+          freshProfile?.payment?.payment_request_id ||
+          freshProfile?.payment?.request_id;
+
+        const activeReqId = getOrCreatePaymentRequestId();
+
+        // If incoming response specifies a payment_request_id, match against active session request_id
+        if (incomingReqId && activeReqId && incomingReqId !== activeReqId) {
+          return;
+        }
+
+        if (paymentStatus === 'approved') {
+          stopPendingPolling();
+          restorePaymentStateFromProfile(freshProfile);
+          if (typeof root.GhostLinkV3?.Home?.updateSubscriptionState === 'function') {
+            root.GhostLinkV3.Home.updateSubscriptionState(freshProfile);
+          }
+        } else if (paymentStatus === 'rejected') {
+          stopPendingPolling();
+          restorePaymentStateFromProfile(freshProfile);
+          if (typeof root.GhostLinkV3?.Home?.updateSubscriptionState === 'function') {
+            root.GhostLinkV3.Home.updateSubscriptionState(freshProfile);
+          }
+        }
+      } catch (_) {
+        // Polling silently absorbs network hiccups
+      }
+    }, 4000);
+    if (typeof pendingPollTimer?.unref === 'function') {
+      pendingPollTimer.unref();
+    }
+  }
+
+  function stopPendingPolling() {
+    if (pendingPollTimer) {
+      clearInterval(pendingPollTimer);
+      pendingPollTimer = null;
+    }
+  }
+
+  function setCheckoutView(state) {
+    if (!checkoutFormView) return;
+    // CSS uses this state to keep receipt screens static while the form can scroll.
+    if (pageCheckout) pageCheckout.dataset.checkoutView = state;
+    checkoutFormView.style.display = state === 'form' ? 'flex' : 'none';
+    checkoutPendingView.style.display = state === 'pending' ? 'flex' : 'none';
+    checkoutApprovedView.style.display = state === 'approved' ? 'flex' : 'none';
+    checkoutRejectedView.style.display = state === 'rejected' ? 'flex' : 'none';
+
+    if (state === 'pending') {
+      startPendingPolling();
+    } else {
+      stopPendingPolling();
+    }
+  }
+
+  function restorePaymentStateFromProfile(snapshot) {
+    if (!snapshot) return;
+    const paymentStatus = snapshot?.payment_status ||
+      snapshot?.subscription?.payment_status ||
+      snapshot?.profile?.payment_status ||
+      snapshot?.payment?.status;
+
+    const paymentAmount = snapshot?.payment?.amount ??
+      snapshot?.subscription?.payment_amount ??
+      snapshot?.profile?.payment_amount ??
+      snapshot?.payment_amount;
+
+    const paymentPlan = snapshot?.payment?.label ||
+      snapshot?.subscription?.payment_label ||
+      snapshot?.profile?.payment_label ||
+      snapshot?.payment_label ||
+      snapshot?.subscription?.plan?.title ||
+      'Solo Ghost';
+
+    const paymentSender = snapshot?.payment?.sender ||
+      snapshot?.subscription?.payment_sender ||
+      snapshot?.profile?.payment_sender ||
+      snapshot?.payment_sender ||
+      '';
+
+    const paymentTime = snapshot?.payment?.timeMsk ||
+      snapshot?.subscription?.payment_time_msk ||
+      snapshot?.profile?.payment_time_msk ||
+      snapshot?.payment_time_msk ||
+      '';
+
+    const paymentBank = snapshot?.payment?.bank ||
+      snapshot?.subscription?.payment_bank ||
+      snapshot?.payment_bank ||
+      reqBankName?.textContent ||
+      'Т-Банк';
+
+    if (paymentStatus === 'pending_verification' || paymentStatus === 'pending') {
+      if (pendingPlanEl) pendingPlanEl.textContent = paymentPlan;
+      if (pendingAmountEl) pendingAmountEl.textContent = paymentAmount ? `${paymentAmount} ₽` : '150 ₽';
+      if (pendingPayerEl && paymentSender) pendingPayerEl.textContent = paymentSender;
+      if (pendingBankEl && paymentBank) pendingBankEl.textContent = formatBankName(paymentBank);
+      if (pendingTimeEl && paymentTime) pendingTimeEl.textContent = paymentTime;
+      setCheckoutView('pending');
+    } else if (paymentStatus === 'approved') {
+      if (approvedAmountEl) approvedAmountEl.textContent = paymentAmount ? `${paymentAmount} ₽` : '150 ₽';
+      if (approvedPlanEl) approvedPlanEl.textContent = paymentPlan;
+      setCheckoutView('approved');
+      try {
+        root.sessionStorage?.removeItem?.(PAYMENT_REQ_STORAGE_KEY);
+      } catch (_) {}
+    } else if (paymentStatus === 'rejected') {
+      if (rejectedPlanEl) rejectedPlanEl.textContent = paymentPlan;
+      if (rejectedAmountEl) rejectedAmountEl.textContent = paymentAmount ? `${paymentAmount} ₽` : '150 ₽';
+      if (rejectedPayerEl && paymentSender) rejectedPayerEl.textContent = paymentSender;
+      setCheckoutView('rejected');
+      try {
+        root.sessionStorage?.removeItem?.(PAYMENT_REQ_STORAGE_KEY);
+      } catch (_) {}
+    }
+  }
+
+  // Initial state is form view unless cached profile is pending
+  setCheckoutView('form');
+  if (profileSubscription?.getCachedProfile) {
+    restorePaymentStateFromProfile(profileSubscription.getCachedProfile());
+  }
+
+  // Extend Subscription Page Logic
+  if (bentoExtend && pageExtend && btnExtendBack) {
+    bentoExtend.addEventListener('click', () => {
+      const cached = profileSubscription?.getCachedProfile?.() || null;
+      const paymentStatus = cached?.payment_status ||
+        cached?.subscription?.payment_status ||
+        cached?.profile?.payment_status ||
+        cached?.payment?.status;
+      if (paymentStatus === 'pending_verification' || paymentStatus === 'pending') {
+        restorePaymentStateFromProfile(cached);
+        openOverlay(pageCheckout);
+        return;
+      }
+      if (paymentStatus === 'approved') {
+        restorePaymentStateFromProfile(cached);
+        openOverlay(pageCheckout);
+        return;
+      }
+      openOverlay(pageExtend);
+    });
+    
+    btnExtendBack.addEventListener('click', () => {
+      closeOverlay(pageExtend);
+    });
+  }
+
+  const PAYMENT_REQ_STORAGE_KEY = 'ghostlink_payment_request_id';
+
+  function getOrCreatePaymentRequestId() {
+    if (!currentPaymentRequestId) {
+      try {
+        currentPaymentRequestId = root.sessionStorage?.getItem?.(PAYMENT_REQ_STORAGE_KEY) || null;
+      } catch (_) {}
+    }
+    if (!currentPaymentRequestId) {
+      currentPaymentRequestId = generateUuidV4();
+      try {
+        root.sessionStorage?.setItem?.(PAYMENT_REQ_STORAGE_KEY, currentPaymentRequestId);
+      } catch (_) {}
+    }
+    return currentPaymentRequestId;
+  }
+
+  function resetPaymentRequestId() {
+    currentPaymentRequestId = generateUuidV4();
+    try {
+      root.sessionStorage?.setItem?.(PAYMENT_REQ_STORAGE_KEY, currentPaymentRequestId);
+    } catch (_) {}
+    return currentPaymentRequestId;
+  }
+
+  function renderPaymentDetails(details) {
+    const bankLabel = formatBankName(details.bankKey || details.bank) || paymentConfig?.banks[details.bankKey] || 'Т-Банк';
+    if (pageCheckout) pageCheckout.dataset.bank = details.bankKey || details.bank || 'tbank';
+    if (reqBankName) reqBankName.textContent = bankLabel;
+    if (confirmationBankName) confirmationBankName.textContent = bankLabel;
+    if (pendingBankEl) pendingBankEl.textContent = bankLabel;
+    if (reqPhoneNum) reqPhoneNum.textContent = details.destination || details.phone;
+    if (reqRecipientName) reqRecipientName.textContent = `Получатель: ${details.recipient}`;
+    if (btnCopyPhone) {
+      const destinationLabel = details.destinationLabel || 'Номер';
+      btnCopyPhone.setAttribute('aria-label', `Скопировать: ${destinationLabel.toLowerCase()}`);
+      btnCopyPhone.setAttribute('title', `Скопировать: ${destinationLabel.toLowerCase()}`);
+    }
+  }
+
+async function loadPaymentSettings() {
+  if (typeof fetchImpl !== 'function') return null;
+  if (settingsPromise) return settingsPromise;
+
+  settingsPromise = (async () => {
+    try {
+      const token = profileSubscription?.getToken?.() || '';
+      const initData = String(getInitData() || '').trim();
+      const headers = {
+        Accept: 'application/json',
+      };
+      if (token) headers['X-PWA-Token'] = token;
+      if (initData) headers['X-Telegram-InitData'] = initData;
+
+      const res = await fetchImpl(`${apiBase}/api/payment/settings`, {
+        method: 'GET',
+        headers,
+        cache: 'no-store',
+      });
+      if (!res || !res.ok) {
+        throw new Error(`HTTP ${res?.status || 500}`);
+      }
+      const data = await res.json();
+      if (data && (data.phone || data.bank || data.recipient)) {
+        liveRequisitesLoaded = true;
+        const bankLabel = formatBankName(data.bank);
+        const phone = data.phone || '';
+        const recipient = data.recipient || '';
+        if (pageCheckout) pageCheckout.dataset.bank = data.bank || 'tbank';
+        if (reqBankName) reqBankName.textContent = bankLabel;
+        if (confirmationBankName) confirmationBankName.textContent = bankLabel;
+        if (pendingBankEl) pendingBankEl.textContent = bankLabel;
+        if (reqPhoneNum) reqPhoneNum.textContent = phone;
+        if (reqRecipientName) reqRecipientName.textContent = `Получатель: ${recipient}`;
+        return data;
+      }
+      throw new Error('Empty payment settings response');
+    } catch (_) {
+      liveRequisitesLoaded = false;
+      if (reqBankName) reqBankName.textContent = '⚠️ Ошибка связи';
+      if (reqPhoneNum) reqPhoneNum.textContent = 'Реквизиты временно недоступны';
+      if (reqRecipientName) reqRecipientName.textContent = 'Нажмите здесь, чтобы повторить попытку';
+      return null;
+    } finally {
+      settingsPromise = null;
+    }
+  })();
+
+  return settingsPromise;
 }
 
 function updatePayerCheck() {
@@ -89,10 +405,15 @@ function setPaymentDetails(nextDetails) {
 }
 
 // Admin integration point: the future settings form can use this API without knowing the markup.
-window.GhostLinkPayment = Object.freeze({
+root.GhostLinkPayment = Object.freeze({
   getDetails: () => paymentConfig?.get() || {},
   setDetails: setPaymentDetails,
   setBank: bankKey => setPaymentDetails({ bankKey }),
+  loadSettings: loadPaymentSettings,
+  restorePaymentStateFromProfile,
+  setCheckoutView,
+  startPendingPolling,
+  stopPendingPolling,
   resetDetails: () => {
     const details = paymentConfig?.reset() || {};
     renderPaymentDetails(details);
@@ -106,6 +427,7 @@ renderPaymentDetails(paymentConfig?.get() || {
   recipient: 'Тестовый получатель',
 });
 updatePayerCheck();
+void loadPaymentSettings();
 
 if (payerNameInput) {
   payerNameInput.addEventListener('input', () => {
@@ -114,29 +436,40 @@ if (payerNameInput) {
   });
 }
 
-function setCheckoutView(state) {
-  if (!checkoutFormView) return;
-  // CSS uses this state to keep receipt screens static while the form can scroll.
-  if (pageCheckout) pageCheckout.dataset.checkoutView = state;
-  checkoutFormView.style.display = state === 'form' ? 'flex' : 'none';
-  checkoutPendingView.style.display = state === 'pending' ? 'flex' : 'none';
-  checkoutApprovedView.style.display = state === 'approved' ? 'flex' : 'none';
-  checkoutRejectedView.style.display = state === 'rejected' ? 'flex' : 'none';
+// Initial check for existing payment status from cached profile
+if (profileSubscription?.getCachedProfile) {
+  restorePaymentStateFromProfile(profileSubscription.getCachedProfile());
 }
-
-// V3 prototype starts every new session at the payment form.
-setCheckoutView('form');
 
 if (btnPay && pageCheckout && btnCheckoutBack) {
   btnPay.addEventListener('click', () => {
+    const cached = profileSubscription?.getCachedProfile?.() || null;
+    const paymentStatus = cached?.payment_status ||
+      cached?.subscription?.payment_status ||
+      cached?.profile?.payment_status ||
+      cached?.payment?.status;
+    if (paymentStatus === 'pending_verification' || paymentStatus === 'pending') {
+      restorePaymentStateFromProfile(cached);
+      openOverlay(pageCheckout);
+      return;
+    }
+    if (paymentStatus === 'approved') {
+      restorePaymentStateFromProfile(cached);
+      openOverlay(pageCheckout);
+      return;
+    }
+
+    // Generate unique canonical UUID v4 for idempotency
+    resetPaymentRequestId();
     // Never reopen a stale pending screen when starting a new payment flow.
     setCheckoutView('form');
     // Collect active values from Extend screen
     const activeTariff = document.querySelector('input[name="tariff-period"]:checked');
-    const activeDeviceType = document.querySelector('input[name="device-type"]:checked').value;
-    const months = activeTariff ? parseInt(activeTariff.value, 10) : 1;
+    const activeDeviceType = document.querySelector('input[name="device-type"]:checked')?.value || 'solo';
     const totalDev = activeDeviceType === 'flex' ? flexDevCount : 2;
-    const totalAmount = PRICE_TABLE[totalDev][months];
+    const currentSnapshot = profileSubscription?.getSnapshot?.() || GhostLinkV3.profileSubscription?.getSnapshot?.();
+    const totalAmount = getTariffPrice(totalDev, months, currentSnapshot);
+
 
     const planName = activeDeviceType === 'flex' ? `Flex Squad ${totalDev}` : 'Solo Ghost';
     const periodText = `${months} ${months === 1 ? 'месяц' : 'месяца'} · ${totalDev} ${totalDev === 2 || totalDev === 3 || totalDev === 4 ? 'устройства' : 'устройств'}`;
@@ -165,10 +498,9 @@ if (btnPay && pageCheckout && btnCheckoutBack) {
     if (rejectedAmountEl) rejectedAmountEl.textContent = `${totalAmount} ₽`;
 
     // Each new request receives its own immutable payment-details snapshot.
-    // Changing the active admin profile later must not rewrite this checkout.
     if (window.GhostLinkV3?.PaymentSettingsMock) {
       currentPaymentRequest = window.GhostLinkV3.PaymentSettingsMock.createPaymentSnapshot({
-        requestId: `local-payment-${Date.now()}`,
+        requestId: currentPaymentRequestId,
         planId: activeDeviceType === 'flex' ? `flex-${totalDev}` : 'solo-ghost',
         amount: totalAmount,
       });
@@ -179,25 +511,55 @@ if (btnPay && pageCheckout && btnCheckoutBack) {
     }
 
     openOverlay(pageCheckout);
+    void loadPaymentSettings();
   });
 
   btnCheckoutBack.addEventListener('click', () => {
+    stopPendingPolling();
     closeOverlay(pageCheckout);
   });
 }
 
-// Copy phone number
+// Copy phone number or trigger reload if failed
 if (btnCopyPhone) {
   btnCopyPhone.addEventListener('click', async () => {
-    const phoneNum = document.getElementById('req-phone-num')?.textContent || '+7 (000) 000-00-00';
+    if (!liveRequisitesLoaded) {
+      showToast('Загружаем реквизиты...');
+      await loadPaymentSettings();
+      return;
+    }
+    const phoneNum = document.getElementById('req-phone-num')?.textContent || '';
+    if (!phoneNum || phoneNum.includes('недоступны')) {
+      await loadPaymentSettings();
+      return;
+    }
     const copied = await copyText(phoneNum);
     showToast(copied ? 'Реквизиты скопированы' : 'Не удалось скопировать. Нажмите и удерживайте реквизиты.');
   });
 }
 
+if (reqRecipientName) {
+  reqRecipientName.addEventListener('click', () => {
+    if (!liveRequisitesLoaded) void loadPaymentSettings();
+  });
+}
+
+let isSubmittingPayment = false;
+
 // Submit payment confirmation
 if (btnSubmitPayment && payerNameInput) {
-  btnSubmitPayment.addEventListener('click', () => {
+  btnSubmitPayment.addEventListener('click', async () => {
+    if (isSubmittingPayment) return;
+
+    if (!liveRequisitesLoaded) {
+      showToast('Реквизиты недоступны. Повторяем загрузку...');
+      const loaded = await loadPaymentSettings();
+      if (!loaded && !liveRequisitesLoaded) {
+        showToast('Не удалось загрузить реквизиты. Проверьте сеть и повторите.');
+        return;
+      }
+    }
+
     const nameVal = payerNameInput.value.trim();
     const validName = updatePayerCheck();
     if (!validName) {
@@ -208,26 +570,95 @@ if (btnSubmitPayment && payerNameInput) {
     }
     
     payerNameInput.classList.remove('error');
-    if (pendingPayerEl) pendingPayerEl.textContent = nameVal;
-    if (rejectedPayerEl) rejectedPayerEl.textContent = nameVal;
-    if (pendingTimeEl) {
-      pendingTimeEl.textContent = new Intl.DateTimeFormat('ru-RU', {
-        day: '2-digit',
-        month: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-      }).format(new Date());
-    }
+
+    // Collect active values from Extend screen
+    const activeTariff = document.querySelector('input[name="tariff-period"]:checked');
+    const activeDeviceType = document.querySelector('input[name="device-type"]:checked')?.value || 'solo';
+    const months = activeTariff ? parseInt(activeTariff.value, 10) : 1;
+    const totalDev = activeDeviceType === 'flex' ? flexDevCount : 2;
+    const totalAmount = PRICE_TABLE[totalDev]?.[months] || 150;
+    const planName = activeDeviceType === 'flex' ? `Flex Squad ${totalDev}` : 'Solo Ghost';
     
     // Prevent double submission
+    isSubmittingPayment = true;
     btnSubmitPayment.disabled = true;
     btnSubmitPayment.textContent = 'Заявка отправляется...';
 
-    setTimeout(() => {
-      setCheckoutView('pending');
+    const reqId = getOrCreatePaymentRequestId();
+    const payload = {
+      request_id: reqId,
+      payment_request_id: reqId,
+      amount: totalAmount,
+      sender_name: nameVal,
+      payment_label: planName,
+      target_device_limit: totalDev,
+      period_months: months,
+    };
+
+    try {
+      const token = profileSubscription?.getToken?.() || '';
+      const initData = String(getInitData() || '').trim();
+      const headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-Request-ID': reqId,
+      };
+      if (token) headers['X-PWA-Token'] = token;
+      if (initData) headers['X-Telegram-InitData'] = initData;
+
+      if (typeof fetchImpl !== 'function') {
+        throw new Error('Сетевой интерфейс недоступен');
+      }
+
+      const response = await fetchImpl(`${apiBase}/api/payment/report`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
+      });
+
+      let data = null;
+      try {
+        data = await response.json();
+      } catch (_) {
+        // non-json response
+      }
+
+      if (response.ok) {
+        if (pendingPayerEl) pendingPayerEl.textContent = nameVal;
+        if (rejectedPayerEl) rejectedPayerEl.textContent = nameVal;
+        if (pendingPlanEl) pendingPlanEl.textContent = planName;
+        if (pendingAmountEl) pendingAmountEl.textContent = `${totalAmount} ₽`;
+        if (pendingBankEl) pendingBankEl.textContent = reqBankName?.textContent || 'Т-Банк';
+        if (pendingTimeEl) {
+          pendingTimeEl.textContent = new Intl.DateTimeFormat('ru-RU', {
+            day: '2-digit',
+            month: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+          }).format(new Date());
+        }
+        setCheckoutView('pending');
+        showToast('Заявка на оплату отправлена');
+      } else {
+        let errorMsg = 'Не удалось отправить заявку. Попробуйте ещё раз.';
+        if (response.status === 400) {
+          errorMsg = data?.detail || 'Некорректные данные платежа. Проверьте сумму и имя.';
+        } else if (response.status === 401) {
+          errorMsg = data?.detail || 'Сессия истекла. Откройте Mini App через Telegram ещё раз.';
+        } else if (response.status >= 500) {
+          errorMsg = 'Сервер временно недоступен. Попробуйте позже.';
+        } else if (data?.detail) {
+          errorMsg = data.detail;
+        }
+        showToast(errorMsg);
+      }
+    } catch (err) {
+      showToast('Не удалось связаться с GhostLink. Проверьте подключение.');
+    } finally {
+      isSubmittingPayment = false;
       btnSubmitPayment.disabled = false;
       btnSubmitPayment.textContent = 'Я оплатил';
-    }, 600);
+    }
   });
 
   payerNameInput.addEventListener('input', () => {
@@ -249,13 +680,14 @@ if (btnRetryPayment) {
 
 if (btnPendingHome) {
   btnPendingHome.addEventListener('click', () => {
+    stopPendingPolling();
     returnToHome();
   });
 }
 
-const btnApprovedHome = document.getElementById('btn-approved-home');
 if (btnApprovedHome) {
   btnApprovedHome.addEventListener('click', () => {
+    stopPendingPolling();
     returnToHome();
   });
 }
@@ -269,13 +701,6 @@ const btnDevPlus = document.getElementById('btn-dev-plus');
 
 let flexDevCount = 3;
 
-const PRICE_TABLE = {
-  2: { 1: 150, 2: 290, 3: 430 },
-  3: { 1: 350, 2: 630, 3: 840 },
-  4: { 1: 450, 2: 810, 3: 1080 },
-  5: { 1: 500, 2: 900, 3: 1200 }
-};
-
 function calculateTotals() {
   const activeTariff = document.querySelector('input[name="tariff-period"]:checked');
   const activeDeviceType = document.querySelector('input[name="device-type"]:checked').value;
@@ -285,10 +710,12 @@ function calculateTotals() {
     totalDevices = flexDevCount;
   }
 
+  const currentSnapshot = GhostLinkV3.homeModule?.getSnapshot?.() || GhostLinkV3.profileSubscription?.getSnapshot?.();
+
   // Update prices shown on the month cards dynamically based on totalDevices
-  const price1 = PRICE_TABLE[totalDevices][1];
-  const price2 = PRICE_TABLE[totalDevices][2];
-  const price3 = PRICE_TABLE[totalDevices][3];
+  const price1 = getTariffPrice(totalDevices, 1, currentSnapshot);
+  const price2 = getTariffPrice(totalDevices, 2, currentSnapshot);
+  const price3 = getTariffPrice(totalDevices, 3, currentSnapshot);
 
   const pCard1 = document.getElementById('price-card-1');
   const pCard2 = document.getElementById('price-card-2');
@@ -304,8 +731,9 @@ function calculateTotals() {
   if (subCard2) subCard2.textContent = `${Math.round(price2 / 2)} ₽ / мес`;
   if (subCard3) subCard3.textContent = `${Math.round(price3 / 3)} ₽ / мес`;
   
-  const months = parseInt(activeTariff.value, 10);
-  const totalPrice = PRICE_TABLE[totalDevices][months];
+  const months = parseInt(activeTariff?.value || '1', 10);
+  const totalPrice = getTariffPrice(totalDevices, months, currentSnapshot);
+
   
   // Dynamic Description Above Swiper
   const devicesDescEl = document.getElementById('devices-desc');
@@ -446,4 +874,21 @@ if (deviceSwiper && deviceSlides.length > 0) {
 }
 
 };
+
+const exported = {
+  initSubscriptionModule: GhostLinkV3.initSubscriptionModule,
+  restorePaymentStateFromProfile: (snapshot) => root.GhostLinkPayment?.restorePaymentStateFromProfile?.(snapshot),
+  setCheckoutView: (state) => root.GhostLinkPayment?.setCheckoutView?.(state),
+  startPendingPolling: () => root.GhostLinkPayment?.startPendingPolling?.(),
+  stopPendingPolling: () => root.GhostLinkPayment?.stopPendingPolling?.(),
+  generateUuidV4,
+  formatBankName,
+  isValidPayerName,
+  BANK_NAMES,
+  PRICE_TABLE,
+};
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = exported;
+}
 })();

@@ -640,17 +640,43 @@ if (btnPrivacyBack && pagePrivacyPolicy) {
 // Admin Dashboard Logic
 // ----------------------------------------------------
 
-// The local role belongs to the adapter/action boundary, not a visible button.
-// Production must replace this mock session with server-verified Telegram roles.
-const adminMockSession = GhostLinkV3.adminMockSession;
-const IS_ADMIN = Boolean(adminMockSession?.isAdmin());
+// Default-Deny: Admin access is strictly disabled by default until verified from user profile
+const profileSubscription = dependencies.profileSubscription;
+const isDefaultAdmin = Boolean(dependencies.isAdmin);
+
+function isCurrentUserAdmin() {
+  if (isDefaultAdmin) return true;
+  const cached = profileSubscription?.getCachedProfile?.() || null;
+  return Boolean(
+    cached?.user?.is_admin ||
+    cached?.profile?.isAdmin ||
+    cached?.profile?.is_admin
+  );
+}
+
+const adminMockSession = GhostLinkV3.adminMockSession || {
+  isAdmin: () => isCurrentUserAdmin(),
+  assertAdmin: (action) => requireAdminAccess(action),
+};
+const IS_ADMIN = Boolean(isCurrentUserAdmin() || adminMockSession?.isAdmin?.());
+
+function requireAdminAccess(action) {
+  if (isCurrentUserAdmin()) return true;
+  const error = new Error('Доступ запрещён: требуются права администратора');
+  error.code = 'admin_role_required';
+  error.action = action;
+  throw error;
+}
 
 function requireAdminMockAccess(action) {
-  return adminMockSession?.assertAdmin(action);
+  return adminMockSession?.assertAdmin ? adminMockSession.assertAdmin(action) : requireAdminAccess(action);
 }
 
 function protectAdminMockAdapter(adapter) {
-  return GhostLinkV3.AdminMockSecurity.protectAdminAdapter(adapter, adminMockSession);
+  if (GhostLinkV3.AdminMockSecurity?.protectAdminAdapter) {
+    return GhostLinkV3.AdminMockSecurity.protectAdminAdapter(adapter, adminMockSession);
+  }
+  return adapter;
 }
 
 const analyticsData = {
@@ -905,23 +931,25 @@ async function refreshActiveAdminTab() {
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+function setupAdminDashboardEntry() {
   const btnSettingsAdmin = document.getElementById('btnSettingsAdmin');
   const pageAdminDashboard = document.getElementById('page-admin-dashboard');
   const btnAdminBack = document.getElementById('btnAdminBack');
 
-  if (!IS_ADMIN) {
-    // Remove the local prototype from the user DOM instead of merely hiding it.
-    // This is not the final security boundary: the public build must exclude
-    // admin markup and logic, while the API enforces the actual role check.
-    btnSettingsAdmin?.remove();
-    pageAdminDashboard?.remove();
-    return;
-  }
-
   if (btnSettingsAdmin && pageAdminDashboard) {
-    btnSettingsAdmin.style.display = 'flex';
     btnSettingsAdmin.addEventListener('click', () => {
+      const snapshot = GhostLinkV3.homeModule?.getSnapshot?.() || GhostLinkV3.profileSubscription?.getSnapshot?.();
+      const isAdmin = Boolean(
+        snapshot?.user?.is_admin ||
+        snapshot?.profile?.isAdmin ||
+        snapshot?.profile?.is_admin ||
+        isCurrentUserAdmin() ||
+        adminMockSession?.isAdmin?.()
+      );
+      if (!isAdmin) {
+        showToast('Доступ только для администратора');
+        return;
+      }
       openOverlay(pageAdminDashboard);
       refreshDashboard();
     });
@@ -935,6 +963,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const btnAdminRefresh = document.getElementById('btnAdminRefresh');
   btnAdminRefresh?.addEventListener('click', refreshActiveAdminTab);
+}
+
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', setupAdminDashboardEntry);
+} else {
+  setupAdminDashboardEntry();
+}
 
   // Main Tabs
   const adminNavBtns = document.querySelectorAll('#admin-main-nav .admin-tab-btn');

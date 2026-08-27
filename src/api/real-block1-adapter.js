@@ -145,16 +145,56 @@
         ? 'trial'
         : (tariffName ? tariffName.toLowerCase().replace(/[^a-z0-9]+/g, '-') : (active ? 'solo' : 'ghostlink')));
 
+    const userIsAdmin = Boolean(user.is_admin ?? userResponse.is_admin ?? false);
+    const paymentStatus = userResponse.payment_status || subscription.payment_status || null;
+    const paymentRequestId = userResponse.payment_request_id || subscription.payment_request_id || userResponse.request_id || subscription.request_id || null;
+    const paymentAmount = userResponse.payment_amount ?? subscription.payment_amount ?? null;
+    const paymentSender = userResponse.payment_sender || subscription.payment_sender || '';
+    const paymentLabel = userResponse.payment_label || subscription.payment_label || '';
+    const paymentTimeMsk = userResponse.payment_time_msk || subscription.payment_time_msk || '';
+    const paymentTs = userResponse.payment_ts || subscription.payment_ts || 0;
+
     return {
       isMock: false,
+      user: {
+        id: String(user.id || ''),
+        name: String(user.name || user.username || ''),
+        is_admin: userIsAdmin,
+      },
       profile: {
         id: String(user.id || ''),
         displayName: String(user.name || user.username || ''),
         access: active ? 'granted' : state,
+        isAdmin: userIsAdmin,
+        is_admin: userIsAdmin,
+        payment_status: paymentStatus,
+        payment_request_id: paymentRequestId,
+        payment_amount: paymentAmount,
+        payment_sender: paymentSender,
+        payment_label: paymentLabel,
+        payment_time_msk: paymentTimeMsk,
+      },
+      payment_status: paymentStatus,
+      payment_request_id: paymentRequestId,
+      payment: {
+        status: paymentStatus,
+        request_id: paymentRequestId,
+        payment_request_id: paymentRequestId,
+        amount: paymentAmount,
+        sender: paymentSender,
+        label: paymentLabel,
+        timeMsk: paymentTimeMsk,
+        ts: paymentTs,
       },
       subscription: {
         state,
         active,
+        payment_status: paymentStatus,
+        payment_request_id: paymentRequestId,
+        payment_amount: paymentAmount,
+        payment_sender: paymentSender,
+        payment_label: paymentLabel,
+        payment_time_msk: paymentTimeMsk,
         plan: {
           id: planId,
           title: tariffName,
@@ -293,6 +333,8 @@
         return inFlight;
       },
       getSession: () => sessionState ? { ...sessionState } : null,
+      getToken: () => token,
+      getApiBase: () => apiBase,
       getDiagnostics: () => diagnostics ? {
         ...diagnostics,
         durations_ms: { ...diagnostics.durations_ms },
@@ -300,7 +342,7 @@
     });
   }
 
-  const exported = { createRealBlock1Adapter };
+  const exported = { createRealBlock1Adapter, mapProfile };
   if (typeof module !== 'undefined' && module.exports) module.exports = exported;
   if (globalScope) {
     globalScope.GhostLinkV3 = globalScope.GhostLinkV3 || {};

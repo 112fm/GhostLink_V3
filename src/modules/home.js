@@ -89,7 +89,11 @@
     const usedDevices = toNonNegativeInteger(subscription.usedDevices, 0);
     const isTimeless = Boolean(subscription.isTimeless);
     const isVip = isTimeless || subscription.state === 'vip' || (subscription.plan?.id === 'vip');
-    const isPending = subscription.state === 'pending';
+    const isPending = subscription.state === 'pending'
+      || subscription.payment_status === 'pending_verification'
+      || subscription.payment_status === 'pending'
+      || snapshot?.payment_status === 'pending_verification'
+      || snapshot?.payment_status === 'pending';
     const isAccessClosed = subscription.state === 'none' || subscription.state === 'denied';
     const isNew = subscription.state === 'new';
     const isActive = isTimeless
@@ -190,6 +194,18 @@
     setElementText(documentRef, 'homeSubscriptionActionText', presentation.actionLabel);
   }
 
+  function updateAdminSettingsVisibility(snapshot, documentRef = root.document) {
+    if (!documentRef) return;
+    const btnSettingsAdmin = documentRef.getElementById('btnSettingsAdmin');
+    if (!btnSettingsAdmin) return;
+    const isAdmin = Boolean(
+      snapshot?.user?.is_admin ||
+      snapshot?.profile?.isAdmin ||
+      snapshot?.profile?.is_admin
+    );
+    btnSettingsAdmin.style.display = isAdmin ? 'flex' : 'none';
+  }
+
   function initHomeModule(dependencies = {}) {
     const documentRef = root.document;
     if (!documentRef) return null;
@@ -212,12 +228,15 @@
         .then(([snapshot]) => {
           if (currentRequest === requestSequence) {
             renderSubscriptionStatus(snapshot, documentRef);
+            updateAdminSettingsVisibility(snapshot, documentRef);
+            root.GhostLinkPayment?.restorePaymentStateFromProfile?.(snapshot);
           }
           return snapshot;
         })
         .catch((error) => {
           if (currentRequest === requestSequence) {
             renderSubscriptionStatus({ error }, documentRef);
+            updateAdminSettingsVisibility(null, documentRef);
           }
           return null;
         })
@@ -256,7 +275,13 @@
     return { loadProfileSubscription };
   }
 
-  const exported = { getLoadingSubscriptionPresentation, getSubscriptionPresentation, renderSubscriptionStatus, initHomeModule };
+  const exported = {
+    getLoadingSubscriptionPresentation,
+    getSubscriptionPresentation,
+    renderSubscriptionStatus,
+    updateAdminSettingsVisibility,
+    initHomeModule,
+  };
   if (typeof module !== 'undefined' && module.exports) module.exports = exported;
   Object.assign(GhostLinkV3, exported);
 })(typeof window !== 'undefined' ? window : globalThis);
