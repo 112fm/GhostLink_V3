@@ -202,3 +202,49 @@ test('admin payment settings preserves elements in DOM without destructive remov
   assert.equal(doc.getElementById('page-admin-payment-settings').removed, undefined);
 });
 
+test('security regression: non-admin form submit enforces strict default-deny with zero fetch calls', async () => {
+  const doc = createMockAdminDoc();
+  global.document = doc;
+  global.Telegram = { WebApp: { initData: '' } };
+  delete global.GhostLinkV3;
+  global.window = {
+    document: doc,
+    Telegram: { WebApp: { initData: '' } },
+  };
+
+  let fetchCallsCount = 0;
+  let toastMsg = '';
+
+  const mockFetch = async () => {
+    fetchCallsCount += 1;
+    return { ok: true, status: 200, json: async () => ({}) };
+  };
+
+  initAdminPaymentSettingsModule({
+    isAdmin: false,
+    fetch: mockFetch,
+    showToast: (msg) => { toastMsg = msg; },
+    profileSubscription: {
+      getCachedProfile: () => ({ user: { is_admin: false } }),
+      getSnapshot: () => ({ user: { is_admin: false } }),
+      getToken: () => '',
+    },
+  });
+
+  doc.getElementById('paymentSettingsMethod').value = 'sbp_phone';
+  doc.getElementById('paymentSettingsBank').value = 'alfabank';
+  doc.getElementById('paymentSettingsPhone').value = '+7 985 771-91-39';
+  doc.getElementById('paymentSettingsRecipientFirstName').value = 'Арсений';
+  doc.getElementById('paymentSettingsRecipientLastInitial').value = 'А';
+  doc.getElementById('paymentSettingsInstruction').value = 'Без комментария';
+  doc.getElementById('paymentSettingsStatus').value = 'active';
+
+  const form = doc.getElementById('paymentSettingsForm');
+  await form.dispatchEvent({ type: 'submit', preventDefault: () => {} });
+
+  assert.equal(fetchCallsCount, 0, 'No network requests should be dispatched when not admin');
+  assert.equal(toastMsg, 'Доступ только для администратора');
+  assert.equal(doc.getElementById('paymentSettingsFormStatus').textContent, 'Недостаточно прав администратора');
+});
+
+

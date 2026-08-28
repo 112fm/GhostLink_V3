@@ -329,13 +329,19 @@
       event.preventDefault();
       if (saving) return;
 
-      if (!isLocalAdmin()) {
-        try {
-          localAdminSession?.assertAdmin?.('save_payment_settings');
-        } catch {
-          formStatus.textContent = 'Недостаточно прав администратора';
-          return;
-        }
+      const isAdmin = Boolean(
+        dependencies.isAdmin ||
+        localAdminSession?.isAdmin?.() ||
+        profileSubscription?.getCachedProfile?.()?.user?.is_admin ||
+        profileSubscription?.getSnapshot?.()?.user?.is_admin ||
+        isLocalAdmin()
+      );
+
+      if (!isAdmin) {
+        event.preventDefault();
+        showToast('Доступ только для администратора');
+        formStatus.textContent = 'Недостаточно прав администратора';
+        return;
       }
 
       clearErrors();
