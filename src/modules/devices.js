@@ -899,8 +899,15 @@ function getDevicePlatform() {
     return 'android';
   } else if (tgPlatform === 'macos' || /macintosh|mac os x/.test(ua)) {
     return 'macos';
+  } else if (tgPlatform === 'tdesktop' || tgPlatform === 'weba' || tgPlatform === 'webk' || tgPlatform === 'web') {
+    if (/windows|win32|win64/.test(ua)) return 'windows';
+    if (/linux/.test(ua)) return 'linux';
+    if (/macintosh|mac os x/.test(ua)) return 'macos';
+    return 'windows';
   } else if (/windows|win32|win64/.test(ua)) {
     return 'windows';
+  } else if (/smart-tv|smarttv|googletv|appletv|hbbtv|pov_tv|netcast.tv/.test(ua)) {
+    return 'tv';
   } else if (/linux/.test(ua)) {
     return 'linux';
   }
