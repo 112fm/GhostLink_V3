@@ -175,8 +175,6 @@
               id: `mock-device-${record.requestId}`,
               name: 'Локальное тестовое устройство',
               setupToken: `mock-device-${record.requestId}`,
-              url: `mock://${record.requestId}/karing`,
-              url_incy: `mock://${record.requestId}/incy`,
             };
           }
           record.updatedAt = now();

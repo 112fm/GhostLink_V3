@@ -82,8 +82,7 @@
       title: "Ваш ключ",
       steps: [
         { scope: "overlay", selector: "#key-box-field", title: "Ключ-ссылка", description: "Нажмите на поле, чтобы скопировать ключ для вставки в приложение." },
-        { scope: "overlay", selector: "#btn-add-to-app", title: "Добавить в приложение", description: "Попробуйте передать ключ прямо в установленное VPN-приложение." },
-        { scope: "overlay", selector: "#btn-key-view-finish", title: "Завершить", description: "Вернитесь к списку устройств после настройки." }
+        { scope: "overlay", selector: "#btn-add-to-app", title: "Добавить в приложение", description: "Попробуйте передать ключ прямо в установленное VPN-приложение." }
       ]
     },
     "other-device": {

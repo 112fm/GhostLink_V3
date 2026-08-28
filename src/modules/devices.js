@@ -3,11 +3,6 @@ const GhostLinkV3 = window.GhostLinkV3 = window.GhostLinkV3 || {};
 
 GhostLinkV3.initDevicesModule = function initDevicesModule(dependencies = {}) {
   const { showToast, copyText, openOverlay, closeOverlay, returnToHome } = dependencies;
-  const { normalizeKeyLinks, resolveDefaultKeyApp, resolveKeyUrl } = GhostLinkV3;
-
-  if (!normalizeKeyLinks || !resolveDefaultKeyApp || !resolveKeyUrl) {
-    throw new Error('GhostLink V3 key app choice helpers are missing');
-  }
 
   // Local-only operation adapter. The future API must preserve this request_id contract.
   const deviceOperations = dependencies.deviceOperations || GhostLinkV3.createMockDeviceOperations?.();
@@ -459,17 +454,13 @@ function stopDevicePolling() {
   devicePollingTimer = null;
 }
 
-function setDeviceKeyData(device) {
-  const normalized = normalizeKeyLinks(device);
-  const legacyMockLink = !normalized.url && !normalized.url_incy && /^mock-device-/.test(device?.setupToken || '')
-    ? `mock://${device.setupToken}`
-    : '';
-  const links = legacyMockLink
-    ? { url: legacyMockLink, url_incy: legacyMockLink }
-    : normalized;
+function setMockDeviceToken(device) {
+  if (!device?.setupToken) return;
+  const mockToken = `mock://${device.setupToken}`;
+  const keyViewToken = document.getElementById('user-key-url');
   const otherDeviceToken = document.getElementById('other-device-key-text');
-  setKeyLinks(links);
-  if (otherDeviceToken) otherDeviceToken.textContent = links.url || links.url_incy || 'Ключ пока недоступен';
+  if (keyViewToken) keyViewToken.textContent = mockToken;
+  if (otherDeviceToken) otherDeviceToken.textContent = mockToken;
 }
 
 function finishDeviceOperation(result) {
@@ -479,7 +470,7 @@ function finishDeviceOperation(result) {
     phase: 'succeeded',
     resultShown: currentDeviceOperation?.resultShown || false,
   };
-  setDeviceKeyData(result.device);
+  setMockDeviceToken(result.device);
   deviceList?.addOperationDevice?.({
     requestId: currentDeviceOperation.requestId,
     target: currentDeviceOperation.target,
@@ -495,7 +486,12 @@ function finishDeviceOperation(result) {
     const nextPage = currentDeviceOperation.target === 'other-device'
       ? document.getElementById('page-other-device')
       : document.getElementById('page-app-select');
-    if (nextPage) openOverlay(nextPage);
+    if (nextPage) {
+      if (nextPage.id === 'page-app-select') {
+        autoSelectDefaultAppForCurrentPlatform();
+      }
+      openOverlay(nextPage);
+    }
     return;
   }
 
@@ -623,7 +619,12 @@ async function startDeviceOperation(target) {
     const nextPage = currentDeviceOperation.target === 'other-device'
       ? document.getElementById('page-other-device')
       : document.getElementById('page-app-select');
-    if (nextPage) openOverlay(nextPage);
+    if (nextPage) {
+      if (nextPage.id === 'page-app-select') {
+        autoSelectDefaultAppForCurrentPlatform();
+      }
+      openOverlay(nextPage);
+    }
     return;
   }
 
@@ -726,16 +727,7 @@ if (btnOtherDeviceBack && pageOtherDevice) {
 
 if (otherDeviceKeyField && otherDeviceKeyText) {
   otherDeviceKeyField.addEventListener('click', async () => {
-    const otherDeviceApp = resolveDefaultKeyApp({
-      preferredApp: getNearbyAppPreference(),
-      platform: getDevicePlatform(),
-      links: currentKeyLinks,
-    });
-    const textToCopy = resolveKeyUrl(currentKeyLinks, otherDeviceApp);
-    if (!textToCopy) {
-      showToast('Ключ пока недоступен.');
-      return;
-    }
+    const textToCopy = otherDeviceKeyText.textContent.trim();
     const copied = await copyText(textToCopy);
     showToast(copied ? 'Ключ скопирован' : 'Не удалось скопировать. Нажмите и удерживайте ключ.');
   });
@@ -748,6 +740,8 @@ const appChoiceRadios = document.querySelectorAll('input[name="app-choice"]');
 const btnInstallApp = document.getElementById('btn-install-app');
 const installAppBtnText = document.getElementById('install-app-btn-text');
 const btnAlreadyHaveApp = document.getElementById('btn-already-have-app');
+const cardIncy = document.getElementById('app-card-incy');
+const cardKaring = document.getElementById('app-card-karing');
 
 if (btnAppSelectBack && pageAppSelect) {
   btnAppSelectBack.addEventListener('click', () => {
@@ -755,34 +749,54 @@ if (btnAppSelectBack && pageAppSelect) {
   });
 }
 
+function selectAppChoice(app) {
+  const isKaring = app === 'karing';
+  const radioKaring = document.querySelector('input[name="app-choice"][value="karing"]');
+  const radioIncy = document.querySelector('input[name="app-choice"][value="incy"]');
+  const cardKaringEl = document.getElementById('app-card-karing');
+  const cardIncyEl = document.getElementById('app-card-incy');
+  const btnOpenBotGuideEl = document.getElementById('btn-open-bot-guide');
+  const btnDeviceKaringGuideEl = document.getElementById('btnDeviceKaringGuide');
+
+  if (isKaring) {
+    if (radioKaring) radioKaring.checked = true;
+    if (radioIncy) radioIncy.checked = false;
+    cardKaringEl?.classList.add('active');
+    cardIncyEl?.classList.remove('active');
+    if (installAppBtnText) installAppBtnText.textContent = 'Установить Karing';
+    if (btnOpenBotGuideEl) btnOpenBotGuideEl.style.display = 'flex';
+    if (btnDeviceKaringGuideEl) btnDeviceKaringGuideEl.style.display = 'flex';
+  } else {
+    if (radioIncy) radioIncy.checked = true;
+    if (radioKaring) radioKaring.checked = false;
+    cardIncyEl?.classList.add('active');
+    cardKaringEl?.classList.remove('active');
+    if (installAppBtnText) installAppBtnText.textContent = 'Установить INCY';
+    if (btnOpenBotGuideEl) btnOpenBotGuideEl.style.display = 'none';
+    if (btnDeviceKaringGuideEl) btnDeviceKaringGuideEl.style.display = 'none';
+  }
+}
+
+function autoSelectDefaultAppForCurrentPlatform(platform = getDevicePlatform()) {
+  const karingOnlyPlatforms = ['windows', 'linux', 'tv'];
+  const defaultApp = karingOnlyPlatforms.includes(platform) ? 'karing' : 'incy';
+  selectAppChoice(defaultApp);
+  return defaultApp;
+}
+
+cardIncy?.addEventListener('click', () => selectAppChoice('incy'));
+cardKaring?.addEventListener('click', () => selectAppChoice('karing'));
+
 appChoiceRadios.forEach((radio) => {
   radio.addEventListener('change', () => {
-    const isKaring = radio.value === 'karing';
-    const cardKaring = document.getElementById('app-card-karing');
-    const cardIncy = document.getElementById('app-card-incy');
-    const btnOpenBotGuide = document.getElementById('btn-open-bot-guide');
-    const btnDeviceKaringGuide = document.getElementById('btnDeviceKaringGuide');
-
-    if (isKaring) {
-      cardKaring?.classList.add('active');
-      cardIncy?.classList.remove('active');
-      if (installAppBtnText) installAppBtnText.textContent = 'Установить Karing';
-      if (btnOpenBotGuide) btnOpenBotGuide.style.display = 'flex';
-      if (btnDeviceKaringGuide) btnDeviceKaringGuide.style.display = 'flex';
-    } else {
-      cardIncy?.classList.add('active');
-      cardKaring?.classList.remove('active');
-      if (installAppBtnText) installAppBtnText.textContent = 'Установить INCY';
-      if (btnOpenBotGuide) btnOpenBotGuide.style.display = 'none';
-      if (btnDeviceKaringGuide) btnDeviceKaringGuide.style.display = 'none';
-    }
+    selectAppChoice(radio.value);
   });
 });
 
-// Helper for detecting user device platform (iOS, Android, macOS, Windows)
+// Helper for detecting user device platform (iOS, Android, macOS, Windows, Linux, TV)
 function getDevicePlatform() {
   const tgPlatform = (window.Telegram?.WebApp?.platform || '').toLowerCase();
-  const ua = navigator.userAgent.toLowerCase();
+  const ua = (typeof navigator !== 'undefined' && navigator.userAgent ? navigator.userAgent : '').toLowerCase();
 
   if (tgPlatform === 'ios' || /iphone|ipad|ipod/.test(ua)) {
     return 'ios';
@@ -792,6 +806,8 @@ function getDevicePlatform() {
     return 'macos';
   } else if (/windows|win32|win64/.test(ua)) {
     return 'windows';
+  } else if (/linux/.test(ua)) {
+    return 'linux';
   }
   return 'other';
 }
@@ -826,7 +842,7 @@ if (btnInstallApp) {
       return;
     }
 
-    const platformNames = { ios: 'iPhone', android: 'Android', macos: 'Mac', windows: 'Windows' };
+    const platformNames = { ios: 'iPhone', android: 'Android', macos: 'Mac', windows: 'Windows', linux: 'Linux', tv: 'TV' };
     const pName = platformNames[platform] || 'устройства';
     showToast(`Открываем магазин для ${appName} (${pName})...`);
     setTimeout(() => {
@@ -846,7 +862,6 @@ if (btnAlreadyHaveApp) {
   btnAlreadyHaveApp.addEventListener('click', () => {
     const pageKeyView = document.getElementById('page-key-view');
     if (pageKeyView) {
-      setKeyLinks(currentKeyLinks, { preferredApp: getNearbyAppPreference() });
       openOverlay(pageKeyView);
     }
   });
@@ -860,40 +875,6 @@ const userKeyUrl = document.getElementById('user-key-url');
 const btnAddToApp = document.getElementById('btn-add-to-app');
 const btnKeyViewFinish = document.getElementById('btn-key-view-finish');
 const btnOpenBotGuide = document.getElementById('btn-open-bot-guide');
-const btnAddToAppText = btnAddToApp?.querySelector('span');
-let currentKeyLinks = normalizeKeyLinks({});
-let selectedKeyApp = null;
-
-function getNearbyAppPreference() {
-  const selectedRadio = document.querySelector('input[name="app-choice"]:checked');
-  return selectedRadio?.value === 'karing' || selectedRadio?.value === 'incy'
-    ? selectedRadio.value
-    : null;
-}
-
-function renderKeyAppSelection() {
-  const selectedUrl = resolveKeyUrl(currentKeyLinks, selectedKeyApp);
-
-  if (userKeyUrl) userKeyUrl.textContent = selectedUrl || 'Ключ пока недоступен';
-  if (keyBoxField) keyBoxField.setAttribute('aria-disabled', String(!selectedUrl));
-  if (btnAddToApp) btnAddToApp.disabled = !selectedUrl;
-  if (btnAddToAppText) {
-    const appName = selectedKeyApp === 'incy' ? 'INCY' : selectedKeyApp === 'karing' ? 'Karing' : 'приложение';
-    btnAddToAppText.textContent = selectedUrl ? `Добавить в ${appName}` : 'Ключ недоступен';
-  }
-}
-
-function setKeyLinks(source, options = {}) {
-  currentKeyLinks = normalizeKeyLinks(source);
-  selectedKeyApp = resolveDefaultKeyApp({
-    preferredApp: options.preferredApp || getNearbyAppPreference(),
-    platform: getDevicePlatform(),
-    links: currentKeyLinks,
-  });
-  renderKeyAppSelection();
-}
-
-setKeyLinks(currentKeyLinks);
 
 if (btnKeyViewBack && pageKeyView) {
   btnKeyViewBack.addEventListener('click', () => {
@@ -909,11 +890,7 @@ if (btnOpenBotGuide) {
 
 if (keyBoxField && userKeyUrl) {
   keyBoxField.addEventListener('click', async () => {
-    const textToCopy = resolveKeyUrl(currentKeyLinks, selectedKeyApp);
-    if (!textToCopy) {
-      showToast('Ключ пока недоступен.');
-      return;
-    }
+    const textToCopy = userKeyUrl.textContent.trim();
     const copied = await copyText(textToCopy);
     showToast(copied ? 'Ключ скопирован' : 'Не удалось скопировать. Нажмите и удерживайте ключ.');
   });
@@ -921,12 +898,9 @@ if (keyBoxField && userKeyUrl) {
 
 if (btnAddToApp && userKeyUrl) {
   btnAddToApp.addEventListener('click', async () => {
-    const rawKey = resolveKeyUrl(currentKeyLinks, selectedKeyApp);
-    if (!rawKey || !selectedKeyApp) {
-      showToast('Ключ для приложения пока недоступен.');
-      return;
-    }
-    const isIncy = selectedKeyApp === 'incy';
+    const rawKey = userKeyUrl.textContent.trim();
+    const selectedRadio = document.querySelector('input[name="app-choice"]:checked');
+    const isIncy = selectedRadio && selectedRadio.value === 'incy';
 
     // 1. Auto-copy key to clipboard first so user can paste if needed
     const copied = await copyText(rawKey);
@@ -1147,11 +1121,7 @@ if (btnSelectKaring && btnSelectIncy) {
 // Copy key button inside modal
 if (btnDeviceCopyKey) {
   btnDeviceCopyKey.addEventListener('click', async () => {
-    const rawKeyText = resolveKeyUrl(currentKeyLinks, currentAppChoice);
-    if (!rawKeyText) {
-      showToast('Ключ пока недоступен.');
-      return;
-    }
+    const rawKeyText = document.getElementById('user-key-url')?.textContent.trim() || 'vless://ghostlink-key-8fa492b...#GhostLink-1';
     const copied = await copyText(rawKeyText);
     showToast(copied ? 'Ключ скопирован' : 'Не удалось скопировать. Нажмите и удерживайте ключ.');
   });
@@ -1159,11 +1129,7 @@ if (btnDeviceCopyKey) {
 
 if (deviceDetailKeyText) {
   deviceDetailKeyText.addEventListener('click', async () => {
-    const rawKeyText = resolveKeyUrl(currentKeyLinks, currentAppChoice);
-    if (!rawKeyText) {
-      showToast('Ключ пока недоступен.');
-      return;
-    }
+    const rawKeyText = document.getElementById('user-key-url')?.textContent.trim() || 'vless://ghostlink-key-8fa492b...#GhostLink-1';
     const copied = await copyText(rawKeyText);
     showToast(copied ? 'Ключ скопирован' : 'Не удалось скопировать. Нажмите и удерживайте ключ.');
   });
@@ -1184,6 +1150,13 @@ if (btnDeviceDownload) {
   });
 }
 
+  autoSelectDefaultAppForCurrentPlatform();
+
+  GhostLinkV3.devices = Object.freeze({
+    selectAppChoice,
+    autoSelectDefaultAppForCurrentPlatform,
+    getDevicePlatform,
+  });
 
 };
 })();

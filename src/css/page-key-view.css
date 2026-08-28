@@ -19,7 +19,7 @@
   align-items: center;
   text-align: center;
   gap: 8px;
-  margin-top: 52px;
+  margin-top: 8px;
 }
 
 .key-view-hero-icon {
@@ -67,7 +67,7 @@
   flex-direction: column;
   align-items: center;
   gap: 12px;
-  margin-top: 8px;
+  margin-top: 52px;
 }
 
 .key-box-field {
