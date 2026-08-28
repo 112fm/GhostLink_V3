@@ -3,6 +3,11 @@ const GhostLinkV3 = window.GhostLinkV3 = window.GhostLinkV3 || {};
 
 GhostLinkV3.initDevicesModule = function initDevicesModule(dependencies = {}) {
   const { showToast, copyText, openOverlay, closeOverlay, returnToHome } = dependencies;
+  const { normalizeKeyLinks, resolveDefaultKeyApp, resolveKeyUrl } = GhostLinkV3;
+
+  if (!normalizeKeyLinks || !resolveDefaultKeyApp || !resolveKeyUrl) {
+    throw new Error('GhostLink V3 key app choice helpers are missing');
+  }
 
   // Local-only operation adapter. The future API must preserve this request_id contract.
   const deviceOperations = dependencies.deviceOperations || GhostLinkV3.createMockDeviceOperations?.();
@@ -454,13 +459,17 @@ function stopDevicePolling() {
   devicePollingTimer = null;
 }
 
-function setMockDeviceToken(device) {
-  if (!device?.setupToken) return;
-  const mockToken = `mock://${device.setupToken}`;
-  const keyViewToken = document.getElementById('user-key-url');
+function setDeviceKeyData(device) {
+  const normalized = normalizeKeyLinks(device);
+  const legacyMockLink = !normalized.url && !normalized.url_incy && /^mock-device-/.test(device?.setupToken || '')
+    ? `mock://${device.setupToken}`
+    : '';
+  const links = legacyMockLink
+    ? { url: legacyMockLink, url_incy: legacyMockLink }
+    : normalized;
   const otherDeviceToken = document.getElementById('other-device-key-text');
-  if (keyViewToken) keyViewToken.textContent = mockToken;
-  if (otherDeviceToken) otherDeviceToken.textContent = mockToken;
+  setKeyLinks(links);
+  if (otherDeviceToken) otherDeviceToken.textContent = links.url || links.url_incy || 'Ключ пока недоступен';
 }
 
 function finishDeviceOperation(result) {
@@ -470,7 +479,7 @@ function finishDeviceOperation(result) {
     phase: 'succeeded',
     resultShown: currentDeviceOperation?.resultShown || false,
   };
-  setMockDeviceToken(result.device);
+  setDeviceKeyData(result.device);
   deviceList?.addOperationDevice?.({
     requestId: currentDeviceOperation.requestId,
     target: currentDeviceOperation.target,
@@ -717,7 +726,16 @@ if (btnOtherDeviceBack && pageOtherDevice) {
 
 if (otherDeviceKeyField && otherDeviceKeyText) {
   otherDeviceKeyField.addEventListener('click', async () => {
-    const textToCopy = otherDeviceKeyText.textContent.trim();
+    const otherDeviceApp = resolveDefaultKeyApp({
+      preferredApp: getNearbyAppPreference(),
+      platform: getDevicePlatform(),
+      links: currentKeyLinks,
+    });
+    const textToCopy = resolveKeyUrl(currentKeyLinks, otherDeviceApp);
+    if (!textToCopy) {
+      showToast('Ключ пока недоступен.');
+      return;
+    }
     const copied = await copyText(textToCopy);
     showToast(copied ? 'Ключ скопирован' : 'Не удалось скопировать. Нажмите и удерживайте ключ.');
   });
@@ -828,6 +846,7 @@ if (btnAlreadyHaveApp) {
   btnAlreadyHaveApp.addEventListener('click', () => {
     const pageKeyView = document.getElementById('page-key-view');
     if (pageKeyView) {
+      setKeyLinks(currentKeyLinks, { preferredApp: getNearbyAppPreference() });
       openOverlay(pageKeyView);
     }
   });
@@ -838,9 +857,75 @@ const pageKeyView = document.getElementById('page-key-view');
 const btnKeyViewBack = document.getElementById('btn-key-view-back');
 const keyBoxField = document.getElementById('key-box-field');
 const userKeyUrl = document.getElementById('user-key-url');
+const btnKeyAppKaring = document.getElementById('btn-key-app-karing');
+const btnKeyAppIncy = document.getElementById('btn-key-app-incy');
 const btnAddToApp = document.getElementById('btn-add-to-app');
 const btnKeyViewFinish = document.getElementById('btn-key-view-finish');
 const btnOpenBotGuide = document.getElementById('btn-open-bot-guide');
+const btnAddToAppText = btnAddToApp?.querySelector('span');
+let currentKeyLinks = normalizeKeyLinks({});
+let selectedKeyApp = null;
+
+function getNearbyAppPreference() {
+  const selectedRadio = document.querySelector('input[name="app-choice"]:checked');
+  return selectedRadio?.value === 'karing' || selectedRadio?.value === 'incy'
+    ? selectedRadio.value
+    : null;
+}
+
+function renderKeyAppSelection() {
+  const selectedUrl = resolveKeyUrl(currentKeyLinks, selectedKeyApp);
+  const options = [
+    [btnKeyAppKaring, 'karing'],
+    [btnKeyAppIncy, 'incy'],
+  ];
+
+  options.forEach(([button, app]) => {
+    if (!button) return;
+    const available = Boolean(resolveKeyUrl(currentKeyLinks, app));
+    button.disabled = !available;
+    button.setAttribute('aria-pressed', String(selectedKeyApp === app));
+    const action = button.querySelector('.key-app-option-action');
+    if (action) action.textContent = available ? 'Выбрать и скопировать' : 'Ссылка недоступна';
+  });
+
+  if (userKeyUrl) userKeyUrl.textContent = selectedUrl || 'Ключ пока недоступен';
+  if (keyBoxField) keyBoxField.setAttribute('aria-disabled', String(!selectedUrl));
+  if (btnAddToApp) btnAddToApp.disabled = !selectedUrl;
+  if (btnAddToAppText) {
+    const appName = selectedKeyApp === 'incy' ? 'INCY' : selectedKeyApp === 'karing' ? 'Karing' : 'приложение';
+    btnAddToAppText.textContent = selectedUrl ? `Добавить в ${appName}` : 'Ключ недоступен';
+  }
+}
+
+function setKeyLinks(source, options = {}) {
+  currentKeyLinks = normalizeKeyLinks(source);
+  selectedKeyApp = resolveDefaultKeyApp({
+    preferredApp: options.preferredApp || getNearbyAppPreference(),
+    platform: getDevicePlatform(),
+    links: currentKeyLinks,
+  });
+  renderKeyAppSelection();
+}
+
+async function selectAndCopyKeyApp(app) {
+  const link = resolveKeyUrl(currentKeyLinks, app);
+  if (!link) {
+    showToast(`Ссылка для ${app === 'incy' ? 'INCY' : 'Karing'} недоступна.`);
+    return;
+  }
+
+  selectedKeyApp = app;
+  renderKeyAppSelection();
+  const copied = await copyText(link);
+  showToast(copied
+    ? `Ключ для ${app === 'incy' ? 'INCY' : 'Karing'} скопирован`
+    : 'Не удалось скопировать. Нажмите и удерживайте ключ.');
+}
+
+btnKeyAppKaring?.addEventListener('click', () => selectAndCopyKeyApp('karing'));
+btnKeyAppIncy?.addEventListener('click', () => selectAndCopyKeyApp('incy'));
+setKeyLinks(currentKeyLinks);
 
 if (btnKeyViewBack && pageKeyView) {
   btnKeyViewBack.addEventListener('click', () => {
@@ -856,7 +941,11 @@ if (btnOpenBotGuide) {
 
 if (keyBoxField && userKeyUrl) {
   keyBoxField.addEventListener('click', async () => {
-    const textToCopy = userKeyUrl.textContent.trim();
+    const textToCopy = resolveKeyUrl(currentKeyLinks, selectedKeyApp);
+    if (!textToCopy) {
+      showToast('Ключ пока недоступен.');
+      return;
+    }
     const copied = await copyText(textToCopy);
     showToast(copied ? 'Ключ скопирован' : 'Не удалось скопировать. Нажмите и удерживайте ключ.');
   });
@@ -864,9 +953,12 @@ if (keyBoxField && userKeyUrl) {
 
 if (btnAddToApp && userKeyUrl) {
   btnAddToApp.addEventListener('click', async () => {
-    const rawKey = userKeyUrl.textContent.trim();
-    const selectedRadio = document.querySelector('input[name="app-choice"]:checked');
-    const isIncy = selectedRadio && selectedRadio.value === 'incy';
+    const rawKey = resolveKeyUrl(currentKeyLinks, selectedKeyApp);
+    if (!rawKey || !selectedKeyApp) {
+      showToast('Ключ для приложения пока недоступен.');
+      return;
+    }
+    const isIncy = selectedKeyApp === 'incy';
 
     // 1. Auto-copy key to clipboard first so user can paste if needed
     const copied = await copyText(rawKey);
@@ -1087,7 +1179,11 @@ if (btnSelectKaring && btnSelectIncy) {
 // Copy key button inside modal
 if (btnDeviceCopyKey) {
   btnDeviceCopyKey.addEventListener('click', async () => {
-    const rawKeyText = document.getElementById('user-key-url')?.textContent.trim() || 'vless://ghostlink-key-8fa492b...#GhostLink-1';
+    const rawKeyText = resolveKeyUrl(currentKeyLinks, currentAppChoice);
+    if (!rawKeyText) {
+      showToast('Ключ пока недоступен.');
+      return;
+    }
     const copied = await copyText(rawKeyText);
     showToast(copied ? 'Ключ скопирован' : 'Не удалось скопировать. Нажмите и удерживайте ключ.');
   });
@@ -1095,7 +1191,11 @@ if (btnDeviceCopyKey) {
 
 if (deviceDetailKeyText) {
   deviceDetailKeyText.addEventListener('click', async () => {
-    const rawKeyText = document.getElementById('user-key-url')?.textContent.trim() || 'vless://ghostlink-key-8fa492b...#GhostLink-1';
+    const rawKeyText = resolveKeyUrl(currentKeyLinks, currentAppChoice);
+    if (!rawKeyText) {
+      showToast('Ключ пока недоступен.');
+      return;
+    }
     const copied = await copyText(rawKeyText);
     showToast(copied ? 'Ключ скопирован' : 'Не удалось скопировать. Нажмите и удерживайте ключ.');
   });

@@ -32,6 +32,8 @@ test('accepted operation progresses through processing to succeeded once', async
   assert.equal(succeeded.status, 'succeeded');
   assert.match(succeeded.device.setupToken, /^mock-device-/);
   assert.doesNotMatch(succeeded.device.setupToken, /^vless:/i);
+  assert.equal(succeeded.device.url, 'mock://req-success/karing');
+  assert.equal(succeeded.device.url_incy, 'mock://req-success/incy');
 });
 
 test('a late status read cannot overwrite the completed device result', async () => {

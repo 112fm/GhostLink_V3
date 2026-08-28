@@ -15,7 +15,7 @@
     <link rel="stylesheet" href="./src/css/page-checkout.css?v=2" />
     <link rel="stylesheet" href="./src/css/page-setup.css" />
     <link rel="stylesheet" href="./src/css/page-app-select.css" />
-    <link rel="stylesheet" href="./src/css/page-key-view.css" />
+    <link rel="stylesheet" href="./src/css/page-key-view.css?v=2" />
     <link rel="stylesheet" href="./src/css/page-other-device.css" />
     <link rel="stylesheet" href="./src/css/page-device-detail.css" />
     <link rel="stylesheet" href="./src/css/page-referral.css" />
@@ -1141,10 +1141,21 @@
             <p class="key-view-subtitle">Нажмите «Добавить в приложение», чтобы автоматически добавить ключ</p>
           </div>
 
+          <div class="key-app-picker" role="group" aria-label="Выберите приложение для ключа">
+            <button class="key-app-option" id="btn-key-app-karing" data-key-app="karing" type="button" aria-pressed="false">
+              <span class="key-app-option-name">Karing</span>
+              <span class="key-app-option-action">Выбрать и скопировать</span>
+            </button>
+            <button class="key-app-option" id="btn-key-app-incy" data-key-app="incy" type="button" aria-pressed="false">
+              <span class="key-app-option-name">INCY</span>
+              <span class="key-app-option-action">Выбрать и скопировать</span>
+            </button>
+          </div>
+
           <!-- Key Copy Field -->
           <div class="key-box-container">
             <div class="key-box-field" id="key-box-field">
-              <span class="key-box-text" id="user-key-url">vless://ghostlink-key-8fa492b...#GhostLink-1</span>
+              <span class="key-box-text" id="user-key-url">Ключ пока недоступен</span>
               <div class="key-box-copy-icon">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <rect x="9" y="9" width="13" height="13" rx="3" ry="3"/>
@@ -1216,7 +1227,7 @@
           <!-- Key Copy Field -->
           <div class="key-box-container" style="margin-top: 24px;">
             <div class="key-box-field" id="other-device-key-field">
-              <span class="key-box-text" id="other-device-key-text">vless://ghostlink-key-8fa492b...#GhostLink-1</span>
+              <span class="key-box-text" id="other-device-key-text">Ключ пока недоступен</span>
               <div class="key-box-copy-icon">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <rect x="9" y="9" width="13" height="13" rx="3" ry="3"/>
@@ -1416,7 +1427,7 @@
             </div>
 
             <div class="detail-key-box" id="deviceDetailKeyText">
-              vless://ghostlink-key-8fa492b...#GhostLink-1
+              Ключ пока недоступен
             </div>
 
             <!-- Lime Action Copy Button (Matching Pay button) -->
@@ -3346,7 +3357,8 @@
     <script src="./src/modules/home.js?v=7"></script>
     <script src="./src/modules/diagnostics.js?v=2"></script>
     <script src="./src/modules/subscription.js?v=7"></script>
-    <script src="./src/modules/devices.js?v=3"></script>
+    <script src="./src/modules/key-app-choice.js?v=1"></script>
+    <script src="./src/modules/devices.js?v=4"></script>
     <script src="./src/modules/invites.js?v=3"></script>
     <script src="./src/modules/support.js?v=3"></script>
     <script src="./src/modules/context-help.js?v=3"></script>
