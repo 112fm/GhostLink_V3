@@ -146,7 +146,14 @@
         : (tariffName ? tariffName.toLowerCase().replace(/[^a-z0-9]+/g, '-') : (active ? 'solo' : 'ghostlink')));
 
     const userIsAdmin = Boolean(user.is_admin ?? userResponse.is_admin ?? false);
-    const rawSubToken = userResponse.sub_token || user.sub_token || subscription.sub_token || userResponse.subToken || user.subToken || '';
+    let rawSubToken = userResponse.sub_token || user.sub_token || subscription.sub_token || userResponse.subToken || user.subToken || '';
+    if (!rawSubToken) {
+      const subUrlCandidate = userResponse.subscription_url || subscription.subscription_url || userResponse.subscription_link || subscription.subscription_link || userResponse.sub_url || subscription.sub_url || '';
+      if (typeof subUrlCandidate === 'string') {
+        const match = subUrlCandidate.match(/\/sub\/([A-Za-z0-9_-]+)/);
+        if (match) rawSubToken = match[1];
+      }
+    }
     const subToken = (typeof rawSubToken === 'string' && !/^[a-f0-9]{64}$/i.test(rawSubToken.trim())) ? rawSubToken.trim() : '';
     const paymentStatus = userResponse.payment_status || subscription.payment_status || null;
     const paymentRequestId = userResponse.payment_request_id || subscription.payment_request_id || userResponse.request_id || subscription.request_id || null;

@@ -317,6 +317,69 @@ test('getCurrentUserToken strictly excludes 64-char session token when sub_token
   assert.equal(getSubscriptionUrl('incy'), 'https://api.112prd.ru:2053/sub/••••••••?compat=incy');
 });
 
+test('mapProfile and getCurrentUserToken robustly extract sub_token from subscription_url', () => {
+  const { mapProfile } = require(join(root, 'src/api/real-block1-adapter.js'));
+
+  // Test mapProfile extraction
+  const mapped = mapProfile({
+    user: { id: '777', name: 'tester' },
+    subscription: { status: 'active', expiry: '2026-12-31' },
+    subscription_url: 'https://api.112prd.ru:2053/sub/Oe6Sa-G7Hs9tVJR9xwRqT1iYztBQ8lAz',
+  });
+
+  assert.equal(mapped.user.sub_token, 'Oe6Sa-G7Hs9tVJR9xwRqT1iYztBQ8lAz');
+  assert.equal(mapped.profile.sub_token, 'Oe6Sa-G7Hs9tVJR9xwRqT1iYztBQ8lAz');
+  assert.equal(mapped.sub_token, 'Oe6Sa-G7Hs9tVJR9xwRqT1iYztBQ8lAz');
+
+  // Test devices module extraction from subscription_url candidate
+  const mockDoc = {
+    readyState: 'complete',
+    getElementById: () => null,
+    querySelector: () => null,
+    querySelectorAll: () => [],
+    addEventListener: () => {},
+  };
+
+  global.window = {
+    document: mockDoc,
+    GhostLinkV3: {},
+    Telegram: { WebApp: { platform: 'ios', openLink: () => {} } },
+  };
+  global.document = mockDoc;
+  global.navigator = { userAgent: 'iPhone' };
+
+  const mockProfileSubscription = {
+    getSubToken: () => '',
+    getToken: () => '64a85816bb6e42b109e3e7f41753eb5efc28cb20d3f231e3d36b8110b91e92d6',
+    getCachedProfile: () => ({
+      user: { id: '777' },
+      subscription_url: 'https://api.112prd.ru:2053/sub/Oe6Sa-G7Hs9tVJR9xwRqT1iYztBQ8lAz',
+    }),
+    getSnapshot: () => ({
+      user: { id: '777' },
+      subscription_url: 'https://api.112prd.ru:2053/sub/Oe6Sa-G7Hs9tVJR9xwRqT1iYztBQ8lAz',
+    }),
+    subscribe: () => () => {},
+  };
+
+  delete require.cache[require.resolve(join(root, 'src/modules/devices.js'))];
+  require(join(root, 'src/modules/devices.js'));
+  global.window.GhostLinkV3.initDevicesModule({
+    showToast: () => {},
+    copyText: () => true,
+    openOverlay: () => {},
+    closeOverlay: () => {},
+    returnToHome: () => {},
+    profileSubscription: mockProfileSubscription,
+  });
+
+  const { getCurrentUserToken, getSubscriptionUrl } = global.window.GhostLinkV3.devices;
+  assert.equal(getCurrentUserToken(), 'Oe6Sa-G7Hs9tVJR9xwRqT1iYztBQ8lAz');
+  assert.equal(getSubscriptionUrl('karing'), 'https://api.112prd.ru:2053/sub/Oe6Sa-G7Hs9tVJR9xwRqT1iYztBQ8lAz');
+  assert.equal(getSubscriptionUrl('incy'), 'https://api.112prd.ru:2053/sub/Oe6Sa-G7Hs9tVJR9xwRqT1iYztBQ8lAz?compat=incy');
+});
+
+
 
 
 

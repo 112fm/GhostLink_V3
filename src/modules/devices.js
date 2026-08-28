@@ -728,6 +728,15 @@ function isValidSubToken(token) {
   return true;
 }
 
+function extractSubTokenFromUrl(url) {
+  if (typeof url !== 'string') return '';
+  const match = url.match(/\/sub\/([A-Za-z0-9_-]+)/);
+  if (match && isValidSubToken(match[1])) {
+    return match[1].trim();
+  }
+  return '';
+}
+
 function getCurrentUserToken() {
   const directSubToken = profileSubscription?.getSubToken?.();
   if (isValidSubToken(directSubToken)) return directSubToken.trim();
@@ -745,6 +754,23 @@ function getCurrentUserToken() {
   if (isValidSubToken(snapshot?.profile?.sub_token)) return snapshot.profile.sub_token.trim();
   if (isValidSubToken(snapshot?.subscription?.sub_token)) return snapshot.subscription.sub_token.trim();
   if (isValidSubToken(snapshot?.user?.subscription_token)) return snapshot.user.subscription_token.trim();
+
+  const urlCandidates = [
+    cached?.subscription_url,
+    cached?.subscription?.subscription_url,
+    cached?.user?.subscription_url,
+    cached?.subscription_link,
+    cached?.user?.subscription_link,
+    snapshot?.subscription_url,
+    snapshot?.subscription?.subscription_url,
+    snapshot?.user?.subscription_url,
+    snapshot?.subscription_link,
+    snapshot?.user?.subscription_link,
+  ];
+  for (const candidate of urlCandidates) {
+    const extracted = extractSubTokenFromUrl(candidate);
+    if (extracted) return extracted;
+  }
 
   const directToken = profileSubscription?.getToken?.();
   if (isValidSubToken(directToken)) return directToken.trim();
