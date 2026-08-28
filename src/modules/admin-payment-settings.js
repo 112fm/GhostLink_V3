@@ -105,6 +105,13 @@
     return Number(activeProfilesCount) > 1;
   }
 
+  function resolveIsAdmin(val) {
+    if (typeof val === 'function') {
+      try { return Boolean(val()); } catch (_) { return false; }
+    }
+    return Boolean(val);
+  }
+
   const PaymentSettingsModel = Object.freeze({
     METHODS,
     BANKS,
@@ -113,6 +120,7 @@
     createVersion,
     createPaymentSnapshot,
     canDeactivateLastActive,
+    resolveIsAdmin,
   });
 
   const GhostLinkV3 = globalScope.GhostLinkV3 = globalScope.GhostLinkV3 || {};
@@ -135,12 +143,15 @@
     const getInitData = customGetInitData || (() => globalScope.Telegram?.WebApp?.initData || '');
     const documentRef = dependencies.document || globalScope.document;
     const localAdminSession = dependencies.adminMockSession || GhostLinkV3.adminMockSession || globalScope.GhostLinkV3?.adminMockSession;
-    const isLocalAdmin = () => Boolean(
-      dependencies.isAdmin ||
-      localAdminSession?.isAdmin?.() ||
-      profileSubscription?.getCachedProfile?.()?.user?.is_admin ||
-      profileSubscription?.getCachedProfile?.()?.profile?.isAdmin ||
-      profileSubscription?.getCachedProfile?.()?.profile?.is_admin
+    const checkAdminAccess = () => Boolean(
+      resolveIsAdmin(dependencies.isAdmin) ||
+      resolveIsAdmin(localAdminSession?.isAdmin) ||
+      resolveIsAdmin(profileSubscription?.getCachedProfile?.()?.user?.is_admin) ||
+      resolveIsAdmin(profileSubscription?.getSnapshot?.()?.user?.is_admin) ||
+      resolveIsAdmin(profileSubscription?.getCachedProfile?.()?.profile?.isAdmin) ||
+      resolveIsAdmin(profileSubscription?.getCachedProfile?.()?.profile?.is_admin) ||
+      resolveIsAdmin(GhostLinkV3.isCurrentUserAdmin) ||
+      resolveIsAdmin(globalScope.GhostLinkV3?.isCurrentUserAdmin)
     );
     const openButton = documentRef?.getElementById('btnOpenPaymentSettings');
     const page = documentRef?.getElementById('page-admin-payment-settings');
@@ -329,15 +340,7 @@
       event.preventDefault();
       if (saving) return;
 
-      const isAdmin = Boolean(
-        dependencies.isAdmin ||
-        localAdminSession?.isAdmin?.() ||
-        profileSubscription?.getCachedProfile?.()?.user?.is_admin ||
-        profileSubscription?.getSnapshot?.()?.user?.is_admin ||
-        isLocalAdmin()
-      );
-
-      if (!isAdmin) {
+      if (!checkAdminAccess()) {
         event.preventDefault();
         showToast('Доступ только для администратора');
         formStatus.textContent = 'Недостаточно прав администратора';
