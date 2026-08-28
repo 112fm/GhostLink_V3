@@ -57,6 +57,10 @@ function createMockElement(id = '', tagName = 'div') {
       this.children.push(child);
       return child;
     },
+    append: function(...children) {
+      if (!this.children) this.children = [];
+      this.children.push(...children);
+    },
     querySelector: () => null,
     querySelectorAll: () => [],
   };
@@ -120,6 +124,7 @@ test('clicking #btnSettingsAdmin opens #page-admin-dashboard and #btnAdminBack c
     readyState: 'complete',
     getElementById: (id) => getOrCreateElement(id),
     createElement: (tag) => createMockElement('', tag),
+    createDocumentFragment: () => createMockElement('', 'fragment'),
     querySelectorAll: () => [],
     querySelector: () => null,
     addEventListener: () => {},

@@ -246,12 +246,17 @@ let partState = {
   hasLoaded: false
 };
 
-document.addEventListener('DOMContentLoaded', () => {
-  // The local prototype is owner-only. The hosted user Mini App must neither
-  // bind these controls nor expose partner mock operations.
-  if (!IS_ADMIN || !document.getElementById('admin-tab-partners')) return;
-  initPartnersTab();
-});
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    if (document.getElementById('admin-tab-partners')) {
+      initPartnersTab();
+    }
+  });
+} else {
+  if (document.getElementById('admin-tab-partners')) {
+    initPartnersTab();
+  }
+}
 
 function initPartnersTab() {
   if (partState.initialized) return;

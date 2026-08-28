@@ -298,11 +298,11 @@ function setupAdminDashboardEntry() {
   const btnAdminBack = document.getElementById('btnAdminBack');
 
   if (btnSettingsAdmin) {
-    btnSettingsAdmin.addEventListener('click', () => {
+    btnSettingsAdmin.addEventListener('click', async () => {
       const pageAdmin = document.getElementById('page-admin-dashboard');
       if (pageAdmin) {
         openOverlay(pageAdmin);
-        refreshDashboard();
+        await refreshDashboard();
       }
     });
   }
@@ -337,6 +337,13 @@ function setupAdminDashboardEntry() {
           tab.style.display = 'none';
         }
       });
+      if (btn.dataset.tab === 'users') {
+        if (typeof initUsersTab === 'function') void initUsersTab();
+      } else if (btn.dataset.tab === 'partners') {
+        if (typeof initPartnersTab === 'function') initPartnersTab();
+      } else if (btn.dataset.tab === 'finance') {
+        if (typeof renderFinanceTab === 'function') void renderFinanceTab();
+      }
     });
   });
 

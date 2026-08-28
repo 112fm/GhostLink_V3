@@ -184,7 +184,7 @@ test('admin payment settings submits POST /api/admin/payment/settings and shows 
   assert.equal(toastMsg, 'Реквизиты успешно обновлены в базе');
 });
 
-test('admin payment settings default-deny removes settings entry when not admin', () => {
+test('admin payment settings preserves elements in DOM without destructive removal', () => {
   const doc = createMockAdminDoc();
   global.document = doc;
   global.Telegram = { WebApp: { initData: '' } };
@@ -198,7 +198,7 @@ test('admin payment settings default-deny removes settings entry when not admin'
     isAdmin: false,
   });
 
-  assert.equal(doc.getElementById('btnOpenPaymentSettings').removed, true);
-  assert.equal(doc.getElementById('page-admin-payment-settings').removed, true);
+  assert.equal(doc.getElementById('btnOpenPaymentSettings').removed, undefined);
+  assert.equal(doc.getElementById('page-admin-payment-settings').removed, undefined);
 });
 

@@ -230,10 +230,13 @@ let savedListState = {
   scrollTop: 0
 };
 
-document.addEventListener('DOMContentLoaded', async () => {
-  // The complete user-management prototype belongs to the separate admin
-  // build. Never bind its handlers in the public user Mini App.
-  if (!IS_ADMIN) return;
+let usersTabInitialized = false;
+
+async function initUsersTab() {
+  if (usersTabInitialized) return;
+  const tabUsers = document.getElementById('admin-tab-users');
+  if (!tabUsers) return;
+  usersTabInitialized = true;
 
   currentUsers = await userApi.getUsers();
   renderUsersList();
@@ -1046,7 +1049,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btnFullHistoryClose').addEventListener('click', () => {
     document.getElementById('modalFullUserHistory').classList.add('hidden');
   });
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    if (document.getElementById('admin-tab-users')) {
+      void initUsersTab();
+    }
+  });
+} else {
+  if (document.getElementById('admin-tab-users')) {
+    void initUsersTab();
+  }
+}
 
 function maskMockDeviceReference(reference) {
   if (!reference || reference.length < 20) return 'mock-device-record-••••••••';

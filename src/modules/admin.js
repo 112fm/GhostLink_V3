@@ -936,11 +936,11 @@ function setupAdminDashboardEntry() {
   const btnAdminBack = document.getElementById('btnAdminBack');
 
   if (btnSettingsAdmin) {
-    btnSettingsAdmin.addEventListener('click', () => {
+    btnSettingsAdmin.addEventListener('click', async () => {
       const pageAdmin = document.getElementById('page-admin-dashboard');
       if (pageAdmin) {
         openOverlay(pageAdmin);
-        refreshDashboard();
+        await refreshDashboard();
       }
     });
   }
@@ -975,6 +975,13 @@ function setupAdminDashboardEntry() {
           tab.style.display = 'none';
         }
       });
+      if (btn.dataset.tab === 'users') {
+        if (typeof initUsersTab === 'function') void initUsersTab();
+      } else if (btn.dataset.tab === 'partners') {
+        if (typeof initPartnersTab === 'function') initPartnersTab();
+      } else if (btn.dataset.tab === 'finance') {
+        if (typeof renderFinanceTab === 'function') void renderFinanceTab();
+      }
     });
   });
 
@@ -1442,10 +1449,13 @@ let savedListState = {
   scrollTop: 0
 };
 
-document.addEventListener('DOMContentLoaded', async () => {
-  // The complete user-management prototype belongs to the separate admin
-  // build. Never bind its handlers in the public user Mini App.
-  if (!IS_ADMIN) return;
+let usersTabInitialized = false;
+
+async function initUsersTab() {
+  if (usersTabInitialized) return;
+  const tabUsers = document.getElementById('admin-tab-users');
+  if (!tabUsers) return;
+  usersTabInitialized = true;
 
   currentUsers = await userApi.getUsers();
   renderUsersList();
@@ -2258,7 +2268,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btnFullHistoryClose').addEventListener('click', () => {
     document.getElementById('modalFullUserHistory').classList.add('hidden');
   });
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    if (document.getElementById('admin-tab-users')) {
+      void initUsersTab();
+    }
+  });
+} else {
+  if (document.getElementById('admin-tab-users')) {
+    void initUsersTab();
+  }
+}
 
 function maskMockDeviceReference(reference) {
   if (!reference || reference.length < 20) return 'mock-device-record-••••••••';
@@ -2957,17 +2979,21 @@ async function renderFinanceTab() {
   } catch (error) {
     if (requestId !== finState.renderSequence) return;
     if (status) status.textContent = finState.hasLoaded ? 'Данные временно устарели' : 'Не удалось загрузить данные';
-    showToast('Финансовые данные временно недоступны');
   }
 }
 
 async function renderFinanceTabContent(analytics, requestId) {
+  const finStatRevenue = document.getElementById('finStatRevenue');
+  if (!finStatRevenue) return;
 
   // 1. 2x2 Stats Grid
-  document.getElementById('finStatRevenue').textContent = `${analytics.revenue.toLocaleString('ru-RU')} ₽`;
-  document.getElementById('finStatCount').textContent = analytics.count;
-  document.getElementById('finStatAvgCheck').textContent = `${analytics.avgCheck.toLocaleString('ru-RU')} ₽`;
-  document.getElementById('finStatPayers').textContent = analytics.uniquePayers;
+  finStatRevenue.textContent = `${analytics.revenue.toLocaleString('ru-RU')} ₽`;
+  const finStatCount = document.getElementById('finStatCount');
+  if (finStatCount) finStatCount.textContent = analytics.count;
+  const finStatAvgCheck = document.getElementById('finStatAvgCheck');
+  if (finStatAvgCheck) finStatAvgCheck.textContent = `${analytics.avgCheck.toLocaleString('ru-RU')} ₽`;
+  const finStatPayers = document.getElementById('finStatPayers');
+  if (finStatPayers) finStatPayers.textContent = analytics.uniquePayers;
 
   // 2. Comparison Block
   const compTitle = document.getElementById('finComparisonTitle');
@@ -3455,12 +3481,17 @@ let partState = {
   hasLoaded: false
 };
 
-document.addEventListener('DOMContentLoaded', () => {
-  // The local prototype is owner-only. The hosted user Mini App must neither
-  // bind these controls nor expose partner mock operations.
-  if (!IS_ADMIN || !document.getElementById('admin-tab-partners')) return;
-  initPartnersTab();
-});
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    if (document.getElementById('admin-tab-partners')) {
+      initPartnersTab();
+    }
+  });
+} else {
+  if (document.getElementById('admin-tab-partners')) {
+    initPartnersTab();
+  }
+}
 
 function initPartnersTab() {
   if (partState.initialized) return;

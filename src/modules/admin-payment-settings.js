@@ -135,20 +135,15 @@
     const getInitData = customGetInitData || (() => globalScope.Telegram?.WebApp?.initData || '');
     const documentRef = dependencies.document || globalScope.document;
     const localAdminSession = dependencies.adminMockSession || GhostLinkV3.adminMockSession || globalScope.GhostLinkV3?.adminMockSession;
-    const isLocalAdmin = Boolean(
+    const isLocalAdmin = () => Boolean(
       dependencies.isAdmin ||
       localAdminSession?.isAdmin?.() ||
       profileSubscription?.getCachedProfile?.()?.user?.is_admin ||
-      profileSubscription?.getCachedProfile?.()?.profile?.isAdmin
+      profileSubscription?.getCachedProfile?.()?.profile?.isAdmin ||
+      profileSubscription?.getCachedProfile?.()?.profile?.is_admin
     );
     const openButton = documentRef?.getElementById('btnOpenPaymentSettings');
     const page = documentRef?.getElementById('page-admin-payment-settings');
-
-    if (!isLocalAdmin) {
-      openButton?.closest('#system-payment-settings')?.remove();
-      page?.remove();
-      return;
-    }
 
     if (!openButton || !page) return;
 
@@ -334,11 +329,13 @@
       event.preventDefault();
       if (saving) return;
 
-      try {
-        localAdminSession?.assertAdmin?.('save_payment_settings');
-      } catch {
-        formStatus.textContent = 'Недостаточно прав администратора';
-        return;
+      if (!isLocalAdmin()) {
+        try {
+          localAdminSession?.assertAdmin?.('save_payment_settings');
+        } catch {
+          formStatus.textContent = 'Недостаточно прав администратора';
+          return;
+        }
       }
 
       clearErrors();

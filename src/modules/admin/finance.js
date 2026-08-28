@@ -269,17 +269,21 @@ async function renderFinanceTab() {
   } catch (error) {
     if (requestId !== finState.renderSequence) return;
     if (status) status.textContent = finState.hasLoaded ? 'Данные временно устарели' : 'Не удалось загрузить данные';
-    showToast('Финансовые данные временно недоступны');
   }
 }
 
 async function renderFinanceTabContent(analytics, requestId) {
+  const finStatRevenue = document.getElementById('finStatRevenue');
+  if (!finStatRevenue) return;
 
   // 1. 2x2 Stats Grid
-  document.getElementById('finStatRevenue').textContent = `${analytics.revenue.toLocaleString('ru-RU')} ₽`;
-  document.getElementById('finStatCount').textContent = analytics.count;
-  document.getElementById('finStatAvgCheck').textContent = `${analytics.avgCheck.toLocaleString('ru-RU')} ₽`;
-  document.getElementById('finStatPayers').textContent = analytics.uniquePayers;
+  finStatRevenue.textContent = `${analytics.revenue.toLocaleString('ru-RU')} ₽`;
+  const finStatCount = document.getElementById('finStatCount');
+  if (finStatCount) finStatCount.textContent = analytics.count;
+  const finStatAvgCheck = document.getElementById('finStatAvgCheck');
+  if (finStatAvgCheck) finStatAvgCheck.textContent = `${analytics.avgCheck.toLocaleString('ru-RU')} ₽`;
+  const finStatPayers = document.getElementById('finStatPayers');
+  if (finStatPayers) finStatPayers.textContent = analytics.uniquePayers;
 
   // 2. Comparison Block
   const compTitle = document.getElementById('finComparisonTitle');
