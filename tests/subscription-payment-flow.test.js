@@ -935,6 +935,99 @@ test('regression Scenario 3 (Recovery after Error): retry after failed tariffs r
   assert.equal(doc.getElementById('price-card-3').textContent, '430 ₽');
 });
 
+test('regression Overlapping Requests: slow request #1 (150ms) is discarded by Generation Guard in favor of fast refresh #2 (50ms)', async () => {
+  const doc = createMockDocument();
+  global.document = doc;
+  global.Telegram = { WebApp: { initData: 'telegram-init-data' } };
+  global.window = {
+    document: doc,
+    GhostLinkPaymentConfig: { banks: {}, get: () => ({}), set: () => {}, reset: () => {} },
+    Telegram: { WebApp: { initData: 'telegram-init-data' } },
+    GhostLinkV3: {},
+  };
+
+  const mockResponse = (status, body) => ({
+    ok: status >= 200 && status < 300,
+    status,
+    text: async () => JSON.stringify(body),
+    json: async () => body,
+  });
+
+  let tariffsCallCount = 0;
+
+  const adapter = createRealBlock1Adapter({
+    apiBase: 'https://api.example.test',
+    getInitData: () => 'telegram-init-data',
+    fetch: async (url) => {
+      if (url.endsWith('/api/miniapp/session')) return mockResponse(200, { session_token: 'secret-token' });
+      if (url.endsWith('/api/user')) {
+        return mockResponse(200, {
+          user: { id: '123', name: 'Real User' },
+          subscription: { active: true, status: 'active', days_left: 30 },
+          tariff_name: 'Solo Ghost',
+          device_limit: 2,
+          connected_devices: 1,
+        });
+      }
+      if (url.endsWith('/api/tariffs')) {
+        tariffsCallCount++;
+        const currentCall = tariffsCallCount;
+        if (currentCall === 1) {
+          // Request #1: slow tariffs (resolves in 150ms with price 150)
+          await new Promise((r) => setTimeout(r, 150));
+          return mockResponse(200, {
+            period_prices: {
+              1: { 2: { price: 150 }, 3: { price: 350 }, 4: { price: 450 }, 5: { price: 500 } },
+              2: { 2: { price: 290 }, 3: { price: 630 }, 4: { price: 810 }, 5: { price: 900 } },
+              3: { 2: { price: 430 }, 3: { price: 840 }, 4: { price: 1080 }, 5: { price: 1200 } },
+            },
+          });
+        } else {
+          // Request #2: fast refresh (resolves in 50ms with price 250)
+          await new Promise((r) => setTimeout(r, 50));
+          return mockResponse(200, {
+            period_prices: {
+              1: { 2: { price: 250 }, 3: { price: 450 }, 4: { price: 550 }, 5: { price: 650 } },
+              2: { 2: { price: 490 }, 3: { price: 830 }, 4: { price: 1010 }, 5: { price: 1200 } },
+              3: { 2: { price: 730 }, 3: { price: 1240 }, 4: { price: 1480 }, 5: { price: 1800 } },
+            },
+          });
+        }
+      }
+      return mockResponse(200, {});
+    },
+  });
+
+  initSubscriptionModule({ profileSubscription: adapter });
+
+  // 1. Launch request #1 (slow)
+  void adapter.fetchProfileSubscription();
+
+  // 2. Wait 20ms, then launch refresh() (request #2, fast)
+  await new Promise((r) => setTimeout(r, 20));
+  const refreshPromise = adapter.refresh();
+
+  // 3. Await completion of request #2
+  await refreshPromise;
+  await new Promise((r) => setTimeout(r, 60)); // at ~80ms total, request #2 is finished
+
+  const btnPay = doc.getElementById('btn-pay');
+  assert.equal(btnPay.disabled, false);
+  assert.equal(doc.getElementById('pay-total').textContent, '250 ₽');
+  assert.equal(doc.getElementById('price-card-1').textContent, '250 ₽');
+
+  // 4. Wait until 200ms (when slow request #1 would have finished at 150ms)
+  await new Promise((r) => setTimeout(r, 120));
+
+  // 5. Verify request #1 was discarded and UI remains strictly at 250 ₽ from request #2
+  assert.equal(btnPay.disabled, false);
+  assert.equal(doc.getElementById('pay-total').textContent, '250 ₽');
+  assert.equal(doc.getElementById('price-card-1').textContent, '250 ₽');
+  assert.equal(doc.getElementById('price-card-2').textContent, '490 ₽');
+  assert.equal(doc.getElementById('price-card-3').textContent, '730 ₽');
+});
+
+
 
 
 

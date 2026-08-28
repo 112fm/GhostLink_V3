@@ -308,6 +308,7 @@
     let currentSnapshot = null;
     let latestTariffsResponse = null;
     let latestUserResponse = null;
+    let activeGeneration = 0;
 
     function subscribe(callback) {
       if (typeof callback === 'function') {
@@ -331,8 +332,9 @@
     }
 
     return Object.freeze({
-      fetchProfileSubscription() {
-        if (inFlight) return inFlight;
+      fetchProfileSubscription(options = {}) {
+        if (inFlight && !options?.force) return inFlight;
+        const currentGeneration = ++activeGeneration;
         inFlight = (async () => {
           diagnostics = createDiagnostics();
           const requestDiagnostics = diagnostics;
@@ -343,10 +345,14 @@
             notifyListeners(currentSnapshot);
           }
           await openSession(deadlineAt);
+          if (currentGeneration !== activeGeneration) return null;
 
           void runStage('tariffs', deadlineAt, (timeoutMs) => requestJson(fetchImpl, `${apiBase}/api/tariffs`, {
             method: 'GET', cache: 'no-store', credentials: 'include', headers: readHeaders(),
           }, timeoutMs), requestDiagnostics).then((tariffsData) => {
+            if (currentGeneration !== activeGeneration) {
+              return;
+            }
             if (tariffsData) {
               latestTariffsResponse = tariffsData;
               if (currentSnapshot) {
@@ -361,6 +367,9 @@
               }
             }
           }).catch(() => {
+            if (currentGeneration !== activeGeneration) {
+              return;
+            }
             latestTariffsResponse = null;
             if (currentSnapshot) {
               currentSnapshot.tariffs = null;
@@ -372,6 +381,10 @@
             method: 'GET', cache: 'no-store', credentials: 'include', headers: readHeaders(),
           }, timeoutMs), requestDiagnostics);
 
+          if (currentGeneration !== activeGeneration) {
+            return null;
+          }
+
           latestUserResponse = user;
           const profileResult = mapProfile(user, null);
           profileResult.tariffs = latestTariffsResponse || null;
@@ -379,12 +392,14 @@
           notifyListeners(profileResult);
           return profileResult;
         })().finally(() => {
-          inFlight = null;
+          if (currentGeneration === activeGeneration) {
+            inFlight = null;
+          }
         });
         return inFlight;
       },
-      refresh() {
-        return this.fetchProfileSubscription();
+      refresh(options = {}) {
+        return this.fetchProfileSubscription({ force: true, ...options });
       },
       getSnapshot: () => currentSnapshot,
       getCachedProfile: () => currentSnapshot,
