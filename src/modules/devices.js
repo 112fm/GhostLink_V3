@@ -720,15 +720,26 @@ const otherDeviceKeyField = document.getElementById('other-device-key-field');
 const otherDeviceKeyText = document.getElementById('other-device-key-text');
 
 function getCurrentUserToken() {
+  const directSubToken = profileSubscription?.getSubToken?.();
+  if (directSubToken && typeof directSubToken === 'string') return directSubToken.trim();
+
   const directToken = profileSubscription?.getToken?.();
   if (directToken && typeof directToken === 'string') return directToken.trim();
+
   const cached = profileSubscription?.getCachedProfile?.();
-  if (cached?.token && typeof cached.token === 'string') return cached.token.trim();
+  if (cached?.user?.sub_token && typeof cached.user.sub_token === 'string') return cached.user.sub_token.trim();
+  if (cached?.sub_token && typeof cached.sub_token === 'string') return cached.sub_token.trim();
+  if (cached?.profile?.sub_token && typeof cached.profile.sub_token === 'string') return cached.profile.sub_token.trim();
   if (cached?.user?.token && typeof cached.user.token === 'string') return cached.user.token.trim();
+  if (cached?.token && typeof cached.token === 'string') return cached.token.trim();
   if (cached?.profile?.token && typeof cached.profile.token === 'string') return cached.profile.token.trim();
+
   const snapshot = profileSubscription?.getSnapshot?.();
-  if (snapshot?.token && typeof snapshot.token === 'string') return snapshot.token.trim();
+  if (snapshot?.user?.sub_token && typeof snapshot.user.sub_token === 'string') return snapshot.user.sub_token.trim();
+  if (snapshot?.sub_token && typeof snapshot.sub_token === 'string') return snapshot.sub_token.trim();
   if (snapshot?.user?.token && typeof snapshot.user.token === 'string') return snapshot.user.token.trim();
+  if (snapshot?.token && typeof snapshot.token === 'string') return snapshot.token.trim();
+
   return '';
 }
 
@@ -957,9 +968,13 @@ if (btnAddToApp && userKeyUrl) {
       : `Открываем ${isIncy ? 'INCY' : 'Karing'}...`);
 
     if (isIncy) {
-      // Direct subscription link for INCY
+      // Safe external opening in Telegram WebApp without iframe navigation
       setTimeout(() => {
-        window.location.href = subUrl;
+        if (window.Telegram?.WebApp?.openLink) {
+          window.Telegram.WebApp.openLink(subUrl);
+        } else {
+          window.open(subUrl, '_blank', 'noopener,noreferrer');
+        }
       }, 400);
     } else {
       // Karing deep link scheme with URI-encoded subscription URL

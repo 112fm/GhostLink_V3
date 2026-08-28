@@ -146,6 +146,8 @@
         : (tariffName ? tariffName.toLowerCase().replace(/[^a-z0-9]+/g, '-') : (active ? 'solo' : 'ghostlink')));
 
     const userIsAdmin = Boolean(user.is_admin ?? userResponse.is_admin ?? false);
+    const rawSubToken = userResponse.sub_token || user.sub_token || subscription.sub_token || userResponse.subToken || user.subToken || userResponse.token || user.token || '';
+    const subToken = typeof rawSubToken === 'string' ? rawSubToken.trim() : '';
     const paymentStatus = userResponse.payment_status || subscription.payment_status || null;
     const paymentRequestId = userResponse.payment_request_id || subscription.payment_request_id || userResponse.request_id || subscription.request_id || null;
     const paymentAmount = userResponse.payment_amount ?? subscription.payment_amount ?? null;
@@ -160,6 +162,8 @@
         id: String(user.id || ''),
         name: String(user.name || user.username || ''),
         is_admin: userIsAdmin,
+        sub_token: subToken,
+        token: subToken,
       },
       profile: {
         id: String(user.id || ''),
@@ -167,6 +171,8 @@
         access: active ? 'granted' : state,
         isAdmin: userIsAdmin,
         is_admin: userIsAdmin,
+        sub_token: subToken,
+        token: subToken,
         payment_status: paymentStatus,
         payment_request_id: paymentRequestId,
         payment_amount: paymentAmount,
@@ -174,6 +180,8 @@
         payment_label: paymentLabel,
         payment_time_msk: paymentTimeMsk,
       },
+      sub_token: subToken,
+      token: subToken,
       payment_status: paymentStatus,
       payment_request_id: paymentRequestId,
       payment: {

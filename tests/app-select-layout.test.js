@@ -159,4 +159,79 @@ test('canonical subscription URL builder handles karing, incy, tokens and fallba
   assert.doesNotMatch(devicesHtml, /vless:\/\//);
 });
 
+test('subscription token prioritizes sub_token from profile snapshot and adapter', () => {
+  const elements = new Map();
+  function createMockElement(id = '', tagName = 'div') {
+    const classes = new Set();
+    let checked = false;
+    let textContent = '';
+    return {
+      id,
+      tagName: tagName.toUpperCase(),
+      get checked() { return checked; },
+      set checked(v) { checked = Boolean(v); },
+      get textContent() { return textContent; },
+      set textContent(v) { textContent = String(v); },
+      classList: {
+        add: (...names) => names.forEach(n => classes.add(n)),
+        remove: (...names) => names.forEach(n => classes.delete(n)),
+        contains: (name) => classes.has(name),
+      },
+      addEventListener: () => {},
+      setAttribute: () => {},
+      getAttribute: () => null,
+      removeAttribute: () => {},
+      querySelector: () => null,
+      querySelectorAll: () => [],
+      style: {},
+    };
+  }
+
+  function getOrCreateElement(id) {
+    if (!elements.has(id)) elements.set(id, createMockElement(id));
+    return elements.get(id);
+  }
+
+  const mockDoc = {
+    readyState: 'complete',
+    getElementById: (id) => getOrCreateElement(id),
+    querySelector: () => null,
+    querySelectorAll: () => [],
+    addEventListener: () => {},
+  };
+
+  global.window = {
+    document: mockDoc,
+    GhostLinkV3: {},
+    Telegram: { WebApp: { platform: 'ios', openLink: () => {} } },
+  };
+  global.document = mockDoc;
+  global.navigator = { userAgent: 'iPhone' };
+
+  const mockProfileSubscription = {
+    getSubToken: () => 'sub_live_999',
+    getToken: () => 'legacy_token_111',
+    getCachedProfile: () => ({ user: { sub_token: 'sub_live_999' } }),
+    getSnapshot: () => ({ user: { sub_token: 'sub_live_999' } }),
+    subscribe: () => () => {},
+  };
+
+  delete require.cache[require.resolve(join(root, 'src/modules/devices.js'))];
+  require(join(root, 'src/modules/devices.js'));
+  global.window.GhostLinkV3.initDevicesModule({
+    showToast: () => {},
+    copyText: () => true,
+    openOverlay: () => {},
+    closeOverlay: () => {},
+    returnToHome: () => {},
+    profileSubscription: mockProfileSubscription,
+  });
+
+  const { getCurrentUserToken, getSubscriptionUrl } = global.window.GhostLinkV3.devices;
+  assert.equal(getCurrentUserToken(), 'sub_live_999');
+  assert.equal(getSubscriptionUrl('karing'), 'https://api.112prd.ru:2053/sub/sub_live_999');
+  assert.equal(getSubscriptionUrl('incy'), 'https://api.112prd.ru:2053/sub/sub_live_999?compat=incy');
+});
+
+
 
