@@ -227,11 +227,96 @@ test('subscription token prioritizes sub_token from profile snapshot and adapter
     profileSubscription: mockProfileSubscription,
   });
 
-  const { getCurrentUserToken, getSubscriptionUrl } = global.window.GhostLinkV3.devices;
+  const { getCurrentUserToken, getSubscriptionUrl, isValidSubToken } = global.window.GhostLinkV3.devices;
   assert.equal(getCurrentUserToken(), 'sub_live_999');
   assert.equal(getSubscriptionUrl('karing'), 'https://api.112prd.ru:2053/sub/sub_live_999');
   assert.equal(getSubscriptionUrl('incy'), 'https://api.112prd.ru:2053/sub/sub_live_999?compat=incy');
+
+  // Test isValidSubToken
+  assert.equal(isValidSubToken('Oe6Sa-G7Hs9tVJR9xwRqT1iYztBQ8lAz'), true);
+  assert.equal(isValidSubToken('sub_live_999'), true);
+  assert.equal(isValidSubToken('64a85816bb6e42b109e3e7f41753eb5efc28cb20d3f231e3d36b8110b91e92d6'), false);
+  assert.equal(isValidSubToken('a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90'), false);
+  assert.equal(isValidSubToken(''), false);
+  assert.equal(isValidSubToken(null), false);
+  assert.equal(isValidSubToken(undefined), false);
 });
+
+test('getCurrentUserToken strictly excludes 64-char session token when sub_token is absent', () => {
+  const elements = new Map();
+  function createMockElement(id = '', tagName = 'div') {
+    const classes = new Set();
+    let checked = false;
+    let textContent = '';
+    return {
+      id,
+      tagName: tagName.toUpperCase(),
+      get checked() { return checked; },
+      set checked(v) { checked = Boolean(v); },
+      get textContent() { return textContent; },
+      set textContent(v) { textContent = String(v); },
+      classList: {
+        add: (...names) => names.forEach(n => classes.add(n)),
+        remove: (...names) => names.forEach(n => classes.delete(n)),
+        contains: (name) => classes.has(name),
+      },
+      addEventListener: () => {},
+      setAttribute: () => {},
+      getAttribute: () => null,
+      removeAttribute: () => {},
+      querySelector: () => null,
+      querySelectorAll: () => [],
+      style: {},
+    };
+  }
+
+  function getOrCreateElement(id) {
+    if (!elements.has(id)) elements.set(id, createMockElement(id));
+    return elements.get(id);
+  }
+
+  const mockDoc = {
+    readyState: 'complete',
+    getElementById: (id) => getOrCreateElement(id),
+    querySelector: () => null,
+    querySelectorAll: () => [],
+    addEventListener: () => {},
+  };
+
+  global.window = {
+    document: mockDoc,
+    GhostLinkV3: {},
+    Telegram: { WebApp: { platform: 'ios', openLink: () => {} } },
+  };
+  global.document = mockDoc;
+  global.navigator = { userAgent: 'iPhone' };
+
+  // Only has 64-hex session token, no user sub_token
+  const mockProfileSubscription = {
+    getSubToken: () => '',
+    getToken: () => '64a85816bb6e42b109e3e7f41753eb5efc28cb20d3f231e3d36b8110b91e92d6',
+    getCachedProfile: () => ({ user: { id: '123' } }),
+    getSnapshot: () => ({ user: { id: '123' } }),
+    subscribe: () => () => {},
+  };
+
+  delete require.cache[require.resolve(join(root, 'src/modules/devices.js'))];
+  require(join(root, 'src/modules/devices.js'));
+  global.window.GhostLinkV3.initDevicesModule({
+    showToast: () => {},
+    copyText: () => true,
+    openOverlay: () => {},
+    closeOverlay: () => {},
+    returnToHome: () => {},
+    profileSubscription: mockProfileSubscription,
+  });
+
+  const { getCurrentUserToken, getSubscriptionUrl } = global.window.GhostLinkV3.devices;
+  assert.equal(getCurrentUserToken(), '');
+  assert.equal(getSubscriptionUrl('karing'), 'https://api.112prd.ru:2053/sub/••••••••');
+  assert.equal(getSubscriptionUrl('incy'), 'https://api.112prd.ru:2053/sub/••••••••?compat=incy');
+});
+
 
 
 

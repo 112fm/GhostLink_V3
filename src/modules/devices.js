@@ -719,32 +719,46 @@ const btnOtherDeviceBack = document.getElementById('btn-other-device-back');
 const otherDeviceKeyField = document.getElementById('other-device-key-field');
 const otherDeviceKeyText = document.getElementById('other-device-key-text');
 
+function isValidSubToken(token) {
+  if (typeof token !== 'string') return false;
+  const trimmed = token.trim();
+  if (!trimmed) return false;
+  // Strictly reject 64-char hex session authorization bearer hashes
+  if (/^[a-f0-9]{64}$/i.test(trimmed)) return false;
+  return true;
+}
+
 function getCurrentUserToken() {
   const directSubToken = profileSubscription?.getSubToken?.();
-  if (directSubToken && typeof directSubToken === 'string') return directSubToken.trim();
-
-  const directToken = profileSubscription?.getToken?.();
-  if (directToken && typeof directToken === 'string') return directToken.trim();
+  if (isValidSubToken(directSubToken)) return directSubToken.trim();
 
   const cached = profileSubscription?.getCachedProfile?.();
-  if (cached?.user?.sub_token && typeof cached.user.sub_token === 'string') return cached.user.sub_token.trim();
-  if (cached?.sub_token && typeof cached.sub_token === 'string') return cached.sub_token.trim();
-  if (cached?.profile?.sub_token && typeof cached.profile.sub_token === 'string') return cached.profile.sub_token.trim();
-  if (cached?.user?.token && typeof cached.user.token === 'string') return cached.user.token.trim();
-  if (cached?.token && typeof cached.token === 'string') return cached.token.trim();
-  if (cached?.profile?.token && typeof cached.profile.token === 'string') return cached.profile.token.trim();
+  if (isValidSubToken(cached?.user?.sub_token)) return cached.user.sub_token.trim();
+  if (isValidSubToken(cached?.sub_token)) return cached.sub_token.trim();
+  if (isValidSubToken(cached?.profile?.sub_token)) return cached.profile.sub_token.trim();
+  if (isValidSubToken(cached?.subscription?.sub_token)) return cached.subscription.sub_token.trim();
+  if (isValidSubToken(cached?.user?.subscription_token)) return cached.user.subscription_token.trim();
 
   const snapshot = profileSubscription?.getSnapshot?.();
-  if (snapshot?.user?.sub_token && typeof snapshot.user.sub_token === 'string') return snapshot.user.sub_token.trim();
-  if (snapshot?.sub_token && typeof snapshot.sub_token === 'string') return snapshot.sub_token.trim();
-  if (snapshot?.user?.token && typeof snapshot.user.token === 'string') return snapshot.user.token.trim();
-  if (snapshot?.token && typeof snapshot.token === 'string') return snapshot.token.trim();
+  if (isValidSubToken(snapshot?.user?.sub_token)) return snapshot.user.sub_token.trim();
+  if (isValidSubToken(snapshot?.sub_token)) return snapshot.sub_token.trim();
+  if (isValidSubToken(snapshot?.profile?.sub_token)) return snapshot.profile.sub_token.trim();
+  if (isValidSubToken(snapshot?.subscription?.sub_token)) return snapshot.subscription.sub_token.trim();
+  if (isValidSubToken(snapshot?.user?.subscription_token)) return snapshot.user.subscription_token.trim();
+
+  const directToken = profileSubscription?.getToken?.();
+  if (isValidSubToken(directToken)) return directToken.trim();
+
+  if (isValidSubToken(cached?.user?.token)) return cached.user.token.trim();
+  if (isValidSubToken(cached?.token)) return cached.token.trim();
+  if (isValidSubToken(snapshot?.user?.token)) return snapshot.user.token.trim();
+  if (isValidSubToken(snapshot?.token)) return snapshot.token.trim();
 
   return '';
 }
 
 function getSubscriptionUrl(app = 'karing', token = getCurrentUserToken()) {
-  const tokenPart = token ? token.trim() : '••••••••';
+  const tokenPart = isValidSubToken(token) ? token.trim() : '••••••••';
   const baseUrl = 'https://api.112prd.ru:2053';
   if (app === 'incy') {
     return `${baseUrl}/sub/${tokenPart}?compat=incy`;
@@ -1220,6 +1234,7 @@ if (btnDeviceDownload) {
     getDevicePlatform,
     getSubscriptionUrl,
     getCurrentUserToken,
+    isValidSubToken,
     updateDisplayedSubscriptionUrls,
   });
 

@@ -146,8 +146,8 @@
         : (tariffName ? tariffName.toLowerCase().replace(/[^a-z0-9]+/g, '-') : (active ? 'solo' : 'ghostlink')));
 
     const userIsAdmin = Boolean(user.is_admin ?? userResponse.is_admin ?? false);
-    const rawSubToken = userResponse.sub_token || user.sub_token || subscription.sub_token || userResponse.subToken || user.subToken || userResponse.token || user.token || '';
-    const subToken = typeof rawSubToken === 'string' ? rawSubToken.trim() : '';
+    const rawSubToken = userResponse.sub_token || user.sub_token || subscription.sub_token || userResponse.subToken || user.subToken || '';
+    const subToken = (typeof rawSubToken === 'string' && !/^[a-f0-9]{64}$/i.test(rawSubToken.trim())) ? rawSubToken.trim() : '';
     const paymentStatus = userResponse.payment_status || subscription.payment_status || null;
     const paymentRequestId = userResponse.payment_request_id || subscription.payment_request_id || userResponse.request_id || subscription.request_id || null;
     const paymentAmount = userResponse.payment_amount ?? subscription.payment_amount ?? null;
@@ -422,6 +422,7 @@
       onUpdate: subscribe,
       getSession: () => sessionState ? { ...sessionState } : null,
       getToken: () => token,
+      getSubToken: () => currentSnapshot?.user?.sub_token || currentSnapshot?.sub_token || '',
       getApiBase: () => apiBase,
       getDiagnostics: () => diagnostics ? {
         ...diagnostics,
