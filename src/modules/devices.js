@@ -784,12 +784,11 @@ function getCurrentUserToken() {
 }
 
 function isSubscriptionReady(app = currentSelectedApp || 'karing') {
-  const token = getCurrentUserToken();
-  const url = getSubscriptionUrl(app, token);
+  const url = getSubscriptionUrl(app);
   return Boolean(url && !url.includes('••••'));
 }
 
-function getSubscriptionUrl(app = 'karing', token = getCurrentUserToken()) {
+function getSubscriptionUrl(app = 'karing') {
   const cached = profileSubscription?.getCachedProfile?.();
   const snapshot = profileSubscription?.getSnapshot?.();
 
@@ -800,9 +799,7 @@ function getSubscriptionUrl(app = 'karing', token = getCurrentUserToken()) {
     if (typeof directIncyUrl === 'string' && directIncyUrl.trim().startsWith('http') && !directIncyUrl.includes('••••••••')) {
       return directIncyUrl.trim();
     }
-    const tokenPart = isValidSubToken(token) ? token.trim() : '••••••••';
-    const baseUrl = 'https://api.112prd.ru:2053';
-    return `${baseUrl}/sub/${tokenPart}?compat=incy`;
+    return 'https://api.112prd.ru:2053/sub/••••••••?compat=incy';
   }
 
   // Karing (or default)
@@ -814,9 +811,7 @@ function getSubscriptionUrl(app = 'karing', token = getCurrentUserToken()) {
     return directKaringUrl.trim();
   }
 
-  const tokenPart = isValidSubToken(token) ? token.trim() : '••••••••';
-  const baseUrl = 'https://api.112prd.ru:2053';
-  return `${baseUrl}/sub/${tokenPart}`;
+  return 'https://api.112prd.ru:2053/sub/••••••••';
 }
 
 let currentSelectedApp = 'incy';
