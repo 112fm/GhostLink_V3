@@ -379,6 +379,138 @@ test('mapProfile and getCurrentUserToken robustly extract sub_token from subscri
   assert.equal(getSubscriptionUrl('incy'), 'https://api.112prd.ru:2053/sub/Oe6Sa-G7Hs9tVJR9xwRqT1iYztBQ8lAz?compat=incy');
 });
 
+test('devices module consumes backend url/url_incy directly and disables btnAddToApp until subscription is ready', () => {
+  const elements = new Map();
+  function createMockElement(id = '', tagName = 'div') {
+    const classes = new Set();
+    let checked = false;
+    let textContent = '';
+    let disabled = false;
+    const spanEl = {
+      tagName: 'SPAN',
+      get textContent() { return textContent; },
+      set textContent(v) { textContent = String(v); },
+      replaceChildren: (...children) => {
+        textContent = children.map(c => (typeof c === 'string' ? c : c?.textContent || '')).join('');
+      },
+      appendChild: (c) => {
+        textContent += (typeof c === 'string' ? c : c?.textContent || '');
+      },
+      classList: {
+        add: () => {},
+        remove: () => {},
+        contains: () => false,
+      },
+      style: {},
+    };
+    return {
+      id,
+      tagName: tagName.toUpperCase(),
+      get checked() { return checked; },
+      set checked(v) { checked = Boolean(v); },
+      get disabled() { return disabled; },
+      set disabled(v) { disabled = Boolean(v); },
+      get textContent() { return textContent; },
+      set textContent(v) { textContent = String(v); },
+      classList: {
+        add: (...names) => names.forEach(n => classes.add(n)),
+        remove: (...names) => names.forEach(n => classes.delete(n)),
+        contains: (name) => classes.has(name),
+      },
+      addEventListener: () => {},
+      setAttribute: () => {},
+      getAttribute: () => null,
+      removeAttribute: () => {},
+      replaceChildren: (...children) => {
+        textContent = children.map(c => (typeof c === 'string' ? c : c?.textContent || '')).join('');
+      },
+      appendChild: (c) => {
+        textContent += (typeof c === 'string' ? c : c?.textContent || '');
+      },
+      querySelector: (sel) => (sel === 'span' ? spanEl : null),
+      querySelectorAll: () => [],
+      style: {},
+    };
+  }
+
+  function getOrCreateElement(id) {
+    if (!elements.has(id)) elements.set(id, createMockElement(id));
+    return elements.get(id);
+  }
+
+  const mockDoc = {
+    readyState: 'complete',
+    getElementById: (id) => getOrCreateElement(id),
+    createElement: (tag) => createMockElement('', tag),
+    createTextNode: (text) => ({ textContent: String(text) }),
+    querySelector: () => null,
+    querySelectorAll: () => [],
+    addEventListener: () => {},
+  };
+
+  global.window = {
+    document: mockDoc,
+    GhostLinkV3: {},
+    Telegram: { WebApp: { platform: 'ios', openLink: () => {} } },
+  };
+  global.document = mockDoc;
+  global.navigator = { userAgent: 'iPhone' };
+
+  let currentProfile = null;
+  let subscriberCallback = null;
+
+  const mockProfileSubscription = {
+    getSubToken: () => currentProfile?.user?.sub_token || '',
+    getToken: () => '64a85816bb6e42b109e3e7f41753eb5efc28cb20d3f231e3d36b8110b91e92d6',
+    getCachedProfile: () => currentProfile,
+    getSnapshot: () => currentProfile,
+    subscribe: (cb) => {
+      subscriberCallback = cb;
+      return () => {};
+    },
+  };
+
+  delete require.cache[require.resolve(join(root, 'src/modules/devices.js'))];
+  require(join(root, 'src/modules/devices.js'));
+  global.window.GhostLinkV3.initDevicesModule({
+    showToast: () => {},
+    copyText: () => true,
+    openOverlay: () => {},
+    closeOverlay: () => {},
+    returnToHome: () => {},
+    profileSubscription: mockProfileSubscription,
+  });
+
+  const { getSubscriptionUrl, isSubscriptionReady, updateDisplayedSubscriptionUrls } = global.window.GhostLinkV3.devices;
+  const btnAddToApp = getOrCreateElement('btn-add-to-app');
+
+  // Initial State: profile not loaded yet
+  assert.equal(isSubscriptionReady(), false);
+  assert.equal(btnAddToApp.disabled, true);
+  assert.equal(btnAddToApp.querySelector('span').textContent, 'Загрузка ключа...');
+  assert.equal(getSubscriptionUrl('karing'), 'https://api.112prd.ru:2053/sub/••••••••');
+  assert.equal(getSubscriptionUrl('incy'), 'https://api.112prd.ru:2053/sub/••••••••?compat=incy');
+
+  // Backend response arrives with direct url and url_incy
+  currentProfile = {
+    user: {
+      id: '888',
+      subscription_url: 'https://api.112prd.ru:2053/sub/my_karing_custom',
+      url_incy: 'https://api.112prd.ru:2053/sub/my_incy_custom?compat=incy',
+      sub_token: 'my_sub_token_888',
+    },
+  };
+
+  subscriberCallback(currentProfile);
+
+  assert.equal(isSubscriptionReady(), true);
+  assert.equal(btnAddToApp.disabled, false);
+  assert.equal(btnAddToApp.querySelector('span').textContent, 'Добавить в приложение');
+  assert.equal(getSubscriptionUrl('karing'), 'https://api.112prd.ru:2053/sub/my_karing_custom');
+  assert.equal(getSubscriptionUrl('incy'), 'https://api.112prd.ru:2053/sub/my_incy_custom?compat=incy');
+});
+
+
 
 
 

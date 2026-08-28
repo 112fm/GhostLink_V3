@@ -783,12 +783,54 @@ function getCurrentUserToken() {
   return '';
 }
 
+function isSubscriptionReady() {
+  const token = getCurrentUserToken();
+  if (isValidSubToken(token)) return true;
+
+  const cached = profileSubscription?.getCachedProfile?.();
+  const snapshot = profileSubscription?.getSnapshot?.();
+
+  const directKaringUrl = snapshot?.user?.subscription_url || snapshot?.user?.url || snapshot?.subscription_url || snapshot?.url ||
+                          snapshot?.subscription?.subscription_url || snapshot?.subscription?.url || snapshot?.profile?.subscription_url ||
+                          cached?.user?.subscription_url || cached?.user?.url || cached?.subscription_url || cached?.url ||
+                          cached?.subscription?.subscription_url || cached?.subscription?.url;
+  if (typeof directKaringUrl === 'string' && directKaringUrl.trim().startsWith('http') && !directKaringUrl.includes('••••••••')) return true;
+
+  const directIncyUrl = snapshot?.user?.url_incy || snapshot?.url_incy || snapshot?.subscription?.url_incy || snapshot?.profile?.url_incy ||
+                       cached?.user?.url_incy || cached?.url_incy || cached?.subscription?.url_incy || cached?.profile?.url_incy ||
+                       snapshot?.user?.subscription_url_incy || snapshot?.subscription_url_incy;
+  if (typeof directIncyUrl === 'string' && directIncyUrl.trim().startsWith('http') && !directIncyUrl.includes('••••••••')) return true;
+
+  return false;
+}
+
 function getSubscriptionUrl(app = 'karing', token = getCurrentUserToken()) {
-  const tokenPart = isValidSubToken(token) ? token.trim() : '••••••••';
-  const baseUrl = 'https://api.112prd.ru:2053';
+  const cached = profileSubscription?.getCachedProfile?.();
+  const snapshot = profileSubscription?.getSnapshot?.();
+
   if (app === 'incy') {
+    const directIncyUrl = snapshot?.user?.url_incy || snapshot?.url_incy || snapshot?.subscription?.url_incy || snapshot?.profile?.url_incy ||
+                         cached?.user?.url_incy || cached?.url_incy || cached?.subscription?.url_incy || cached?.profile?.url_incy ||
+                         snapshot?.user?.subscription_url_incy || snapshot?.subscription_url_incy;
+    if (typeof directIncyUrl === 'string' && directIncyUrl.trim().startsWith('http') && !directIncyUrl.includes('••••••••')) {
+      return directIncyUrl.trim();
+    }
+    const tokenPart = isValidSubToken(token) ? token.trim() : '••••••••';
+    const baseUrl = 'https://api.112prd.ru:2053';
     return `${baseUrl}/sub/${tokenPart}?compat=incy`;
   }
+
+  // Karing (or default)
+  const directKaringUrl = snapshot?.user?.subscription_url || snapshot?.user?.url || snapshot?.subscription_url || snapshot?.url ||
+                          snapshot?.subscription?.subscription_url || snapshot?.subscription?.url || snapshot?.profile?.subscription_url ||
+                          cached?.user?.subscription_url || cached?.user?.url || cached?.subscription_url || cached?.url ||
+                          cached?.subscription?.subscription_url || cached?.subscription?.url;
+  if (typeof directKaringUrl === 'string' && directKaringUrl.trim().startsWith('http') && !directKaringUrl.includes('••••••••')) {
+    return directKaringUrl.trim();
+  }
+
+  const tokenPart = isValidSubToken(token) ? token.trim() : '••••••••';
+  const baseUrl = 'https://api.112prd.ru:2053';
   return `${baseUrl}/sub/${tokenPart}`;
 }
 
@@ -801,6 +843,15 @@ function updateDisplayedSubscriptionUrls(app = currentSelectedApp || 'karing') {
   if (userKeyUrl) userKeyUrl.textContent = subUrl;
   if (otherDeviceKeyText) otherDeviceKeyText.textContent = karingSubUrl;
   if (deviceDetailKeyText) deviceDetailKeyText.textContent = subUrl;
+
+  const ready = isSubscriptionReady();
+  if (btnAddToApp) {
+    btnAddToApp.disabled = !ready;
+    const btnTextEl = btnAddToApp.querySelector('span');
+    if (btnTextEl) {
+      btnTextEl.textContent = ready ? 'Добавить в приложение' : 'Загрузка ключа...';
+    }
+  }
 }
 
 if (typeof profileSubscription?.subscribe === 'function') {
@@ -1268,6 +1319,7 @@ if (btnDeviceDownload) {
     getSubscriptionUrl,
     getCurrentUserToken,
     isValidSubToken,
+    isSubscriptionReady,
     updateDisplayedSubscriptionUrls,
   });
 

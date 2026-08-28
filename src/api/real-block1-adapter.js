@@ -155,6 +155,10 @@
       }
     }
     const subToken = (typeof rawSubToken === 'string' && !/^[a-f0-9]{64}$/i.test(rawSubToken.trim())) ? rawSubToken.trim() : '';
+    const rawUrl = userResponse.subscription_url || subscription.subscription_url || userResponse.url || subscription.url || user.subscription_url || user.url || '';
+    const subscriptionUrl = typeof rawUrl === 'string' ? rawUrl.trim() : '';
+    const rawUrlIncy = userResponse.url_incy || subscription.url_incy || user.url_incy || userResponse.subscription_url_incy || subscription.subscription_url_incy || '';
+    const urlIncy = typeof rawUrlIncy === 'string' ? rawUrlIncy.trim() : '';
     const paymentStatus = userResponse.payment_status || subscription.payment_status || null;
     const paymentRequestId = userResponse.payment_request_id || subscription.payment_request_id || userResponse.request_id || subscription.request_id || null;
     const paymentAmount = userResponse.payment_amount ?? subscription.payment_amount ?? null;
@@ -171,6 +175,9 @@
         is_admin: userIsAdmin,
         sub_token: subToken,
         token: subToken,
+        subscription_url: subscriptionUrl,
+        url: subscriptionUrl,
+        url_incy: urlIncy,
       },
       profile: {
         id: String(user.id || ''),
@@ -180,6 +187,9 @@
         is_admin: userIsAdmin,
         sub_token: subToken,
         token: subToken,
+        subscription_url: subscriptionUrl,
+        url: subscriptionUrl,
+        url_incy: urlIncy,
         payment_status: paymentStatus,
         payment_request_id: paymentRequestId,
         payment_amount: paymentAmount,
@@ -189,6 +199,9 @@
       },
       sub_token: subToken,
       token: subToken,
+      subscription_url: subscriptionUrl,
+      url: subscriptionUrl,
+      url_incy: urlIncy,
       payment_status: paymentStatus,
       payment_request_id: paymentRequestId,
       payment: {
