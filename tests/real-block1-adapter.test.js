@@ -443,3 +443,58 @@ test('V3 runtime loads the real Block 1 adapter instead of the local profile moc
   assert.doesNotMatch(main, /createLocalBlock1Adapter/);
 });
 
+test('Generation Guard prevents slow openSession response from overwriting newer token', async () => {
+  let sessionCallCount = 0;
+
+  const adapter = createRealBlock1Adapter({
+    apiBase: 'https://api.example.test',
+    getInitData: () => 'telegram-init-data',
+    fetch: async (url) => {
+      if (url.endsWith('/api/miniapp/session')) {
+        sessionCallCount++;
+        const currentCall = sessionCallCount;
+        if (currentCall === 1) {
+          // Slow session request #1 (takes 150ms, returns token-1)
+          await new Promise((r) => setTimeout(r, 150));
+          return response(200, { ok: true, session_token: 'token-generation-1' });
+        } else {
+          // Fast session request #2 (takes 40ms, returns token-2)
+          await new Promise((r) => setTimeout(r, 40));
+          return response(200, { ok: true, session_token: 'token-generation-2' });
+        }
+      }
+      if (url.endsWith('/api/user')) {
+        return response(200, {
+          user: { id: '123', name: 'Real User' },
+          subscription: { active: true, status: 'active', days_left: 30 },
+          tariff_name: 'Solo Ghost',
+          device_limit: 2,
+          connected_devices: 1,
+        });
+      }
+      if (url.endsWith('/api/tariffs')) {
+        return response(200, { period_prices: {} });
+      }
+      return response(200, {});
+    },
+  });
+
+  // 1. Launch request #1 (slow session)
+  void adapter.fetchProfileSubscription();
+
+  // 2. Wait 20ms, then launch refresh() (request #2, fast session)
+  await new Promise((r) => setTimeout(r, 20));
+  const req2 = adapter.refresh();
+
+  // 3. Await request #2 completion (resolves at ~60ms)
+  await req2;
+  assert.equal(adapter.getToken(), 'token-generation-2');
+
+  // 4. Wait until 180ms when slow request #1 session finishes
+  await new Promise((r) => setTimeout(r, 120));
+
+  // 5. Verify token was NOT overwritten by late response from request #1
+  assert.equal(adapter.getToken(), 'token-generation-2');
+});
+
+

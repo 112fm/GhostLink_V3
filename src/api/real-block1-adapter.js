@@ -289,7 +289,7 @@
       }
     }
 
-    async function openSession(deadlineAt) {
+    async function openSession(deadlineAt, currentGeneration) {
       const initData = await waitForInitData(deadlineAt);
 
       const session = await runStage('session', deadlineAt, (timeoutMs) => requestJson(fetchImpl, `${apiBase}/api/miniapp/session`, {
@@ -299,9 +299,16 @@
           headers: { Accept: 'application/json' },
           body: new URLSearchParams({ init_data: initData }),
         }, timeoutMs));
+
+      if (currentGeneration !== undefined && currentGeneration !== activeGeneration) {
+        // Late response from stale generation - do not touch active token or sessionState
+        return null;
+      }
+
       token = String(session.session_token || '');
       if (!token) throw createError('invalid_json', 'Сервер не подтвердил сессию.');
       sessionState = Object.freeze({ status: 'authenticated', transport: 'memory' });
+      return session;
     }
 
     const listeners = new Set();
@@ -344,7 +351,7 @@
             currentSnapshot.tariffs = null;
             notifyListeners(currentSnapshot);
           }
-          await openSession(deadlineAt);
+          await openSession(deadlineAt, currentGeneration);
           if (currentGeneration !== activeGeneration) return null;
 
           void runStage('tariffs', deadlineAt, (timeoutMs) => requestJson(fetchImpl, `${apiBase}/api/tariffs`, {
