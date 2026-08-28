@@ -933,41 +933,29 @@ async function refreshActiveAdminTab() {
 
 function setupAdminDashboardEntry() {
   const btnSettingsAdmin = document.getElementById('btnSettingsAdmin');
-  const pageAdminDashboard = document.getElementById('page-admin-dashboard');
   const btnAdminBack = document.getElementById('btnAdminBack');
 
-  if (!IS_ADMIN) {
-    // Remove the local prototype from the user DOM instead of merely hiding it.
-    // This is not the final security boundary: the public build must exclude
-    // admin markup and logic, while the API enforces the actual role check.
-    btnSettingsAdmin?.remove();
-    pageAdminDashboard?.remove();
-    return;
-  }
-
-  if (btnSettingsAdmin && pageAdminDashboard) {
-    btnSettingsAdmin.style.display = 'flex';
+  if (btnSettingsAdmin) {
     btnSettingsAdmin.addEventListener('click', () => {
-      openOverlay(pageAdminDashboard);
-      refreshDashboard();
+      const pageAdmin = document.getElementById('page-admin-dashboard');
+      if (pageAdmin) {
+        openOverlay(pageAdmin);
+        refreshDashboard();
+      }
     });
   }
 
-  if (btnAdminBack && pageAdminDashboard) {
+  if (btnAdminBack) {
     btnAdminBack.addEventListener('click', () => {
-      closeOverlay(pageAdminDashboard);
+      const pageAdmin = document.getElementById('page-admin-dashboard');
+      if (pageAdmin) {
+        closeOverlay(pageAdmin);
+      }
     });
   }
 
   const btnAdminRefresh = document.getElementById('btnAdminRefresh');
   btnAdminRefresh?.addEventListener('click', refreshActiveAdminTab);
-}
-
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', setupAdminDashboardEntry);
-} else {
-  setupAdminDashboardEntry();
-}
 
   // Main Tabs
   const adminNavBtns = document.querySelectorAll('#admin-main-nav .admin-tab-btn');
@@ -1002,7 +990,13 @@ if (document.readyState === 'loading') {
 
   // Initial Analytics Render
   updateAnalyticsData('month');
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', setupAdminDashboardEntry);
+} else {
+  setupAdminDashboardEntry();
+}
 
 function getProgressColor(percent) {
   if (percent < 70) return 'rgba(184, 255, 0, 0.4)'; // up to 69% (dimmer lime)

@@ -23,12 +23,13 @@ function executableSource() {
     .replace(/^\s*\/\/.*$/gm, '');
 }
 
-test('admin mock is local-only and removes its visible entry outside local preview', () => {
+test('admin mock is local-only and wires its entry to open dashboard overlay', () => {
   const source = fs.readFileSync(path.join(adminDirectory, 'dashboard.js'), 'utf8');
   assert.match(source, /adminMockSession/);
   assert.match(source, /requireAdminMockAccess/);
-  assert.match(source, /btnSettingsAdmin\?\.remove\(\)/);
-  assert.match(source, /pageAdminDashboard\?\.remove\(\)/);
+  assert.match(source, /openOverlay\(pageAdmin\)/);
+  assert.match(source, /closeOverlay\(pageAdmin\)/);
+  assert.doesNotMatch(source, /pageAdminDashboard\?\.remove\(\)/);
 });
 
 test('admin mock contains no executable network, Telegram or storage-runtime calls', () => {

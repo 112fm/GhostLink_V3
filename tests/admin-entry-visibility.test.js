@@ -49,6 +49,16 @@ function createMockElement(id = '', tagName = 'div') {
     remove: function() {
       this.removed = true;
     },
+    replaceChildren: function(...children) {
+      this.children = [...children];
+    },
+    appendChild: function(child) {
+      if (!this.children) this.children = [];
+      this.children.push(child);
+      return child;
+    },
+    querySelector: () => null,
+    querySelectorAll: () => [],
   };
 }
 
@@ -91,3 +101,75 @@ test('updateAdminSettingsVisibility hides #btnSettingsAdmin for non-admin profil
   updateAdminSettingsVisibility({ error: new Error('Failed to load') }, mockDoc);
   assert.equal(btn.style.display, 'none');
 });
+
+test('clicking #btnSettingsAdmin opens #page-admin-dashboard and #btnAdminBack closes it', async () => {
+  const elements = new Map();
+  function getOrCreateElement(id) {
+    if (!elements.has(id)) {
+      elements.set(id, createMockElement(id));
+    }
+    return elements.get(id);
+  }
+
+  const btnSettingsAdmin = getOrCreateElement('btnSettingsAdmin');
+  const pageAdminDashboard = getOrCreateElement('page-admin-dashboard');
+  const btnAdminBack = getOrCreateElement('btnAdminBack');
+  getOrCreateElement('btnAdminRefresh');
+
+  const mockDoc = {
+    readyState: 'complete',
+    getElementById: (id) => getOrCreateElement(id),
+    createElement: (tag) => createMockElement('', tag),
+    querySelectorAll: () => [],
+    querySelector: () => null,
+    addEventListener: () => {},
+  };
+
+  global.document = mockDoc;
+  global.location = { protocol: 'file:' };
+  global.window = {
+    document: mockDoc,
+    location: { protocol: 'file:' },
+    GhostLinkV3: {},
+    addEventListener: () => {},
+  };
+
+  require(path.join(root, 'src', 'mocks', 'admin-security.js'));
+
+  let overlayOpened = null;
+  let overlayClosed = null;
+
+  // Load and init admin module
+  require(path.join(root, 'src', 'modules', 'admin.js'));
+  global.window.GhostLinkV3.initAdminModule({
+    showToast: () => {},
+    copyText: () => true,
+    openOverlay: (page) => {
+      overlayOpened = page;
+      page?.classList?.add('active');
+    },
+    closeOverlay: (page) => {
+      overlayClosed = page;
+      page?.classList?.remove('active');
+    },
+    returnToHome: () => {},
+  });
+
+  // Verify pageAdminDashboard was NOT removed from DOM
+  assert.equal(pageAdminDashboard.removed, undefined);
+
+  // Click #btnSettingsAdmin
+  await btnSettingsAdmin.click();
+
+  // Verify pageAdminDashboard received openOverlay and .active class
+  assert.equal(overlayOpened, pageAdminDashboard);
+  assert.equal(pageAdminDashboard.classList.contains('active'), true);
+
+  // Click #btnAdminBack
+  await btnAdminBack.click();
+
+  // Verify pageAdminDashboard received closeOverlay and removed .active class
+  assert.equal(overlayClosed, pageAdminDashboard);
+  assert.equal(pageAdminDashboard.classList.contains('active'), false);
+});
+
