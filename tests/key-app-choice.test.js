@@ -20,9 +20,10 @@ test('normalizes only the two approved key link fields', () => {
   assert.deepEqual(normalizeKeyLinks(null), { url: '', url_incy: '' });
 });
 
-test('an explicit nearby app selection wins when its link exists', () => {
+test('an explicit app selection stays authoritative', () => {
   assert.equal(resolveDefaultKeyApp({ preferredApp: 'karing', platform: 'ios', links }), 'karing');
   assert.equal(resolveDefaultKeyApp({ preferredApp: 'incy', platform: 'windows', links }), 'incy');
+  assert.equal(resolveDefaultKeyApp({ preferredApp: 'incy', platform: 'windows', links: { url: links.url } }), 'incy');
 });
 
 test('mobile Apple and Android default to INCY while desktop-only platforms use Karing', () => {
@@ -46,11 +47,13 @@ test('Karing resolves url and INCY resolves url_incy', () => {
   assert.equal(resolveKeyUrl(links, 'unknown'), '');
 });
 
-test('key modal has two app copy buttons and no QR UI', () => {
+test('app choice stays on page-app-select while the key modal remains clean', () => {
   const template = fs.readFileSync(path.join(root, 'src/templates/pages/devices.html'), 'utf8');
 
-  assert.match(template, /id="btn-key-app-karing"[^>]*data-key-app="karing"/);
-  assert.match(template, /id="btn-key-app-incy"[^>]*data-key-app="incy"/);
+  assert.match(template, /id="page-app-select"/);
+  assert.match(template, /name="app-choice" value="incy"/);
+  assert.match(template, /name="app-choice" value="karing"/);
+  assert.doesNotMatch(template, /key-app-picker|btn-key-app-karing|btn-key-app-incy/);
   assert.doesNotMatch(template, /qr-code|key-qr|Сгенерировать QR/i);
   assert.doesNotMatch(template, /vless:\/\/ghostlink-key/i);
 });

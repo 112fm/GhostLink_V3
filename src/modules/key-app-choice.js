@@ -24,7 +24,7 @@
       ? preferredApp
       : null;
 
-    if (preferred && resolveKeyUrl(normalized, preferred)) return preferred;
+    if (preferred) return preferred;
 
     const platformDefault = ['windows', 'linux', 'tv'].includes(platform)
       ? 'karing'

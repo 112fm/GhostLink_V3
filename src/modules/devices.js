@@ -857,8 +857,6 @@ const pageKeyView = document.getElementById('page-key-view');
 const btnKeyViewBack = document.getElementById('btn-key-view-back');
 const keyBoxField = document.getElementById('key-box-field');
 const userKeyUrl = document.getElementById('user-key-url');
-const btnKeyAppKaring = document.getElementById('btn-key-app-karing');
-const btnKeyAppIncy = document.getElementById('btn-key-app-incy');
 const btnAddToApp = document.getElementById('btn-add-to-app');
 const btnKeyViewFinish = document.getElementById('btn-key-view-finish');
 const btnOpenBotGuide = document.getElementById('btn-open-bot-guide');
@@ -875,19 +873,6 @@ function getNearbyAppPreference() {
 
 function renderKeyAppSelection() {
   const selectedUrl = resolveKeyUrl(currentKeyLinks, selectedKeyApp);
-  const options = [
-    [btnKeyAppKaring, 'karing'],
-    [btnKeyAppIncy, 'incy'],
-  ];
-
-  options.forEach(([button, app]) => {
-    if (!button) return;
-    const available = Boolean(resolveKeyUrl(currentKeyLinks, app));
-    button.disabled = !available;
-    button.setAttribute('aria-pressed', String(selectedKeyApp === app));
-    const action = button.querySelector('.key-app-option-action');
-    if (action) action.textContent = available ? 'Выбрать и скопировать' : 'Ссылка недоступна';
-  });
 
   if (userKeyUrl) userKeyUrl.textContent = selectedUrl || 'Ключ пока недоступен';
   if (keyBoxField) keyBoxField.setAttribute('aria-disabled', String(!selectedUrl));
@@ -908,23 +893,6 @@ function setKeyLinks(source, options = {}) {
   renderKeyAppSelection();
 }
 
-async function selectAndCopyKeyApp(app) {
-  const link = resolveKeyUrl(currentKeyLinks, app);
-  if (!link) {
-    showToast(`Ссылка для ${app === 'incy' ? 'INCY' : 'Karing'} недоступна.`);
-    return;
-  }
-
-  selectedKeyApp = app;
-  renderKeyAppSelection();
-  const copied = await copyText(link);
-  showToast(copied
-    ? `Ключ для ${app === 'incy' ? 'INCY' : 'Karing'} скопирован`
-    : 'Не удалось скопировать. Нажмите и удерживайте ключ.');
-}
-
-btnKeyAppKaring?.addEventListener('click', () => selectAndCopyKeyApp('karing'));
-btnKeyAppIncy?.addEventListener('click', () => selectAndCopyKeyApp('incy'));
 setKeyLinks(currentKeyLinks);
 
 if (btnKeyViewBack && pageKeyView) {
