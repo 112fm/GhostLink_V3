@@ -123,3 +123,40 @@ test('app select auto-highlights INCY for mobile/mac and Karing for win/linux/tv
   assert.equal(getOrCreateElement('app-card-incy').classList.contains('active'), false);
 });
 
+test('canonical subscription URL builder handles karing, incy, tokens and fallbacks with zero vless strings', () => {
+  const { getSubscriptionUrl } = global.window.GhostLinkV3.devices;
+
+  assert.equal(
+    getSubscriptionUrl('karing', 'tok_abc123'),
+    'https://api.112prd.ru:2053/sub/tok_abc123'
+  );
+  assert.equal(
+    getSubscriptionUrl('incy', 'tok_abc123'),
+    'https://api.112prd.ru:2053/sub/tok_abc123?compat=incy'
+  );
+
+  // Fallbacks with empty or missing token
+  assert.equal(
+    getSubscriptionUrl('karing', ''),
+    'https://api.112prd.ru:2053/sub/••••••••'
+  );
+  assert.equal(
+    getSubscriptionUrl('incy', ''),
+    'https://api.112prd.ru:2053/sub/••••••••?compat=incy'
+  );
+  assert.equal(
+    getSubscriptionUrl('karing', null),
+    'https://api.112prd.ru:2053/sub/••••••••'
+  );
+
+  // Verify full codebase (source & html) has zero vless:// occurrences
+  const indexHtml = readFileSync(join(root, 'index.html'), 'utf8');
+  const devicesJs = readFileSync(join(root, 'src/modules/devices.js'), 'utf8');
+  const devicesHtml = readFileSync(join(root, 'src/templates/pages/devices.html'), 'utf8');
+
+  assert.doesNotMatch(indexHtml, /vless:\/\//);
+  assert.doesNotMatch(devicesJs, /vless:\/\//);
+  assert.doesNotMatch(devicesHtml, /vless:\/\//);
+});
+
+

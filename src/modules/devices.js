@@ -2,7 +2,7 @@
 const GhostLinkV3 = window.GhostLinkV3 = window.GhostLinkV3 || {};
 
 GhostLinkV3.initDevicesModule = function initDevicesModule(dependencies = {}) {
-  const { showToast, copyText, openOverlay, closeOverlay, returnToHome } = dependencies;
+  const { showToast, copyText, openOverlay, closeOverlay, returnToHome, profileSubscription } = dependencies;
 
   // Local-only operation adapter. The future API must preserve this request_id contract.
   const deviceOperations = dependencies.deviceOperations || GhostLinkV3.createMockDeviceOperations?.();
@@ -719,6 +719,47 @@ const btnOtherDeviceBack = document.getElementById('btn-other-device-back');
 const otherDeviceKeyField = document.getElementById('other-device-key-field');
 const otherDeviceKeyText = document.getElementById('other-device-key-text');
 
+function getCurrentUserToken() {
+  const directToken = profileSubscription?.getToken?.();
+  if (directToken && typeof directToken === 'string') return directToken.trim();
+  const cached = profileSubscription?.getCachedProfile?.();
+  if (cached?.token && typeof cached.token === 'string') return cached.token.trim();
+  if (cached?.user?.token && typeof cached.user.token === 'string') return cached.user.token.trim();
+  if (cached?.profile?.token && typeof cached.profile.token === 'string') return cached.profile.token.trim();
+  const snapshot = profileSubscription?.getSnapshot?.();
+  if (snapshot?.token && typeof snapshot.token === 'string') return snapshot.token.trim();
+  if (snapshot?.user?.token && typeof snapshot.user.token === 'string') return snapshot.user.token.trim();
+  return '';
+}
+
+function getSubscriptionUrl(app = 'karing', token = getCurrentUserToken()) {
+  const tokenPart = token ? token.trim() : '••••••••';
+  const baseUrl = 'https://api.112prd.ru:2053';
+  if (app === 'incy') {
+    return `${baseUrl}/sub/${tokenPart}?compat=incy`;
+  }
+  return `${baseUrl}/sub/${tokenPart}`;
+}
+
+let currentSelectedApp = 'incy';
+
+function updateDisplayedSubscriptionUrls(app = currentSelectedApp || 'karing') {
+  const token = getCurrentUserToken();
+  const subUrl = getSubscriptionUrl(app, token);
+  const karingSubUrl = getSubscriptionUrl('karing', token);
+  if (userKeyUrl) userKeyUrl.textContent = subUrl;
+  if (otherDeviceKeyText) otherDeviceKeyText.textContent = karingSubUrl;
+  if (deviceDetailKeyText) deviceDetailKeyText.textContent = subUrl;
+}
+
+if (typeof profileSubscription?.subscribe === 'function') {
+  try {
+    profileSubscription.subscribe(() => {
+      updateDisplayedSubscriptionUrls(currentSelectedApp);
+    });
+  } catch (_) {}
+}
+
 if (btnOtherDeviceBack && pageOtherDevice) {
   btnOtherDeviceBack.addEventListener('click', () => {
     closeOverlay(pageOtherDevice);
@@ -727,9 +768,9 @@ if (btnOtherDeviceBack && pageOtherDevice) {
 
 if (otherDeviceKeyField && otherDeviceKeyText) {
   otherDeviceKeyField.addEventListener('click', async () => {
-    const textToCopy = otherDeviceKeyText.textContent.trim();
+    const textToCopy = getSubscriptionUrl('karing');
     const copied = await copyText(textToCopy);
-    showToast(copied ? 'Ключ скопирован' : 'Не удалось скопировать. Нажмите и удерживайте ключ.');
+    showToast(copied ? 'Ссылка-подписка скопирована' : 'Не удалось скопировать. Нажмите и удерживайте ссылку.');
   });
 }
 
@@ -750,6 +791,7 @@ if (btnAppSelectBack && pageAppSelect) {
 }
 
 function selectAppChoice(app) {
+  currentSelectedApp = app;
   const isKaring = app === 'karing';
   const radioKaring = document.querySelector('input[name="app-choice"][value="karing"]');
   const radioIncy = document.querySelector('input[name="app-choice"][value="incy"]');
@@ -775,6 +817,8 @@ function selectAppChoice(app) {
     if (btnOpenBotGuideEl) btnOpenBotGuideEl.style.display = 'none';
     if (btnDeviceKaringGuideEl) btnDeviceKaringGuideEl.style.display = 'none';
   }
+
+  updateDisplayedSubscriptionUrls(app);
 }
 
 function autoSelectDefaultAppForCurrentPlatform(platform = getDevicePlatform()) {
@@ -862,6 +906,7 @@ if (btnAlreadyHaveApp) {
   btnAlreadyHaveApp.addEventListener('click', () => {
     const pageKeyView = document.getElementById('page-key-view');
     if (pageKeyView) {
+      updateDisplayedSubscriptionUrls(currentSelectedApp);
       openOverlay(pageKeyView);
     }
   });
@@ -890,41 +935,39 @@ if (btnOpenBotGuide) {
 
 if (keyBoxField && userKeyUrl) {
   keyBoxField.addEventListener('click', async () => {
-    const textToCopy = userKeyUrl.textContent.trim();
-    const copied = await copyText(textToCopy);
-    showToast(copied ? 'Ключ скопирован' : 'Не удалось скопировать. Нажмите и удерживайте ключ.');
+    const selectedRadio = document.querySelector('input[name="app-choice"]:checked');
+    const isIncy = selectedRadio && selectedRadio.value === 'incy';
+    const subUrl = getSubscriptionUrl(isIncy ? 'incy' : 'karing');
+    const copied = await copyText(subUrl);
+    showToast(copied ? 'Ссылка-подписка скопирована' : 'Не удалось скопировать. Нажмите и удерживайте ссылку.');
   });
 }
 
 if (btnAddToApp && userKeyUrl) {
   btnAddToApp.addEventListener('click', async () => {
-    const rawKey = userKeyUrl.textContent.trim();
     const selectedRadio = document.querySelector('input[name="app-choice"]:checked');
     const isIncy = selectedRadio && selectedRadio.value === 'incy';
+    const app = isIncy ? 'incy' : 'karing';
+    const subUrl = getSubscriptionUrl(app);
 
-    // 1. Auto-copy key to clipboard first so user can paste if needed
-    const copied = await copyText(rawKey);
+    // 1. Auto-copy subscription URL to clipboard first so user can paste if needed
+    const copied = await copyText(subUrl);
     showToast(copied
-      ? `Ключ скопирован. Переходим в ${isIncy ? 'INCY' : 'Karing'}...`
+      ? `Ссылка скопирована. Переходим в ${isIncy ? 'INCY' : 'Karing'}...`
       : `Открываем ${isIncy ? 'INCY' : 'Karing'}...`);
 
     if (isIncy) {
-      // Direct vless scheme triggers INCY app protocol
+      // Direct subscription link for INCY
       setTimeout(() => {
-        window.location.href = rawKey;
+        window.location.href = subUrl;
       }, 400);
     } else {
-      // Karing deep link scheme
-      const encoded = encodeURIComponent(rawKey);
+      // Karing deep link scheme with URI-encoded subscription URL
+      const encoded = encodeURIComponent(subUrl);
       const karingInstallUrl = `karing://install-config?url=${encoded}`;
-      const karingDirectVless = rawKey.replace(/^vless:\/\//i, 'karing://vless/');
 
       setTimeout(() => {
         window.location.href = karingInstallUrl;
-        setTimeout(() => {
-          if (document.hidden) return;
-          window.location.href = karingDirectVless;
-        }, 600);
       }, 400);
     }
   });
@@ -1083,6 +1126,7 @@ document.querySelectorAll('.platform-card').forEach(card => {
       }
 
       if (step1Title) step1Title.textContent = `Скачайте приложение ${currentAppChoice === 'karing' ? 'Karing' : 'INCY'}`;
+      if (deviceDetailKeyText) deviceDetailKeyText.textContent = getSubscriptionUrl(currentAppChoice);
       updateDownloadButton();
       updateKaringGuideVisibility();
     }
@@ -1104,6 +1148,7 @@ if (btnSelectKaring && btnSelectIncy) {
     btnSelectKaring.classList.add('active');
     btnSelectIncy.classList.remove('active');
     if (step1Title) step1Title.textContent = 'Скачайте приложение Karing';
+    if (deviceDetailKeyText) deviceDetailKeyText.textContent = getSubscriptionUrl('karing');
     updateDownloadButton();
     updateKaringGuideVisibility();
   });
@@ -1113,6 +1158,7 @@ if (btnSelectKaring && btnSelectIncy) {
     btnSelectIncy.classList.add('active');
     btnSelectKaring.classList.remove('active');
     if (step1Title) step1Title.textContent = 'Скачайте приложение INCY';
+    if (deviceDetailKeyText) deviceDetailKeyText.textContent = getSubscriptionUrl('incy');
     updateDownloadButton();
     updateKaringGuideVisibility();
   });
@@ -1121,17 +1167,17 @@ if (btnSelectKaring && btnSelectIncy) {
 // Copy key button inside modal
 if (btnDeviceCopyKey) {
   btnDeviceCopyKey.addEventListener('click', async () => {
-    const rawKeyText = document.getElementById('user-key-url')?.textContent.trim() || 'vless://ghostlink-key-8fa492b...#GhostLink-1';
-    const copied = await copyText(rawKeyText);
-    showToast(copied ? 'Ключ скопирован' : 'Не удалось скопировать. Нажмите и удерживайте ключ.');
+    const subUrl = getSubscriptionUrl(currentAppChoice);
+    const copied = await copyText(subUrl);
+    showToast(copied ? 'Ссылка-подписка скопирована' : 'Не удалось скопировать. Нажмите и удерживайте ссылку.');
   });
 }
 
 if (deviceDetailKeyText) {
   deviceDetailKeyText.addEventListener('click', async () => {
-    const rawKeyText = document.getElementById('user-key-url')?.textContent.trim() || 'vless://ghostlink-key-8fa492b...#GhostLink-1';
-    const copied = await copyText(rawKeyText);
-    showToast(copied ? 'Ключ скопирован' : 'Не удалось скопировать. Нажмите и удерживайте ключ.');
+    const subUrl = getSubscriptionUrl(currentAppChoice);
+    const copied = await copyText(subUrl);
+    showToast(copied ? 'Ссылка-подписка скопирована' : 'Не удалось скопировать. Нажмите и удерживайте ссылку.');
   });
 }
 
@@ -1151,11 +1197,15 @@ if (btnDeviceDownload) {
 }
 
   autoSelectDefaultAppForCurrentPlatform();
+  updateDisplayedSubscriptionUrls(currentSelectedApp);
 
   GhostLinkV3.devices = Object.freeze({
     selectAppChoice,
     autoSelectDefaultAppForCurrentPlatform,
     getDevicePlatform,
+    getSubscriptionUrl,
+    getCurrentUserToken,
+    updateDisplayedSubscriptionUrls,
   });
 
 };
