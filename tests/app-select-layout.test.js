@@ -484,10 +484,10 @@ test('devices module consumes backend url/url_incy directly and disables btnAddT
   const { getSubscriptionUrl, isSubscriptionReady, updateDisplayedSubscriptionUrls } = global.window.GhostLinkV3.devices;
   const btnAddToApp = getOrCreateElement('btn-add-to-app');
 
-  // Initial State: profile not loaded yet
-  assert.equal(isSubscriptionReady(), false);
+  // Initial State: profile not loaded yet (default app is INCY for iPhone)
+  assert.equal(isSubscriptionReady('incy'), false);
   assert.equal(btnAddToApp.disabled, true);
-  assert.equal(btnAddToApp.querySelector('span').textContent, 'Загрузка ключа...');
+  assert.equal(btnAddToApp.querySelector('span').textContent, 'Загрузка INCY...');
   assert.equal(getSubscriptionUrl('karing'), 'https://api.112prd.ru:2053/sub/••••••••');
   assert.equal(getSubscriptionUrl('incy'), 'https://api.112prd.ru:2053/sub/••••••••?compat=incy');
 
@@ -503,11 +503,18 @@ test('devices module consumes backend url/url_incy directly and disables btnAddT
 
   subscriberCallback(currentProfile);
 
-  assert.equal(isSubscriptionReady(), true);
+  assert.equal(isSubscriptionReady('incy'), true);
   assert.equal(btnAddToApp.disabled, false);
-  assert.equal(btnAddToApp.querySelector('span').textContent, 'Добавить в приложение');
+  assert.equal(btnAddToApp.querySelector('span').textContent, 'Добавить в INCY');
   assert.equal(getSubscriptionUrl('karing'), 'https://api.112prd.ru:2053/sub/my_karing_custom');
   assert.equal(getSubscriptionUrl('incy'), 'https://api.112prd.ru:2053/sub/my_incy_custom?compat=incy');
+
+  // Test switching to Karing
+  const { selectAppChoice } = global.window.GhostLinkV3.devices;
+  selectAppChoice('karing');
+  assert.equal(isSubscriptionReady('karing'), true);
+  assert.equal(btnAddToApp.disabled, false);
+  assert.equal(btnAddToApp.querySelector('span').textContent, 'Добавить в Karing');
 });
 
 

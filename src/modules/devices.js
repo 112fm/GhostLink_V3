@@ -783,25 +783,10 @@ function getCurrentUserToken() {
   return '';
 }
 
-function isSubscriptionReady() {
+function isSubscriptionReady(app = currentSelectedApp || 'karing') {
   const token = getCurrentUserToken();
-  if (isValidSubToken(token)) return true;
-
-  const cached = profileSubscription?.getCachedProfile?.();
-  const snapshot = profileSubscription?.getSnapshot?.();
-
-  const directKaringUrl = snapshot?.user?.subscription_url || snapshot?.user?.url || snapshot?.subscription_url || snapshot?.url ||
-                          snapshot?.subscription?.subscription_url || snapshot?.subscription?.url || snapshot?.profile?.subscription_url ||
-                          cached?.user?.subscription_url || cached?.user?.url || cached?.subscription_url || cached?.url ||
-                          cached?.subscription?.subscription_url || cached?.subscription?.url;
-  if (typeof directKaringUrl === 'string' && directKaringUrl.trim().startsWith('http') && !directKaringUrl.includes('••••••••')) return true;
-
-  const directIncyUrl = snapshot?.user?.url_incy || snapshot?.url_incy || snapshot?.subscription?.url_incy || snapshot?.profile?.url_incy ||
-                       cached?.user?.url_incy || cached?.url_incy || cached?.subscription?.url_incy || cached?.profile?.url_incy ||
-                       snapshot?.user?.subscription_url_incy || snapshot?.subscription_url_incy;
-  if (typeof directIncyUrl === 'string' && directIncyUrl.trim().startsWith('http') && !directIncyUrl.includes('••••••••')) return true;
-
-  return false;
+  const url = getSubscriptionUrl(app, token);
+  return Boolean(url && !url.includes('••••'));
 }
 
 function getSubscriptionUrl(app = 'karing', token = getCurrentUserToken()) {
@@ -836,20 +821,34 @@ function getSubscriptionUrl(app = 'karing', token = getCurrentUserToken()) {
 
 let currentSelectedApp = 'incy';
 
-function updateDisplayedSubscriptionUrls(app = currentSelectedApp || 'karing') {
-  const token = getCurrentUserToken();
-  const subUrl = getSubscriptionUrl(app, token);
-  const karingSubUrl = getSubscriptionUrl('karing', token);
-  if (userKeyUrl) userKeyUrl.textContent = subUrl;
-  if (otherDeviceKeyText) otherDeviceKeyText.textContent = karingSubUrl;
-  if (deviceDetailKeyText) deviceDetailKeyText.textContent = subUrl;
+function setBtnAddToAppText(btn, text) {
+  if (!btn) return;
+  const span = btn.querySelector('span');
+  if (span) {
+    span.textContent = text;
+  } else {
+    btn.textContent = text;
+  }
+}
 
-  const ready = isSubscriptionReady();
+function updateDisplayedSubscriptionUrls(app = currentSelectedApp || 'karing') {
+  currentSelectedApp = app;
+  const token = getCurrentUserToken();
+  const incyUrl = getSubscriptionUrl('incy', token);
+  const karingUrl = getSubscriptionUrl('karing', token);
+  const currentUrl = app === 'incy' ? incyUrl : karingUrl;
+
+  if (userKeyUrl) userKeyUrl.textContent = currentUrl;
+  if (otherDeviceKeyText) otherDeviceKeyText.textContent = karingUrl;
+  if (deviceDetailKeyText) deviceDetailKeyText.textContent = currentUrl;
+
   if (btnAddToApp) {
-    btnAddToApp.disabled = !ready;
-    const btnTextEl = btnAddToApp.querySelector('span');
-    if (btnTextEl) {
-      btnTextEl.textContent = ready ? 'Добавить в приложение' : 'Загрузка ключа...';
+    if (!currentUrl || currentUrl.includes('••••')) {
+      btnAddToApp.disabled = true;
+      setBtnAddToAppText(btnAddToApp, `Загрузка ${app.toUpperCase()}...`);
+    } else {
+      btnAddToApp.disabled = false;
+      setBtnAddToAppText(btnAddToApp, `Добавить в ${app === 'incy' ? 'INCY' : 'Karing'}`);
     }
   }
 }
