@@ -180,6 +180,40 @@
         </div>
       </section>
 
+      <!-- Modal: Confirm Delete Device -->
+      <div id="modalConfirmDeleteDevice" class="modal-overlay hidden" aria-modal="true" role="dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>Удалить устройство</h3>
+            <button class="btn-close-modal" id="btnConfirmDeleteClose">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+          </div>
+          <div class="modal-body" style="padding: 16px 20px;">
+            <p id="deleteDeviceModalText" style="color: var(--text-secondary); margin-bottom: 20px;"></p>
+            <button class="btn-primary" id="btnConfirmDeleteSubmit" style="background: #ff4d4f; color: #fff; width: 100%;">Удалить</button>
+            <button class="btn-secondary" id="btnConfirmDeleteCancel" style="width: 100%; margin-top: 10px;">Отмена</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal: Add Device Name -->
+      <div id="modalAddDeviceName" class="modal-overlay hidden" aria-modal="true" role="dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>Новое устройство</h3>
+            <button class="btn-close-modal" id="btnAddDeviceClose">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+          </div>
+          <div class="modal-body" style="padding: 16px 20px;">
+            <p style="color: var(--text-secondary); margin-bottom: 12px; font-size: 14px;">Введите название для нового устройства, чтобы легко отличать его в списке.</p>
+            <input type="text" id="addDeviceNameInput" placeholder="Например: Мой iPhone" class="admin-input-dark" style="margin-bottom: 20px;" autocomplete="off" />
+            <button class="btn-primary" id="btnAddDeviceSubmit" style="width: 100%;">Создать слот</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Экран: На другом устройстве -->
       <section id="page-other-device" class="page-overlay hidden">
         <header class="page-header">

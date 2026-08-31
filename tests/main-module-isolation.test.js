@@ -65,10 +65,10 @@ test('secondary failures do not interrupt boot and admin runtime starts only for
 test('runtime cache versions load the isolated home lifecycle and gift adapter', () => {
   const template = fs.readFileSync(path.join(root, 'src', 'templates', 'index.template.html'), 'utf8');
 
-  assert.match(template, /real-block1-adapter\.js\?v=14/);
-  assert.match(template, /modules\/home\.js\?v=14/);
-  assert.match(template, /modules\/admin\.js\?v=14/);
-  assert.match(template, /src\/main\.js\?v=14/);
+  assert.match(template, /real-block1-adapter\.js\?v=15/);
+  assert.match(template, /modules\/home\.js\?v=15/);
+  assert.match(template, /modules\/admin\.js\?v=15/);
+  assert.match(template, /src\/main\.js\?v=15/);
 });
 
 test('admin source never auto-starts the partners tab during page load', () => {

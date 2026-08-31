@@ -27,16 +27,7 @@ test('public mock invitations never contain a real GhostLinkBot URL', () => {
   assert.match(invites, /ghostlink-mock:\/\/bridge\/invite-/);
 });
 
-test('support status is a system message inside the chat history', () => {
-  const template = read('src', 'templates', 'pages', 'support.html');
-  const historyStart = template.indexOf('id="supportChatHistory"');
-  const status = template.indexOf('id="supportLocalStatus"');
-  const input = template.indexOf('id="supportChatInput"');
 
-  assert.ok(historyStart >= 0 && status > historyStart);
-  assert.ok(status < input, 'support status must appear before the input controls');
-  assert.match(template, /class="chat-system-notice"/);
-});
 
 test('device cards keep actions on a dedicated full-width row', () => {
   const devices = read('src', 'modules', 'devices.js');

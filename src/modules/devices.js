@@ -110,19 +110,25 @@ function renderDeviceCards(devices) {
     const actions = document.createElement('div');
     actions.className = 'device-card-actions';
     const isBusy = pendingDeviceMutations.has(device.id);
-    [
-      ['rotate', 'Обновить ключ'],
-      ['reset', 'Сбросить'],
-      ['remove', 'Удалить'],
-    ].forEach(([type, label]) => {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = `device-card-action device-card-action--${type}`;
-      button.textContent = isBusy ? 'Операция выполняется…' : label;
-      button.disabled = isBusy;
-      button.addEventListener('click', () => startDeviceMutation(device, type));
-      actions.append(button);
-    });
+    
+    // Подключить
+    const btnConnect = document.createElement('button');
+    btnConnect.type = 'button';
+    btnConnect.className = 'device-card-action device-card-action--connect';
+    btnConnect.textContent = isBusy ? 'Загрузка...' : 'Подключить';
+    btnConnect.disabled = isBusy;
+    btnConnect.addEventListener('click', () => selectDeviceForSetup(device));
+    
+    // Освободить слот
+    const btnRemove = document.createElement('button');
+    btnRemove.type = 'button';
+    btnRemove.className = 'device-card-action device-card-action--remove';
+    btnRemove.textContent = isBusy ? '...' : '🗑️ Освободить слот';
+    btnRemove.disabled = isBusy;
+    btnRemove.style.color = '#ff4d4f'; // Красная подсветка
+    btnRemove.addEventListener('click', () => confirmDeviceDeletion(device));
+    
+    actions.append(btnConnect, btnRemove);
     card.append(left, right, actions);
     activeDevicesContainer.append(card);
   });
@@ -134,7 +140,7 @@ function renderDeviceList(snapshot) {
   const isAtLimit = snapshot.status === 'limit';
   renderDeviceCards(snapshot.devices);
 
-  if (devicesSlotSummary) devicesSlotSummary.textContent = `${snapshot.usedSlots} из ${snapshot.deviceLimit} занято`;
+  if (devicesSlotSummary) devicesSlotSummary.textContent = `📱 ${snapshot.usedSlots} из ${snapshot.deviceLimit} занято`;
   if (devicesSlotFree) devicesSlotFree.textContent = snapshot.freeSlots > 0
     ? `Свободно мест: ${snapshot.freeSlots}`
     : 'Все места по тарифу заняты';
@@ -146,6 +152,15 @@ function renderDeviceList(snapshot) {
   }
 
   if (settingsDevicesSubtitle) settingsDevicesSubtitle.textContent = `Подключено: ${snapshot.usedSlots} из ${snapshot.deviceLimit}`;
+  
+  // Update Home Counter
+  const homeCounter = document.getElementById('subscriptionDeviceCount');
+  if (homeCounter && snapshot.deviceLimit > 0) {
+    const used = snapshot.usedSlots;
+    const word = (used % 10 === 1 && used % 100 !== 11) ? 'устройство' : ([2, 3, 4].includes(used % 10) && ![12, 13, 14].includes(used % 100)) ? 'устройства' : 'устройств';
+    homeCounter.textContent = `${used} ${word} · лимит ${snapshot.deviceLimit}`;
+  }
+
   devicesEmptyState?.classList.toggle('hidden', !isEmpty);
   devicesUnavailableState?.classList.add('hidden');
   if (btnDevicesAdd) {
@@ -323,6 +338,51 @@ function handleDeviceMutationResult(deviceId, result) {
   setDevicesListStatus(result?.message || 'Операция не выполнена. Список не изменён.', 'error');
 }
 
+function confirmDeviceDeletion(device) {
+  const modal = document.getElementById('modalConfirmDeleteDevice');
+  const modalText = document.getElementById('deleteDeviceModalText');
+  const btnSubmit = document.getElementById('btnConfirmDeleteSubmit');
+  const btnCancel = document.getElementById('btnConfirmDeleteCancel');
+  const btnClose = document.getElementById('btnConfirmDeleteClose');
+  
+  if (!modal || !modalText) return;
+  
+  modalText.textContent = `Удалить устройство ${device.name}? Доступ на этом девайсе будет остановлен, слот освободится.`;
+  modal.classList.remove('hidden');
+  
+  const cleanup = () => {
+    modal.classList.add('hidden');
+    btnSubmit.onclick = null;
+    btnCancel.onclick = null;
+    btnClose.onclick = null;
+  };
+  
+  btnCancel.onclick = cleanup;
+  btnClose.onclick = cleanup;
+  
+  btnSubmit.onclick = async () => {
+    cleanup();
+    
+    // Check if we need to call actual API or fallback to adapter
+    try {
+      const token = profileSubscription?.getToken?.();
+      if (token && window.GhostLinkV3?.apiBase) {
+        await fetch(window.GhostLinkV3.apiBase + '/api/device/delete', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ deviceId: device.id })
+        });
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    
+    if (deviceMutations) {
+      startDeviceMutation(device, 'remove');
+    }
+  };
+}
+
 async function startDeviceMutation(device, type) {
   if (!deviceMutations || !device?.id) {
     setDevicesListStatus('Локальный контур операции не загрузился.', 'error');
@@ -333,7 +393,8 @@ async function startDeviceMutation(device, type) {
     checkDeviceMutationStatus(device.id, operation.requestId);
     return;
   }
-  if (typeof window.confirm === 'function') {
+  // Let the new confirm modal handle remove
+  if (type !== 'remove' && typeof window.confirm === 'function') {
     let confirmMsg = '';
     if (type === 'remove') {
       confirmMsg = `Удалить устройство «${device.name}»? Ключ перестанет работать, слот будет освобождён.`;
@@ -404,10 +465,69 @@ if (btnDevicesRefresh) btnDevicesRefresh.addEventListener('click', loadDeviceLis
 if (btnDevicesAdd && pageSetup) {
   btnDevicesAdd.addEventListener('click', () => {
     if (lastConfirmedDeviceList?.freeSlots === 0) {
-      showToast('Свободных мест нет. Новое устройство не создаём.');
+      showToast('Лимит устройств исчерпан. Удалите неиспользуемое устройство или увеличьте лимит');
       return;
     }
-    openOverlay(pageSetup);
+    
+    // Открываем окно ввода имени
+    const modal = document.getElementById('modalAddDeviceName');
+    const input = document.getElementById('addDeviceNameInput');
+    const btnSubmit = document.getElementById('btnAddDeviceSubmit');
+    const btnClose = document.getElementById('btnAddDeviceClose');
+    if (!modal) return;
+    
+    input.value = '';
+    modal.classList.remove('hidden');
+    input.focus();
+    
+    const cleanup = () => {
+      modal.classList.add('hidden');
+      btnSubmit.onclick = null;
+      btnClose.onclick = null;
+    };
+    
+    btnClose.onclick = cleanup;
+    btnSubmit.onclick = async () => {
+      const name = input.value.trim() || 'Новое устройство';
+      cleanup();
+      
+      setDevicesListStatus('Создание устройства...', 'neutral');
+      
+      let newDevice = null;
+      try {
+        const token = profileSubscription?.getToken?.();
+        if (token && window.GhostLinkV3?.apiBase) {
+          const res = await fetch(window.GhostLinkV3.apiBase + '/api/device/create', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, platform: 'unknown' })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            newDevice = data.device;
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      }
+      
+      // Fallback/Update Mock adapter
+      if (!newDevice) {
+        // mock random device
+        newDevice = { id: createRequestId(), name };
+      }
+      
+      if (deviceMutations) {
+        // Mock add
+        deviceList?.addOperationDevice?.({ device: newDevice, target: 'other-device' });
+        loadDeviceList();
+      }
+      
+      showToast('Устройство создано. Выберите приложение для настройки.');
+      
+      // Open INCY/Karing setup for this specific device
+      selectDeviceForSetup(newDevice);
+    };
   });
 }
 

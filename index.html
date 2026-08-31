@@ -86,433 +86,31 @@
            ВКЛАДКА НИЖНЕЙ НАВИГАЦИИ: рефералы и приглашения.
            ================================================================ -->
       <section id="tab-referral" class="tab-content">
-        <div class="referral-container">
-          <!-- Single Master Referral Card -->
-          <div class="referral-hero-card">
-            <!-- Top Row: Left Explanation & Right Big Metric -->
-            <div class="ref-hero-top-row">
-              <div class="referral-hero-info">
-                <h2 class="referral-hero-title">Приглашай друзей</h2>
-                <p class="referral-hero-subtitle">+14 дней за каждого оплатившего друга</p>
-              </div>
-              <div class="ref-counter-block">
-                <span class="ref-big-num" id="refRewardDaysNum">0</span>
-                <span class="ref-big-label">бонусных дней</span>
-              </div>
-            </div>
-
-            <!-- Milestone Medallion Chain (Apple Fitness / Linear Style) -->
-            <div class="ref-chain-container" id="refChainContainer">
-              <div class="chain-nodes-row">
-                <div class="chain-node-item active">
-                  <div class="node-medallion">
-                    <svg class="mini-ghost-svg" width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 2C7.58 2 4 5.58 4 10v10l3-2 2 2 3-2 3 2 3-2 3 2V10c0-4.42-3.58-8-8-8zm-3 8c-.83 0-1.5-.67-1.5-1.5S8.17 7 9 7s1.5.67 1.5 1.5S9.83 10 9 10zm6 0c-.83 0-1.5-.67-1.5-1.5S14.17 7 15 7s1.5.67 1.5 1.5S15.83 10 15 10z"/>
-                    </svg>
-                  </div>
-                  <span class="node-label">+14</span>
-                </div>
-                <div class="chain-line active"></div>
-                <div class="chain-node-item active">
-                  <div class="node-medallion">
-                    <svg class="mini-ghost-svg" width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 2C7.58 2 4 5.58 4 10v10l3-2 2 2 3-2 3 2 3-2 3 2V10c0-4.42-3.58-8-8-8zm-3 8c-.83 0-1.5-.67-1.5-1.5S8.17 7 9 7s1.5.67 1.5 1.5S9.83 10 9 10zm6 0c-.83 0-1.5-.67-1.5-1.5S14.17 7 15 7s1.5.67 1.5 1.5S15.83 10 15 10z"/>
-                    </svg>
-                  </div>
-                  <span class="node-label">+28</span>
-                </div>
-                <div class="chain-line"></div>
-                <div class="chain-node-item">
-                  <div class="node-medallion"></div>
-                  <span class="node-label">+42</span>
-                </div>
-                <div class="chain-line"></div>
-                <div class="chain-node-item">
-                  <div class="node-medallion"></div>
-                  <span class="node-label">+56</span>
-                </div>
-                <div class="chain-line"></div>
-                <div class="chain-node-item">
-                  <div class="node-medallion infinity">∞</div>
-                  <span class="node-label">+∞</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Subtle Thin Toggle Link with Vector SVG Chevron -->
-            <button class="ref-stats-toggle-link" id="refStatsToggle" aria-expanded="false">
-              <span>Статистика</span>
-              <svg class="ref-toggle-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="6 9 12 15 18 9"></polyline>
-              </svg>
-            </button>
-
-            <!-- Collapsible Stats Content Drawer -->
-            <div class="ref-stats-drawer hidden" id="refStatsDrawer">
-              <div class="drawer-stat-row">
-                <span class="drawer-stat-label">Оплатили</span>
-                <span class="drawer-stat-val" id="drawerSubscribed">0</span>
-              </div>
-              <div class="drawer-stat-row">
-                <span class="drawer-stat-label">Бесплатный период</span>
-                <span class="drawer-stat-val" id="drawerPending">0</span>
-              </div>
-              <div class="drawer-stat-row">
-                <span class="drawer-stat-label">Пробный закончился</span>
-                <span class="drawer-stat-val" id="drawerExpired">0</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Block 4: Referral Link Section & Mode Switch -->
-          <div class="referral-link-section" id="referral-link-section">
-            <!-- Mode Switch Tabs -->
-            <div class="referral-mode-tabs" role="tablist">
-              <button class="referral-mode-tab active" id="btnModeStandard" data-mode="standard" role="tab">
-                <img src="./assets/icons/tg.svg" alt="" style="width: 24px; height: 24px; object-fit: contain;" />
-                <span>Вход в закрытый клуб</span>
-              </button>
-              <button class="referral-mode-tab" id="btnModeBridge" data-mode="bridge" role="tab">
-                <img src="./assets/icons/bridge.svg" alt="" style="width: 24px; height: 24px; object-fit: contain; filter: brightness(0) invert(1);" />
-                <span>Мост 2.0</span>
-              </button>
-            </div>
-
-            <div class="referral-link-header">
-              <h3 class="referral-link-title" id="refLinkTitle">Пригласи друга</h3>
-              <p class="referral-link-subtitle" id="refLinkSubtitle">Отправь ссылку и получи бонусные дни после их подписки</p>
-            </div>
-
-            <div class="referral-link-box" id="refLinkBox" role="button" aria-label="Скопировать демонстрационную ссылку">
-              <span class="referral-link-text" id="refLinkText">Ссылки пока нет</span>
-              <svg class="referral-copy-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-              </svg>
-            </div>
-
-            <div class="referral-action-grid">
-              <button class="btn-action-share" id="btnShareReferral">
-                <svg id="btnShareIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="18" cy="5" r="3"></circle>
-                  <circle cx="6" cy="12" r="3"></circle>
-                  <circle cx="18" cy="19" r="3"></circle>
-                  <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-                  <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-                </svg>
-                <svg id="btnKeyIcon" class="hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="7.5" cy="15.5" r="4.5"></circle>
-                  <path d="m10.7 12.3 8.3-8.3"></path>
-                  <path d="m15.5 7.5 2.5 2.5"></path>
-                  <path d="m18 5 2 2"></path>
-                </svg>
-                <span id="btnShareText">Поделиться ссылкой</span>
-              </button>
-
-              <button class="btn-action-qr" id="btnToggleQr">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="3" y="3" width="7" height="7" rx="1"></rect>
-                  <rect x="14" y="3" width="7" height="7" rx="1"></rect>
-                  <rect x="14" y="14" width="7" height="7" rx="1"></rect>
-                  <rect x="3" y="14" width="7" height="7" rx="1"></rect>
-                </svg>
-                <span>Создать QR-код</span>
-              </button>
-            </div>
-
-            <!-- QR Code Container (visible in Bridge 2.0 mode or toggleable) -->
-            <div class="bridge-qr-container hidden" id="bridgeQrContainer">
-              <div class="bridge-qr-stub" id="refQrStub" aria-live="polite"></div>
-              <span class="bridge-qr-label" id="refQrLabel">Демонстрационный QR: не создаёт ключ и не открывает VPN</span>
-            </div>
-
-            <!-- Bridge Wizard Steps Banner & Hint Container -->
-            <div class="bridge-wizard-box hidden" id="bridgeWizardBox">
-              <div class="wizard-hint-card" id="wizardHintCard">
-                <span class="wizard-hint-text" id="wizardHintText">Временная ссылка ниже создана только для локальной проверки. Настоящий ключ не выдаётся.</span>
-              </div>
-              <div class="wizard-btn-row">
-                <button class="btn-wizard-next" id="btnWizardNext">
-                  <span id="btnWizardNextText">Подготовить приглашение в клуб</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- Bridge 2.0 Timeline Steps -->
-            <div class="bridge-timeline hidden" id="bridgeTimeline">
-              <div class="timeline-step" id="bStep1">
-                <span class="step-dot"></span>
-                <span class="step-text" id="bStep1Text">1. Временная mock-ссылка подготовлена</span>
-              </div>
-              <div class="timeline-step-err-msg hidden" id="bStep1ErrMsg"></div>
-              <div class="timeline-step" id="bStep2">
-                <span class="step-dot"></span>
-                <span class="step-text" id="bStep2Text">2. Передайте ссылку приглашённому</span>
-              </div>
-              <div class="timeline-step" id="bStep3">
-                <span class="step-dot"></span>
-                <span class="step-text" id="bStep3Text">3. Приглашение в клуб подготовлено</span>
-              </div>
-              <div class="timeline-step" id="bStep4">
-                <span class="step-dot"></span>
-                <span class="step-text" id="bStep4Text">4. Ожидаем вступление в клуб</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Block 5: Activity Feed ("Мои приглашения") -->
-          <div class="referral-list-section">
-            <div class="referral-list-title">
-              <span>Мои приглашения</span>
-              <span class="invited-count-badge"></span>
-            </div>
-
-            <div class="referral-activity-feed" id="refFriendsList">
-
-            </div>
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; height: 100%; padding: 0 20px;">
+          <div style="background: rgba(184, 255, 0, 0.05); border: 1px solid rgba(184, 255, 0, 0.1); border-radius: 20px; padding: 40px 20px; max-width: 400px; width: 100%;">
+            <div style="font-size: 48px; margin-bottom: 20px; filter: drop-shadow(0 0 10px rgba(184, 255, 0, 0.5));">🎟️</div>
+            <h2 style="color: var(--text-primary); font-size: 20px; margin-bottom: 12px; font-weight: 700;">Система инвайтов в разработке</h2>
+            <p style="color: var(--text-secondary); font-size: 14px; line-height: 1.5;">Закрытая реферальная программа клуба обновляется. Скоро здесь появится генерация персональных гостевых инвайтов.</p>
           </div>
         </div>
-
-        <!-- Toast Notification -->
-        <div class="referral-toast" id="refToast">Ссылка скопирована</div>
       </section>
 
       <!-- Вкладка: Поддержка (Клиентский чат) -->
       <!-- ================================================================
            ВКЛАДКА НИЖНЕЙ НАВИГАЦИИ: поддержка и FAQ.
            ================================================================ -->
-      <section id="tab-support" class="tab-content support-chat-wrapper" data-support-runtime="v3-local">
-
-        <!-- КЛИЕНТСКИЙ ЧАТ ПОДДЕРЖКИ (по умолчанию) -->
-        <div class="client-chat-view" id="clientChatView" style="display: flex; flex-direction: column; flex: 1; height: 100%;">
-          <header class="chat-header">
-            <div class="chat-user-info">
-              <div class="chat-avatar">
-                <img src="./assets/mascot/ava.png" alt="GhostLink Support Official" />
-              </div>
-              <div class="chat-title-block">
-                <div class="chat-title-row">
-                  <span class="chat-title">GhostLink Support</span>
-                  <span class="chat-badge-official">Official</span>
-                </div>
-                <span class="chat-status"><span class="status-dot"></span>В сети</span>
-              </div>
-            </div>
-          </header>
-
-          <div class="chat-history" id="supportChatHistory">
-            <div class="chat-date-divider"><span>Сегодня</span></div>
-
-            <div class="chat-message in">
-              <div class="message-sender">👻 Support</div>
-              <div class="message-text">Здравствуйте! 👋<br>Я оператор поддержки GhostLink.<br>Чем могу помочь?</div>
-              <div class="message-meta">
-                <span class="message-time">14:00</span>
-              </div>
-            </div>
-
-            <div class="chat-system-notice" id="supportLocalStatus" role="status" aria-live="polite" hidden></div>
-
-            <!-- Typing indicator -->
-            <div class="chat-typing-indicator" id="supportTypingIndicator" style="display: none;">
-              <span class="typing-ghost">👻</span>
-              <div class="typing-dots">
-                <span></span><span></span><span></span>
-              </div>
-            </div>
-          </div>
-
-          <input type="file" id="chatFileInput" accept="image/*,video/*" multiple style="display:none;" />
-
-          <!-- Telegram-style Reply Preview Bar -->
-          <div class="chat-reply-bar" id="chatReplyBar" style="display: none;">
-            <div class="reply-bar-border"></div>
-            <div class="reply-bar-content">
-              <span class="reply-bar-title" id="replyBarTitle">👻 Support</span>
-              <span class="reply-bar-text" id="replyBarText">Сообщение...</span>
-            </div>
-            <button class="reply-bar-close" id="btnCancelReply" aria-label="Отменить ответ">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-            </button>
-          </div>
-
-          <div class="chat-input-area">
-            <button class="chat-attach-btn" id="btnSupportChatAttach" aria-label="Прикрепить">
-              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-            </button>
-            <div class="chat-input-wrapper">
-              <textarea class="chat-input" id="supportChatInput" rows="1" maxlength="1000" placeholder="Сообщение..."></textarea>
-            </div>
-            <button class="chat-send-btn" id="btnSupportChatSend" aria-label="Отправить">
-              <img src="./assets/icons/tg.svg" alt="Отправить" style="width: 25px; height: 25px; object-fit: contain;" />
-            </button>
-          </div>
-        </div>
-
-        <!-- ЭКРАН ТИКЕТОВ АДМИНА (СКРЫТ ДЛЯ КЛИЕНТА) -->
-        <div class="admin-tickets-container" id="adminTicketList" style="display: none;">
-          <div class="admin-tickets-header">
-            <div class="admin-search-wrapper">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-              <input type="text" class="admin-search-input" id="adminUserSearchInput" placeholder="Поиск по ID или @username..." autocomplete="off" />
-            </div>
-            <button class="admin-new-ticket-btn" id="btnAdminNewTicket">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-              <span>Новый</span>
-            </button>
-          </div>
-
-          <div class="admin-users-dropdown" id="adminUsersDropdown" style="display: none;">
-            <div class="users-dropdown-title">Пользователи поддержки</div>
-            <div class="users-dropdown-list" id="usersDropdownList">
-              <div class="dropdown-user-item" data-username="@alex_ghost" data-user-id="9814201">
-                <span class="user-item-name">@alex_ghost</span>
-                <span class="user-item-id">ID: 9814201</span>
-              </div>
-              <div class="dropdown-user-item" data-username="@maria_vpn" data-user-id="4491204">
-                <span class="user-item-name">@maria_vpn</span>
-                <span class="user-item-id">ID: 4491204</span>
-              </div>
-              <div class="dropdown-user-item" data-username="@dmitry_tech" data-user-id="1029412">
-                <span class="user-item-name">@dmitry_tech</span>
-                <span class="user-item-id">ID: 1029412</span>
-              </div>
-              <div class="dropdown-user-item" data-username="@sergey_ghost" data-user-id="5519208">
-                <span class="user-item-name">@sergey_ghost</span>
-                <span class="user-item-id">ID: 5519208</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="admin-filter-tabs">
-            <button class="admin-filter-btn active" data-filter="all">Все (3)</button>
-            <button class="admin-filter-btn" data-filter="active">Открытые (2)</button>
-            <button class="admin-filter-btn" data-filter="closed">Закрытые (1)</button>
-          </div>
-
-          <div class="admin-tickets-list" id="adminTicketsList">
-            <div class="admin-ticket-card" data-username="@alex_ghost" data-user-id="9814201">
-              <div class="ticket-user-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--lime)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-              </div>
-              <div class="ticket-info">
-                <div class="ticket-top-row">
-                  <span class="ticket-user-name">@alex_ghost</span>
-                  <span class="ticket-time">19:54</span>
-                </div>
-                <div class="ticket-bottom-row">
-                  <span class="ticket-snippet">Не подключается VPN на iPhone 15...</span>
-                  <span class="ticket-unread-badge">1</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="admin-ticket-card" data-username="@maria_vpn" data-user-id="4491204">
-              <div class="ticket-user-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--lime)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-              </div>
-              <div class="ticket-info">
-                <div class="ticket-top-row">
-                  <span class="ticket-user-name">@maria_vpn</span>
-                  <span class="ticket-time">18:30</span>
-                </div>
-                <div class="ticket-bottom-row">
-                  <span class="ticket-snippet">Как продлить подписку на 3 месяца?</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="admin-ticket-card is-closed" data-username="@dmitry_tech" data-user-id="1029412">
-              <div class="ticket-user-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-              </div>
-              <div class="ticket-info">
-                <div class="ticket-top-row">
-                  <span class="ticket-user-name">@dmitry_tech</span>
-                  <span class="ticket-time">Вчера</span>
-                </div>
-                <div class="ticket-bottom-row">
-                  <span class="ticket-snippet">Спасибо, всё заработало!</span>
-                  <span class="ticket-status-tag">Закрыт</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- ЧАТ АДМИНА С ВЫБРАННЫМ КЛИЕНТОМ (СКРЫТ) -->
-        <div class="admin-chat-view" id="adminChatView" style="display: none;">
-          <header class="chat-header admin-chat-header">
-            <button class="btn-back" id="btnAdminBackToList" aria-label="Назад">
-              <img src="./assets/icons/back.svg" alt="Назад" />
-            </button>
-            <div class="chat-user-info">
-              <div class="ticket-user-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--lime)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-              </div>
-              <div class="chat-title-block">
-                <div class="chat-title-row">
-                  <span class="chat-title" id="adminActiveTitle">@alex_ghost</span>
-                  <span class="chat-badge-official" id="adminActiveIdBadge" style="background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.8); border-color: rgba(255,255,255,0.15);">ID: 9814201</span>
-                </div>
-                <span class="chat-status"><span class="status-dot"></span>В сети</span>
-              </div>
-            </div>
-            <button class="admin-close-ticket-btn" id="btnAdminCloseTicket">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-              <span>Закрыть тикет</span>
-            </button>
-          </header>
-
-          <div class="chat-history" id="adminSupportChatHistory">
-            <div class="chat-date-divider"><span>Сегодня</span></div>
-
-            <div class="chat-message in">
-              <div class="message-sender">👤 @alex_ghost</div>
-              <div class="message-text">Здравствуйте! У меня не подключается VPN на iPhone 15 после обновления...</div>
-              <div class="message-meta">
-                <span class="message-time">19:54</span>
-              </div>
-            </div>
-
-            <!-- Typing indicator -->
-            <div class="chat-typing-indicator" id="adminSupportTypingIndicator">
-              <span class="typing-ghost">👤</span>
-              <div class="typing-dots">
-                <span></span><span></span><span></span>
-              </div>
-            </div>
-          </div>
-
-          <div class="chat-input-area">
-            <button class="chat-attach-btn" aria-label="Прикрепить">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-            </button>
-            <div class="chat-input-wrapper">
-              <textarea class="chat-input" rows="1" maxlength="1000" placeholder="Ответ клиенту..."></textarea>
-            </div>
-            <button class="chat-send-btn" aria-label="Отправить">
-              <img src="./assets/icons/tg.svg" alt="Отправить" style="width: 20px; height: 20px; object-fit: contain;" />
-            </button>
-          </div>
-        </div>
-
-        <!-- Telegram-style Context Menu -->
-        <div class="chat-context-menu" id="chatContextMenu" style="display: none;">
-          <div class="context-menu-backdrop" id="chatContextMenuBackdrop"></div>
-          <div class="context-menu-content">
-            <button class="context-menu-item" id="ctxBtnReply">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--lime)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"></polyline><path d="M20 18v-2a4 4 0 0 0-4-4H4"></path></svg>
-              <span>Ответить</span>
-            </button>
-            <button class="context-menu-item" id="ctxBtnCopy">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-              <span>Скопировать</span>
-            </button>
+      <section id="tab-support" class="tab-content support-chat-wrapper">
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; height: 100%; padding: 0 20px;">
+          <div style="background: rgba(184, 255, 0, 0.05); border: 1px solid rgba(184, 255, 0, 0.1); border-radius: 20px; padding: 40px 20px; max-width: 400px; width: 100%;">
+            <div style="font-size: 48px; margin-bottom: 20px; filter: drop-shadow(0 0 10px rgba(184, 255, 0, 0.5));">🛠️</div>
+            <h2 style="color: var(--text-primary); font-size: 20px; margin-bottom: 12px; font-weight: 700;">Чат поддержки в разработке</h2>
+            <p style="color: var(--text-secondary); font-size: 14px; line-height: 1.5; margin-bottom: 24px;">Прямой чат в приложении появится в следующем обновлении. Пока вы можете написать администратору напрямую в Telegram.</p>
+            <a href="https://t.me/ghostlink112_bot" target="_blank" rel="noopener" class="btn-primary" style="display: inline-flex; align-items: center; justify-content: center; text-decoration: none; padding: 14px 24px; border-radius: 12px; font-weight: 600;">
+              💬 Написать в Telegram
+            </a>
           </div>
         </div>
       </section>
-
       <!-- Вкладка: Настройки -->
       <!-- ================================================================
            ВКЛАДКА НИЖНЕЙ НАВИГАЦИИ: настройки и управление аккаунтом.
@@ -1168,6 +766,40 @@
           </button>
         </div>
       </section>
+
+      <!-- Modal: Confirm Delete Device -->
+      <div id="modalConfirmDeleteDevice" class="modal-overlay hidden" aria-modal="true" role="dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>Удалить устройство</h3>
+            <button class="btn-close-modal" id="btnConfirmDeleteClose">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+          </div>
+          <div class="modal-body" style="padding: 16px 20px;">
+            <p id="deleteDeviceModalText" style="color: var(--text-secondary); margin-bottom: 20px;"></p>
+            <button class="btn-primary" id="btnConfirmDeleteSubmit" style="background: #ff4d4f; color: #fff; width: 100%;">Удалить</button>
+            <button class="btn-secondary" id="btnConfirmDeleteCancel" style="width: 100%; margin-top: 10px;">Отмена</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal: Add Device Name -->
+      <div id="modalAddDeviceName" class="modal-overlay hidden" aria-modal="true" role="dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>Новое устройство</h3>
+            <button class="btn-close-modal" id="btnAddDeviceClose">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+          </div>
+          <div class="modal-body" style="padding: 16px 20px;">
+            <p style="color: var(--text-secondary); margin-bottom: 12px; font-size: 14px;">Введите название для нового устройства, чтобы легко отличать его в списке.</p>
+            <input type="text" id="addDeviceNameInput" placeholder="Например: Мой iPhone" class="admin-input-dark" style="margin-bottom: 20px;" autocomplete="off" />
+            <button class="btn-primary" id="btnAddDeviceSubmit" style="width: 100%;">Создать слот</button>
+          </div>
+        </div>
+      </div>
 
       <!-- Экран: На другом устройстве -->
       <section id="page-other-device" class="page-overlay hidden">
@@ -3408,7 +3040,7 @@
     <script src="./src/ui/router.js?v=3"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="./src/ui/telegram-webapp.js?v=1"></script>
-    <script src="./src/api/real-block1-adapter.js?v=14"></script>
+    <script src="./src/api/real-block1-adapter.js?v=15"></script>
     <script src="./src/mocks/device-list.js?v=3"></script>
     <script src="./src/api/local-block2-device-list-adapter.js?v=3"></script>
     <script src="./src/mocks/device-operations.js?v=3"></script>
@@ -3416,15 +3048,15 @@
     <script src="./src/mocks/invites.js?v=3"></script>
     <script src="./src/mocks/support.js?v=3"></script>
     <script src="./src/mocks/admin-security.js?v=3"></script>
-    <script src="./src/modules/home.js?v=14"></script>
+    <script src="./src/modules/home.js?v=15"></script>
     <script src="./src/modules/diagnostics.js?v=2"></script>
     <script src="./src/modules/subscription.js?v=7"></script>
-    <script src="./src/modules/devices.js?v=14"></script>
+    <script src="./src/modules/devices.js?v=15"></script>
     <script src="./src/modules/invites.js?v=3"></script>
     <script src="./src/modules/support.js?v=3"></script>
     <script src="./src/modules/context-help.js?v=3"></script>
-    <script src="./src/modules/admin-payment-settings.js?v=14"></script>
-    <script src="./src/modules/admin.js?v=14"></script>
-    <script src="./src/main.js?v=14"></script>
+    <script src="./src/modules/admin-payment-settings.js?v=15"></script>
+    <script src="./src/modules/admin.js?v=15"></script>
+    <script src="./src/main.js?v=15"></script>
   </body>
 </html>

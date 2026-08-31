@@ -1,4 +1,7 @@
-      <!-- Вкладка: Поддержка (Клиентский чат) -->
+const fs = require('fs');
+
+const path = 'src/templates/pages/support.html';
+const replacement = `      <!-- Вкладка: Поддержка (Клиентский чат) -->
       <!-- ================================================================
            ВКЛАДКА НИЖНЕЙ НАВИГАЦИИ: поддержка и FAQ.
            ================================================================ -->
@@ -13,4 +16,7 @@
             </a>
           </div>
         </div>
-      </section>
+      </section>`;
+
+fs.writeFileSync(path, replacement);
+console.log("Patched support");
