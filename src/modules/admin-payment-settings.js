@@ -301,6 +301,62 @@
       closeOverlay(page);
     }
 
+    function parseServerSettings(data) {
+      if (!data || typeof data !== 'object') return null;
+
+      // 1. Bank validation strictly against supported whitelist
+      const rawBank = String(data.bank || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const bankAliases = {
+        alfa: 'alfabank',
+        alfabank: 'alfabank',
+        sber: 'sberbank',
+        sberbank: 'sberbank',
+        ozon: 'ozonbank',
+        ozonbank: 'ozonbank',
+        tbank: 'tbank',
+        tinkoff: 'tbank',
+      };
+      const bankKey = bankAliases[rawBank];
+      if (!bankKey || !Object.hasOwn(BANKS, bankKey)) {
+        return null; // Unknown or unsupported bank
+      }
+
+      // 2. Recipient validation (min 2 words: Name + Initial/Surname)
+      const rawRecipient = String(data.recipient || '').trim();
+      const parts = rawRecipient.split(/\s+/);
+      const recipientNamePattern = /^[A-Za-zА-Яа-яЁё][A-Za-zА-Яа-яЁё\-\s']*$/;
+      const recipientInitialPattern = /^[A-Za-zА-Яа-яЁё]/;
+
+      if (parts.length < 2 || !recipientNamePattern.test(parts[0]) || !recipientInitialPattern.test(parts[1])) {
+        return null; // Invalid recipient format
+      }
+      const firstName = parts[0];
+      const initial = parts[1].replace(/\./g, '').slice(0, 1).toUpperCase();
+
+      // 3. Phone / Card validation
+      const rawPhone = String(data.phone || '').trim();
+      const phoneDigits = rawPhone.replace(/\D/g, '');
+      const rawCard = String(data.card || data.cardNumber || '').trim();
+      const cardDigits = rawCard.replace(/\D/g, '');
+
+      const isCard = data.method === 'card_number' || (rawCard && !rawPhone);
+      if (isCard) {
+        if (cardDigits.length < 16 || cardDigits.length > 19) return null;
+      } else {
+        if (phoneDigits.length < 10 || phoneDigits.length > 15) return null;
+      }
+
+      return {
+        bankKey,
+        phone: rawPhone,
+        cardNumber: rawCard,
+        recipientFirstName: firstName,
+        recipientLastInitial: initial,
+        instruction: typeof data.instruction === 'string' ? data.instruction.trim() : '',
+        method: isCard ? 'card_number' : (Object.hasOwn(METHODS, data.method) ? data.method : 'sbp_phone'),
+      };
+    }
+
     async function loadLiveSettings() {
       if (typeof fetchImpl !== 'function') {
         settingsLoaded = true;
@@ -329,28 +385,18 @@
 
         if (res && res.ok) {
           const data = await res.json();
-          const hasPhone = typeof data?.phone === 'string' && data.phone.trim().length > 0;
-          const hasBank = typeof data?.bank === 'string' && data.bank.trim().length > 0;
-          const hasRecipient = typeof data?.recipient === 'string' && data.recipient.trim().length > 0;
+          const parsed = parseServerSettings(data);
 
-          if (data && hasPhone && hasBank && hasRecipient) {
-            const rawBank = String(data.bank || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-            const bankKey = Object.hasOwn(BANKS, rawBank)
-              ? rawBank
-              : (rawBank === 'alfa' ? 'alfabank' : (rawBank === 'sber' ? 'sberbank' : (rawBank === 'ozon' ? 'ozonbank' : 'tbank')));
-            const parts = String(data.recipient || '').trim().split(/\s+/);
-            const firstName = parts[0] || '';
-            const initial = parts[1] ? parts[1].replace(/\./g, '').slice(0, 1) : '';
-
+          if (parsed) {
             currentProfile = createVersion(currentProfile, {
               ...currentProfile,
-              bankKey,
-              phone: data.phone.trim(),
-              cardNumber: data.card || data.cardNumber || currentProfile.cardNumber,
-              recipientFirstName: firstName || currentProfile.recipientFirstName,
-              recipientLastInitial: initial || currentProfile.recipientLastInitial,
-              instruction: data.instruction || currentProfile.instruction,
-              method: data.method || (data.card ? 'card_number' : currentProfile.method),
+              bankKey: parsed.bankKey,
+              phone: parsed.phone || currentProfile.phone,
+              cardNumber: parsed.cardNumber || currentProfile.cardNumber,
+              recipientFirstName: parsed.recipientFirstName,
+              recipientLastInitial: parsed.recipientLastInitial,
+              instruction: parsed.instruction || currentProfile.instruction,
+              method: parsed.method || currentProfile.method,
             }, { actor: 'api' });
 
             settingsLoaded = true;
@@ -363,7 +409,7 @@
             settingsLoaded = false;
             setFormDisabled(true);
             if (errorBanner) errorBanner.classList.remove('hidden');
-            if (formStatus) formStatus.textContent = 'Неполные данные настроек оплаты от сервера. Настройки заблокированы.';
+            if (formStatus) formStatus.textContent = 'Некорректный формат данных настроек оплаты от сервера. Настройки заблокированы.';
           }
         } else {
           settingsLoaded = false;
