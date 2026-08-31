@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const { createMockProfileSubscription } = require('../src/mocks/subscription.js');
-const { getLoadingSubscriptionPresentation, getSubscriptionPresentation } = require('../src/modules/home.js');
+const { getLoadingSubscriptionPresentation, getSubscriptionPresentation, initHomeModule } = require('../src/modules/home.js');
 
 const root = path.resolve(__dirname, '..');
 
@@ -179,6 +179,69 @@ test('gift subscription renders the canonical title, gift emoji, and active rema
   assert.equal(presentation.remainingDays, 111);
   assert.equal(presentation.daysValue, '111');
   assert.equal(presentation.daysLabel, 'ДНЕЙ');
+});
+
+test('gift profile clears loading and remains rendered when optional payment restore fails', async () => {
+  const classes = new Set(['is-subscription-loading']);
+  const elements = new Map();
+  const makeElement = (id) => ({
+    id,
+    textContent: '',
+    dataset: {},
+    style: { setProperty: () => {} },
+    setAttribute: () => {},
+    classList: {
+      add: (...names) => names.forEach((name) => classes.add(name)),
+      remove: (...names) => names.forEach((name) => classes.delete(name)),
+      toggle: (name, force) => {
+        if (force) classes.add(name);
+        else classes.delete(name);
+      },
+      contains: (name) => classes.has(name),
+    },
+  });
+  const getElement = (id) => {
+    if (!elements.has(id)) elements.set(id, makeElement(id));
+    return elements.get(id);
+  };
+  const documentRef = {
+    body: { classList: { add: () => {}, remove: () => {} } },
+    getElementById: getElement,
+    querySelector: () => null,
+    querySelectorAll: () => [],
+  };
+  const previousDocument = global.document;
+  const previousPayment = global.GhostLinkPayment;
+  global.document = documentRef;
+  global.GhostLinkPayment = {
+    restorePaymentStateFromProfile: () => { throw new Error('optional restore failed'); },
+  };
+
+  try {
+    const home = initHomeModule({
+      profileSubscription: {
+        fetchProfileSubscription: async () => ({
+          isMock: false,
+          subscription: {
+            state: 'active', active: true, expiry: '2026-12-20', remainingDays: 111,
+            deviceLimit: 2, usedDevices: 0,
+            plan: { id: 'gift', title: 'ПОДАРОЧНЫЙ', emoji: '🎁' },
+          },
+        }),
+      },
+    });
+    await home.loadProfileSubscription();
+
+    assert.equal(getElement('subscriptionStatus').classList.contains('is-subscription-loading'), false);
+    assert.equal(getElement('subscriptionStatus').dataset.subscriptionState, 'active');
+    assert.equal(getElement('subscriptionPlanName').textContent, 'ПОДАРОЧНЫЙ');
+    assert.equal(getElement('subscriptionEmoji').textContent, '🎁');
+    assert.equal(getElement('subscriptionDays').textContent, '111');
+    assert.equal(getElement('subscriptionDaysLabel').textContent, 'ДНЕЙ');
+  } finally {
+    global.document = previousDocument;
+    global.GhostLinkPayment = previousPayment;
+  }
 });
 
 test('TEST 1: timeless VIP (expiry: null) renders Без срока and active state', () => {

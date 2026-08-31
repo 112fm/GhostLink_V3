@@ -212,6 +212,13 @@
     btnSettingsAdmin.style.display = isAdmin ? 'flex' : 'none';
   }
 
+  function clearSubscriptionLoading(documentRef) {
+    const island = documentRef?.getElementById('subscriptionStatus');
+    if (!island) return;
+    island.classList.remove('is-subscription-loading');
+    island.setAttribute('aria-busy', 'false');
+  }
+
   function initHomeModule(dependencies = {}) {
     const documentRef = root.document;
     if (!documentRef) return null;
@@ -219,7 +226,6 @@
     const profileSubscription = dependencies.profileSubscription || GhostLinkV3.createMockProfileSubscription?.();
     let requestSequence = 0;
     let currentLoad = null;
-    const minimumLoadingMs = 150;
 
     function renderLoading() {
       renderSubscriptionStatus(null, documentRef, { loading: true });
@@ -229,18 +235,24 @@
       if (!profileSubscription || currentLoad) return currentLoad;
       const currentRequest = ++requestSequence;
       renderLoading();
-      const waitForLoadingAnimation = new Promise((resolve) => root.setTimeout(resolve, minimumLoadingMs));
-      currentLoad = Promise.all([profileSubscription.fetchProfileSubscription(), waitForLoadingAnimation])
-        .then(([snapshot]) => {
+      currentLoad = Promise.resolve()
+        .then(() => profileSubscription.fetchProfileSubscription())
+        .then((snapshot) => {
           if (currentRequest === requestSequence) {
+            clearSubscriptionLoading(documentRef);
             renderSubscriptionStatus(snapshot, documentRef);
             updateAdminSettingsVisibility(snapshot, documentRef);
-            root.GhostLinkPayment?.restorePaymentStateFromProfile?.(snapshot);
+            try {
+              root.GhostLinkPayment?.restorePaymentStateFromProfile?.(snapshot);
+            } catch (_) {
+              // Payment restore is optional and cannot replace a valid profile.
+            }
           }
           return snapshot;
         })
         .catch((error) => {
           if (currentRequest === requestSequence) {
+            clearSubscriptionLoading(documentRef);
             renderSubscriptionStatus({ error }, documentRef);
             updateAdminSettingsVisibility(null, documentRef);
           }
@@ -286,6 +298,7 @@
     getSubscriptionPresentation,
     renderSubscriptionStatus,
     updateAdminSettingsVisibility,
+    clearSubscriptionLoading,
     initHomeModule,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = exported;

@@ -38,9 +38,17 @@
   GhostLinkV3.initDiagnosticsModule?.({ profileSubscription });
   GhostLinkV3.initSubscriptionModule?.(dependencies);
   GhostLinkV3.initDevicesModule?.(dependencies);
-  GhostLinkV3.initInvitesModule?.(dependencies);
+  try {
+    GhostLinkV3.initInvitesModule?.(dependencies);
+  } catch (_) {
+    // Invites are secondary and must not interrupt the profile lifecycle.
+  }
   GhostLinkV3.initSupportModule?.(dependencies);
   GhostLinkV3.initContextHelpModule?.(dependencies);
   GhostLinkV3.initAdminPaymentSettingsModule?.(dependencies);
-  GhostLinkV3.initAdminModule?.(dependencies);
+  try {
+    GhostLinkV3.initAdminModule?.(dependencies);
+  } catch (_) {
+    // Admin UI is secondary and unavailable to ordinary profile rendering.
+  }
 })();
