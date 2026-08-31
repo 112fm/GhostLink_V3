@@ -204,11 +204,7 @@
     if (!documentRef) return;
     const btnSettingsAdmin = documentRef.getElementById('btnSettingsAdmin');
     if (!btnSettingsAdmin) return;
-    const isAdmin = Boolean(
-      snapshot?.user?.is_admin ||
-      snapshot?.profile?.isAdmin ||
-      snapshot?.profile?.is_admin
-    );
+    const isAdmin = snapshot?.user?.is_admin === true;
     btnSettingsAdmin.style.display = isAdmin ? 'flex' : 'none';
   }
 

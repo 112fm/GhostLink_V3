@@ -201,12 +201,12 @@
                 <polyline points="13 7 15.5 9.5 13 12"/>
               </svg>
             </div>
-            <h3 class="other-device-title">На другом устройстве</h3>
-            <p class="other-device-subtitle">Скачайте приложение на ваше устройство и импортируйте ключ-ссылку</p>
+            <h3 class="other-device-title">Выберите устройство</h3>
+            <p class="other-device-subtitle">Выберите запись из вашего списка. Затем укажем приложение для этого устройства.</p>
           </div>
 
           <!-- Key Copy Field -->
-          <div class="key-box-container" style="margin-top: 24px;">
+          <div class="key-box-container" style="margin-top: 24px;" hidden aria-hidden="true">
             <div class="key-box-field" id="other-device-key-field">
               <span class="key-box-text" id="other-device-key-text">https://api.112prd.ru:2053/sub/••••••••</span>
               <div class="key-box-copy-icon">
@@ -222,7 +222,7 @@
           <!-- Devices Selection List -->
           <div class="devices-section">
             <h4 class="devices-section-title">Устройства</h4>
-            <div class="devices-grid">
+            <div class="devices-grid" hidden aria-hidden="true">
               <!-- iOS -->
               <div class="platform-card" data-platform="ios">
                 <div class="platform-card-left">
@@ -333,6 +333,12 @@
                 </div>
               </div>
             </div>
+          </div>
+
+          <div class="devices-section other-device-picker-section">
+            <h4 class="devices-section-title">Ваши устройства</h4>
+            <p id="other-device-picker-status" class="other-device-picker-status" role="status" aria-live="polite">Получаем список устройств…</p>
+            <div id="other-device-picker-list" class="other-device-picker-list" aria-live="polite"></div>
           </div>
         </div>
       </section>

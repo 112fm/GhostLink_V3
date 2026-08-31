@@ -246,18 +246,6 @@ let partState = {
   hasLoaded: false
 };
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    if (document.getElementById('admin-tab-partners')) {
-      initPartnersTab();
-    }
-  });
-} else {
-  if (document.getElementById('admin-tab-partners')) {
-    initPartnersTab();
-  }
-}
-
 function initPartnersTab() {
   if (partState.initialized) return;
   partState.initialized = true;

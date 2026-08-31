@@ -33,6 +33,25 @@
     closeOverlay: (page) => overlayNavigator.close(page),
     returnToHome: () => overlayNavigator.home(),
   };
+  let adminRuntimeInitialized = false;
+
+  function initVerifiedAdminRuntime(snapshot) {
+    if (adminRuntimeInitialized || snapshot?.user?.is_admin !== true) return;
+    adminRuntimeInitialized = true;
+    const adminDependencies = { ...dependencies, isAdmin: true };
+    try {
+      GhostLinkV3.initAdminPaymentSettingsModule?.(adminDependencies);
+    } catch (_) {
+      // Admin-only setup cannot affect the client application lifecycle.
+    }
+    try {
+      GhostLinkV3.initAdminModule?.(adminDependencies);
+    } catch (_) {
+      // Admin-only setup cannot affect the client application lifecycle.
+    }
+  }
+
+  profileSubscription.subscribe?.(initVerifiedAdminRuntime);
 
   GhostLinkV3.initHomeModule?.(dependencies);
   GhostLinkV3.initDiagnosticsModule?.({ profileSubscription });
@@ -45,10 +64,4 @@
   }
   GhostLinkV3.initSupportModule?.(dependencies);
   GhostLinkV3.initContextHelpModule?.(dependencies);
-  GhostLinkV3.initAdminPaymentSettingsModule?.(dependencies);
-  try {
-    GhostLinkV3.initAdminModule?.(dependencies);
-  } catch (_) {
-    // Admin UI is secondary and unavailable to ordinary profile rendering.
-  }
 })();

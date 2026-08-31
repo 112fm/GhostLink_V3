@@ -1190,12 +1190,12 @@
                 <polyline points="13 7 15.5 9.5 13 12"/>
               </svg>
             </div>
-            <h3 class="other-device-title">На другом устройстве</h3>
-            <p class="other-device-subtitle">Скачайте приложение на ваше устройство и импортируйте ключ-ссылку</p>
+            <h3 class="other-device-title">Выберите устройство</h3>
+            <p class="other-device-subtitle">Выберите запись из вашего списка. Затем укажем приложение для этого устройства.</p>
           </div>
 
           <!-- Key Copy Field -->
-          <div class="key-box-container" style="margin-top: 24px;">
+          <div class="key-box-container" style="margin-top: 24px;" hidden aria-hidden="true">
             <div class="key-box-field" id="other-device-key-field">
               <span class="key-box-text" id="other-device-key-text">https://api.112prd.ru:2053/sub/••••••••</span>
               <div class="key-box-copy-icon">
@@ -1211,7 +1211,7 @@
           <!-- Devices Selection List -->
           <div class="devices-section">
             <h4 class="devices-section-title">Устройства</h4>
-            <div class="devices-grid">
+            <div class="devices-grid" hidden aria-hidden="true">
               <!-- iOS -->
               <div class="platform-card" data-platform="ios">
                 <div class="platform-card-left">
@@ -1322,6 +1322,12 @@
                 </div>
               </div>
             </div>
+          </div>
+
+          <div class="devices-section other-device-picker-section">
+            <h4 class="devices-section-title">Ваши устройства</h4>
+            <p id="other-device-picker-status" class="other-device-picker-status" role="status" aria-live="polite">Получаем список устройств…</p>
+            <div id="other-device-picker-list" class="other-device-picker-list" aria-live="polite"></div>
           </div>
         </div>
       </section>
@@ -3402,7 +3408,7 @@
     <script src="./src/ui/router.js?v=3"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="./src/ui/telegram-webapp.js?v=1"></script>
-    <script src="./src/api/real-block1-adapter.js?v=9"></script>
+    <script src="./src/api/real-block1-adapter.js?v=14"></script>
     <script src="./src/mocks/device-list.js?v=3"></script>
     <script src="./src/api/local-block2-device-list-adapter.js?v=3"></script>
     <script src="./src/mocks/device-operations.js?v=3"></script>
@@ -3410,15 +3416,15 @@
     <script src="./src/mocks/invites.js?v=3"></script>
     <script src="./src/mocks/support.js?v=3"></script>
     <script src="./src/mocks/admin-security.js?v=3"></script>
-    <script src="./src/modules/home.js?v=9"></script>
+    <script src="./src/modules/home.js?v=14"></script>
     <script src="./src/modules/diagnostics.js?v=2"></script>
     <script src="./src/modules/subscription.js?v=7"></script>
-    <script src="./src/modules/devices.js?v=13"></script>
+    <script src="./src/modules/devices.js?v=14"></script>
     <script src="./src/modules/invites.js?v=3"></script>
     <script src="./src/modules/support.js?v=3"></script>
     <script src="./src/modules/context-help.js?v=3"></script>
     <script src="./src/modules/admin-payment-settings.js?v=3"></script>
-    <script src="./src/modules/admin.js?v=3"></script>
-    <script src="./src/main.js?v=8"></script>
+    <script src="./src/modules/admin.js?v=14"></script>
+    <script src="./src/main.js?v=14"></script>
   </body>
 </html>

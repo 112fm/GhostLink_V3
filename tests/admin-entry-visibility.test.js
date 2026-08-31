@@ -66,7 +66,7 @@ function createMockElement(id = '', tagName = 'div') {
   };
 }
 
-test('updateAdminSettingsVisibility shows #btnSettingsAdmin for admin profiles', () => {
+test('updateAdminSettingsVisibility shows #btnSettingsAdmin only for an explicit user.is_admin true', () => {
   const btn = createMockElement('btnSettingsAdmin');
   const mockDoc = {
     getElementById: (id) => (id === 'btnSettingsAdmin' ? btn : null),
@@ -76,13 +76,14 @@ test('updateAdminSettingsVisibility shows #btnSettingsAdmin for admin profiles',
   updateAdminSettingsVisibility({ user: { is_admin: true } }, mockDoc);
   assert.equal(btn.style.display, 'flex');
 
-  // profile.isAdmin: true
+  // Legacy profile aliases must not expose the admin entry.
+  btn.style.display = 'none';
   updateAdminSettingsVisibility({ profile: { isAdmin: true } }, mockDoc);
-  assert.equal(btn.style.display, 'flex');
+  assert.equal(btn.style.display, 'none');
 
-  // profile.is_admin: true
-  updateAdminSettingsVisibility({ profile: { is_admin: true } }, mockDoc);
-  assert.equal(btn.style.display, 'flex');
+  // Truthy non-boolean values are also denied.
+  updateAdminSettingsVisibility({ user: { is_admin: 'true' } }, mockDoc);
+  assert.equal(btn.style.display, 'none');
 });
 
 test('updateAdminSettingsVisibility hides #btnSettingsAdmin for non-admin profiles or errors', () => {
@@ -157,6 +158,9 @@ test('clicking #btnSettingsAdmin opens #page-admin-dashboard and #btnAdminBack c
       overlayClosed = page;
       page?.classList?.remove('active');
     },
+    profileSubscription: {
+      getCachedProfile: () => ({ user: { is_admin: true } }),
+    },
     returnToHome: () => {},
   });
 
@@ -177,4 +181,3 @@ test('clicking #btnSettingsAdmin opens #page-admin-dashboard and #btnAdminBack c
   assert.equal(overlayClosed, pageAdminDashboard);
   assert.equal(pageAdminDashboard.classList.contains('active'), false);
 });
-

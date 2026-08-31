@@ -4,16 +4,13 @@
 
 // Default-Deny: Admin access is strictly disabled by default until verified from user profile
 const profileSubscription = dependencies.profileSubscription;
-const isDefaultAdmin = Boolean(dependencies.isAdmin);
+const isDefaultAdmin = dependencies.isAdmin === true;
+let adminOverlayOpened = false;
 
 function isCurrentUserAdmin() {
   if (isDefaultAdmin) return true;
   const cached = profileSubscription?.getCachedProfile?.() || null;
-  return Boolean(
-    cached?.user?.is_admin ||
-    cached?.profile?.isAdmin ||
-    cached?.profile?.is_admin
-  );
+  return cached?.user?.is_admin === true;
 }
 
 const adminMockSession = GhostLinkV3.adminMockSession || {
@@ -246,6 +243,7 @@ async function refreshDashboard() {
 }
 
 async function refreshActiveAdminTab() {
+  if (!adminOverlayOpened || !isCurrentUserAdmin()) return;
   const activeTab = document.querySelector('#admin-main-nav .admin-tab-btn.active')?.dataset.tab || 'dashboard';
   if (activeTab === 'dashboard') {
     await refreshDashboard();
@@ -299,8 +297,10 @@ function setupAdminDashboardEntry() {
 
   if (btnSettingsAdmin) {
     btnSettingsAdmin.addEventListener('click', async () => {
+      if (!isCurrentUserAdmin()) return;
       const pageAdmin = document.getElementById('page-admin-dashboard');
       if (pageAdmin) {
+        adminOverlayOpened = true;
         openOverlay(pageAdmin);
         await refreshDashboard();
       }
@@ -313,6 +313,7 @@ function setupAdminDashboardEntry() {
       if (pageAdmin) {
         closeOverlay(pageAdmin);
       }
+      adminOverlayOpened = false;
     });
   }
 
@@ -325,6 +326,7 @@ function setupAdminDashboardEntry() {
 
   adminNavBtns.forEach(btn => {
     btn.addEventListener('click', () => {
+      if (!adminOverlayOpened || !isCurrentUserAdmin()) return;
       adminNavBtns.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       const targetTabId = 'admin-tab-' + btn.dataset.tab;

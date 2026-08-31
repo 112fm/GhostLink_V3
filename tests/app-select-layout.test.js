@@ -123,18 +123,22 @@ test('app select auto-highlights INCY for mobile/mac and Karing for win/linux/tv
   assert.equal(getOrCreateElement('app-card-incy').classList.contains('active'), false);
 });
 
-test('canonical subscription URL builder handles karing, incy, direct URLs and fallbacks with zero vless strings', () => {
+test('switching the application is UI-only and never creates a device or consumes a slot', () => {
+  const devicesSource = readFileSync(join(root, 'src/modules/devices.js'), 'utf8');
+  const start = devicesSource.indexOf('function selectAppChoice(app)');
+  const end = devicesSource.indexOf('function autoSelectDefaultAppForCurrentPlatform', start);
+  const selectionSource = devicesSource.slice(start, end);
+
+  assert.ok(start >= 0 && end > start, 'application choice handler must exist');
+  assert.doesNotMatch(selectionSource, /startDeviceOperation|createDevice|addOperationDevice/);
+});
+
+test('subscription URL builder exposes only API-provided Karing and INCY URLs with zero vless strings', () => {
   const { getSubscriptionUrl } = global.window.GhostLinkV3.devices;
 
-  // Fallbacks with empty or missing profile
-  assert.equal(
-    getSubscriptionUrl('karing'),
-    'https://api.112prd.ru:2053/sub/••••••••'
-  );
-  assert.equal(
-    getSubscriptionUrl('incy'),
-    'https://api.112prd.ru:2053/sub/••••••••?compat=incy'
-  );
+  // Missing API fields must not create a displayable or copyable URL.
+  assert.equal(getSubscriptionUrl('karing'), '');
+  assert.equal(getSubscriptionUrl('incy'), '');
 
   // Verify full codebase (source & html) has zero vless:// occurrences
   const indexHtml = readFileSync(join(root, 'index.html'), 'utf8');
@@ -332,9 +336,8 @@ test('regression 2: when url_incy is absent, INCY button is disabled and does no
 
   assert.equal(isSubscriptionReady('incy'), false);
   assert.equal(btnAddToApp.disabled, true);
-  assert.equal(btnAddToApp.querySelector('span').textContent, 'Загрузка INCY...');
-  assert.equal(getSubscriptionUrl('incy'), 'https://api.112prd.ru:2053/sub/••••••••?compat=incy');
-  assert.doesNotMatch(getSubscriptionUrl('incy'), /my_sub_token_xyz/);
+  assert.equal(btnAddToApp.querySelector('span').textContent, 'Ссылка для INCY недоступна');
+  assert.equal(getSubscriptionUrl('incy'), '');
 });
 
 test('regression 3: Karing strictly uses url from backend snapshot and disables button if absent', () => {
@@ -598,8 +601,8 @@ test('getCurrentUserToken strictly excludes 64-char session token when sub_token
 
   const { getCurrentUserToken, getSubscriptionUrl } = global.window.GhostLinkV3.devices;
   assert.equal(getCurrentUserToken(), '');
-  assert.equal(getSubscriptionUrl('karing'), 'https://api.112prd.ru:2053/sub/••••••••');
-  assert.equal(getSubscriptionUrl('incy'), 'https://api.112prd.ru:2053/sub/••••••••?compat=incy');
+  assert.equal(getSubscriptionUrl('karing'), '');
+  assert.equal(getSubscriptionUrl('incy'), '');
 });
 
 test('mapProfile and getCurrentUserToken robustly extract sub_token from subscription_url', () => {
@@ -774,9 +777,9 @@ test('devices module consumes backend url/url_incy directly and disables btnAddT
   // Initial State: profile not loaded yet (default app is INCY for iPhone)
   assert.equal(isSubscriptionReady('incy'), false);
   assert.equal(btnAddToApp.disabled, true);
-  assert.equal(btnAddToApp.querySelector('span').textContent, 'Загрузка INCY...');
-  assert.equal(getSubscriptionUrl('karing'), 'https://api.112prd.ru:2053/sub/••••••••');
-  assert.equal(getSubscriptionUrl('incy'), 'https://api.112prd.ru:2053/sub/••••••••?compat=incy');
+  assert.equal(btnAddToApp.querySelector('span').textContent, 'Ссылка для INCY недоступна');
+  assert.equal(getSubscriptionUrl('karing'), '');
+  assert.equal(getSubscriptionUrl('incy'), '');
 
   // Backend response arrives with direct url and url_incy
   currentProfile = {
@@ -803,8 +806,6 @@ test('devices module consumes backend url/url_incy directly and disables btnAddT
   assert.equal(btnAddToApp.disabled, false);
   assert.equal(btnAddToApp.querySelector('span').textContent, 'Добавить в Karing');
 });
-
-
 
 
 

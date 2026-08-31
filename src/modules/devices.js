@@ -41,6 +41,8 @@ const devicesSlotFree = document.getElementById('devices-slot-free');
 const devicesEmptyState = document.getElementById('devices-empty-state');
 const devicesUnavailableState = document.getElementById('devices-unavailable-state');
 const settingsDevicesSubtitle = document.getElementById('settings-devices-subtitle');
+let selectedSetupDeviceId = null;
+let selectedSetupDevice = null;
 
 function getDeviceEmoji(platform) {
   return { phone: '📱', laptop: '💻', tv: '📺' }[platform] || '🔑';
@@ -494,10 +496,12 @@ function finishDeviceOperation(result) {
       ? document.getElementById('page-other-device')
       : document.getElementById('page-app-select');
     if (nextPage) {
-      if (nextPage.id === 'page-app-select') {
+      if (nextPage.id === 'page-other-device') {
+        openOtherDevicePicker();
+      } else {
         autoSelectDefaultAppForCurrentPlatform();
+        openOverlay(nextPage);
       }
-      openOverlay(nextPage);
     }
     return;
   }
@@ -627,10 +631,12 @@ async function startDeviceOperation(target) {
       ? document.getElementById('page-other-device')
       : document.getElementById('page-app-select');
     if (nextPage) {
-      if (nextPage.id === 'page-app-select') {
+      if (nextPage.id === 'page-other-device') {
+        openOtherDevicePicker();
+      } else {
         autoSelectDefaultAppForCurrentPlatform();
+        openOverlay(nextPage);
       }
-      openOverlay(nextPage);
     }
     return;
   }
@@ -708,7 +714,14 @@ if (setupContinueBtn) {
   setupContinueBtn.addEventListener('click', () => {
     const selectedRadio = document.querySelector('input[name="setup-target"]:checked');
     const isThisDevice = selectedRadio ? selectedRadio.value === 'this-device' : true;
-    startDeviceOperation(isThisDevice ? 'this-device' : 'other-device');
+    if (isThisDevice) {
+      selectedSetupDeviceId = null;
+      selectedSetupDevice = null;
+      autoSelectDefaultAppForCurrentPlatform();
+      openOverlay(pageAppSelect);
+      return;
+    }
+    openOtherDevicePicker();
   });
 }
 
@@ -723,8 +736,76 @@ if (currentDeviceOperation && ['preparing', 'accepted', 'processing', 'unknown',
 // On Another Device Screen (#page-other-device) Logic
 const pageOtherDevice = document.getElementById('page-other-device');
 const btnOtherDeviceBack = document.getElementById('btn-other-device-back');
-const otherDeviceKeyField = document.getElementById('other-device-key-field');
-const otherDeviceKeyText = document.getElementById('other-device-key-text');
+const otherDevicePickerList = document.getElementById('other-device-picker-list');
+const otherDevicePickerStatus = document.getElementById('other-device-picker-status');
+
+function setOtherDevicePickerStatus(message, tone = 'neutral') {
+  if (!otherDevicePickerStatus) return;
+  otherDevicePickerStatus.textContent = message;
+  otherDevicePickerStatus.dataset.tone = tone;
+}
+
+function renderOtherDevicePicker(devices) {
+  if (!otherDevicePickerList) return;
+  otherDevicePickerList.replaceChildren();
+
+  if (!Array.isArray(devices) || devices.length === 0) {
+    setOtherDevicePickerStatus('В списке пока нет устройств. Создание новой записи появится после подключения API.', 'neutral');
+    return;
+  }
+
+  devices.forEach((device) => {
+    if (!device?.id) return;
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'other-device-picker-card';
+    card.dataset.deviceUuid = device.id;
+
+    const icon = document.createElement('span');
+    icon.className = 'other-device-picker-icon';
+    icon.textContent = getDeviceEmoji(device.platform);
+    const copy = document.createElement('span');
+    copy.className = 'other-device-picker-copy';
+    const name = document.createElement('strong');
+    name.textContent = device.name || 'Устройство';
+    const meta = document.createElement('small');
+    meta.textContent = device.app || 'Приложение не выбрано';
+    copy.append(name, meta);
+    const arrow = document.createElement('span');
+    arrow.className = 'other-device-picker-arrow';
+    arrow.textContent = '›';
+    card.append(icon, copy, arrow);
+    card.addEventListener('click', () => selectDeviceForSetup(device));
+    otherDevicePickerList.append(card);
+  });
+  setOtherDevicePickerStatus('Выберите устройство для настройки приложения.');
+}
+
+function selectDeviceForSetup(device) {
+  if (!device?.id) return;
+  selectedSetupDeviceId = device.id;
+  selectedSetupDevice = device;
+  autoSelectDefaultAppForCurrentPlatform();
+  openOverlay(pageAppSelect);
+}
+
+async function openOtherDevicePicker() {
+  if (!pageOtherDevice) return;
+  openOverlay(pageOtherDevice);
+  otherDevicePickerList?.replaceChildren();
+  setOtherDevicePickerStatus('Получаем список устройств…');
+
+  try {
+    const snapshot = await deviceList?.fetchList?.();
+    if (!snapshot) throw new Error('Device list is unavailable');
+    lastConfirmedDeviceList = snapshot;
+    renderOtherDevicePicker(snapshot.devices);
+  } catch (error) {
+    setOtherDevicePickerStatus(error?.type === 'timeout'
+      ? 'Список устройств отвечает слишком долго. Попробуйте ещё раз.'
+      : 'Не удалось получить список устройств. Проверьте подключение и повторите.', 'error');
+  }
+}
 
 function isValidSubToken(token) {
   if (typeof token !== 'string') return false;
@@ -791,34 +872,56 @@ function getCurrentUserToken() {
 }
 
 function isSubscriptionReady(app = currentSelectedApp || 'karing') {
-  const url = getSubscriptionUrl(app);
-  return Boolean(url && !url.includes('••••'));
+  return Boolean(getSubscriptionUrl(app));
+}
+
+function getProvidedSubscriptionUrl(...candidates) {
+  for (const candidate of candidates) {
+    if (typeof candidate !== 'string') continue;
+    const value = candidate.trim();
+    if (!value || value.includes('••••')) continue;
+    try {
+      const parsed = new URL(value);
+      if (parsed.protocol === 'https:' || parsed.protocol === 'http:') return value;
+    } catch (_) {
+      // The API value is unusable; do not replace it with a synthetic URL.
+    }
+  }
+  return '';
 }
 
 function getSubscriptionUrl(app = 'karing') {
   const cached = profileSubscription?.getCachedProfile?.();
   const snapshot = profileSubscription?.getSnapshot?.();
 
-  if (app === 'incy') {
-    const directIncyUrl = snapshot?.user?.url_incy || snapshot?.url_incy || snapshot?.subscription?.url_incy || snapshot?.profile?.url_incy ||
-                         cached?.user?.url_incy || cached?.url_incy || cached?.subscription?.url_incy || cached?.profile?.url_incy ||
-                         snapshot?.user?.subscription_url_incy || snapshot?.subscription_url_incy;
-    if (typeof directIncyUrl === 'string' && directIncyUrl.trim().startsWith('http') && !directIncyUrl.includes('••••••••')) {
-      return directIncyUrl.trim();
+  let targetDevice = selectedSetupDevice;
+  if (!targetDevice && lastConfirmedDeviceList?.devices) {
+    targetDevice = lastConfirmedDeviceList.devices.find((d) => d.isCurrent);
+  }
+
+  if (targetDevice) {
+    if (app === 'incy') {
+      const incyUrl = targetDevice.url_incy || targetDevice.subscription_url_incy;
+      if (incyUrl) return incyUrl;
+    } else {
+      const karingUrl = targetDevice.url || targetDevice.subscription_url;
+      if (karingUrl) return karingUrl;
     }
-    return 'https://api.112prd.ru:2053/sub/••••••••?compat=incy';
   }
 
-  // Karing (or default)
-  const directKaringUrl = snapshot?.user?.subscription_url || snapshot?.user?.url || snapshot?.subscription_url || snapshot?.url ||
-                          snapshot?.subscription?.subscription_url || snapshot?.subscription?.url || snapshot?.profile?.subscription_url ||
-                          cached?.user?.subscription_url || cached?.user?.url || cached?.subscription_url || cached?.url ||
-                          cached?.subscription?.subscription_url || cached?.subscription?.url;
-  if (typeof directKaringUrl === 'string' && directKaringUrl.trim().startsWith('http') && !directKaringUrl.includes('••••••••')) {
-    return directKaringUrl.trim();
+  if (app === 'incy') {
+    return getProvidedSubscriptionUrl(
+      snapshot?.user?.url_incy, snapshot?.url_incy, snapshot?.subscription?.url_incy, snapshot?.profile?.url_incy,
+      cached?.user?.url_incy, cached?.url_incy, cached?.subscription?.url_incy, cached?.profile?.url_incy,
+    );
   }
 
-  return 'https://api.112prd.ru:2053/sub/••••••••';
+  return getProvidedSubscriptionUrl(
+    snapshot?.user?.subscription_url, snapshot?.user?.url, snapshot?.subscription_url, snapshot?.url,
+    snapshot?.subscription?.subscription_url, snapshot?.subscription?.url, snapshot?.profile?.subscription_url,
+    cached?.user?.subscription_url, cached?.user?.url, cached?.subscription_url, cached?.url,
+    cached?.subscription?.subscription_url, cached?.subscription?.url,
+  );
 }
 
 let currentSelectedApp = 'incy';
@@ -835,19 +938,18 @@ function setBtnAddToAppText(btn, text) {
 
 function updateDisplayedSubscriptionUrls(app = currentSelectedApp || 'karing') {
   currentSelectedApp = app;
-  const token = getCurrentUserToken();
-  const incyUrl = getSubscriptionUrl('incy', token);
-  const karingUrl = getSubscriptionUrl('karing', token);
+  const incyUrl = getSubscriptionUrl('incy');
+  const karingUrl = getSubscriptionUrl('karing');
   const currentUrl = app === 'incy' ? incyUrl : karingUrl;
+  const appName = app === 'incy' ? 'INCY' : 'Karing';
 
-  if (userKeyUrl) userKeyUrl.textContent = currentUrl;
-  if (otherDeviceKeyText) otherDeviceKeyText.textContent = karingUrl;
-  if (deviceDetailKeyText) deviceDetailKeyText.textContent = currentUrl;
+  if (userKeyUrl) userKeyUrl.textContent = currentUrl || `Ссылка для ${appName} недоступна`;
+  if (deviceDetailKeyText) deviceDetailKeyText.textContent = currentUrl || `Ссылка для ${appName} недоступна`;
 
   if (btnAddToApp) {
-    if (!currentUrl || currentUrl.includes('••••')) {
+    if (!currentUrl) {
       btnAddToApp.disabled = true;
-      setBtnAddToAppText(btnAddToApp, `Загрузка ${app.toUpperCase()}...`);
+      setBtnAddToAppText(btnAddToApp, `Ссылка для ${appName} недоступна`);
     } else {
       btnAddToApp.disabled = false;
       setBtnAddToAppText(btnAddToApp, `Добавить в ${app === 'incy' ? 'INCY' : 'Karing'}`);
@@ -866,14 +968,6 @@ if (typeof profileSubscription?.subscribe === 'function') {
 if (btnOtherDeviceBack && pageOtherDevice) {
   btnOtherDeviceBack.addEventListener('click', () => {
     closeOverlay(pageOtherDevice);
-  });
-}
-
-if (otherDeviceKeyField && otherDeviceKeyText) {
-  otherDeviceKeyField.addEventListener('click', async () => {
-    const textToCopy = getSubscriptionUrl('karing');
-    const copied = await copyText(textToCopy);
-    showToast(copied ? 'Ссылка-подписка скопирована' : 'Не удалось скопировать. Нажмите и удерживайте ссылку.');
   });
 }
 
@@ -1048,6 +1142,10 @@ if (keyBoxField && userKeyUrl) {
     const selectedRadio = document.querySelector('input[name="app-choice"]:checked');
     const isIncy = selectedRadio && selectedRadio.value === 'incy';
     const subUrl = getSubscriptionUrl(isIncy ? 'incy' : 'karing');
+    if (!subUrl) {
+      showToast(`Ссылка для ${isIncy ? 'INCY' : 'Karing'} ещё не получена.`);
+      return;
+    }
     const copied = await copyText(subUrl);
     showToast(copied ? 'Ссылка-подписка скопирована' : 'Не удалось скопировать. Нажмите и удерживайте ссылку.');
   });
@@ -1059,6 +1157,10 @@ if (btnAddToApp && userKeyUrl) {
     const isIncy = selectedRadio && selectedRadio.value === 'incy';
     const app = isIncy ? 'incy' : 'karing';
     const subUrl = getSubscriptionUrl(app);
+    if (!subUrl) {
+      showToast(`Ссылка для ${isIncy ? 'INCY' : 'Karing'} ещё не получена.`);
+      return;
+    }
 
     // 1. Auto-copy subscription URL to clipboard first so user can paste if needed
     const copied = await copyText(subUrl);
@@ -1282,6 +1384,10 @@ if (btnSelectKaring && btnSelectIncy) {
 if (btnDeviceCopyKey) {
   btnDeviceCopyKey.addEventListener('click', async () => {
     const subUrl = getSubscriptionUrl(currentAppChoice);
+    if (!subUrl) {
+      showToast(`Ссылка для ${currentAppChoice === 'incy' ? 'INCY' : 'Karing'} ещё не получена.`);
+      return;
+    }
     const copied = await copyText(subUrl);
     showToast(copied ? 'Ссылка-подписка скопирована' : 'Не удалось скопировать. Нажмите и удерживайте ссылку.');
   });
@@ -1290,6 +1396,10 @@ if (btnDeviceCopyKey) {
 if (deviceDetailKeyText) {
   deviceDetailKeyText.addEventListener('click', async () => {
     const subUrl = getSubscriptionUrl(currentAppChoice);
+    if (!subUrl) {
+      showToast(`Ссылка для ${currentAppChoice === 'incy' ? 'INCY' : 'Karing'} ещё не получена.`);
+      return;
+    }
     const copied = await copyText(subUrl);
     showToast(copied ? 'Ссылка-подписка скопирована' : 'Не удалось скопировать. Нажмите и удерживайте ссылку.');
   });
@@ -1319,6 +1429,10 @@ if (btnDeviceDownload) {
     getDevicePlatform,
     getSubscriptionUrl,
     getCurrentUserToken,
+    openOtherDevicePicker,
+    selectDeviceForSetup,
+    getSelectedSetupDeviceId: () => selectedSetupDeviceId,
+    getSelectedSetupDevice: () => selectedSetupDevice ? { ...selectedSetupDevice } : null,
     isValidSubToken,
     isSubscriptionReady,
     updateDisplayedSubscriptionUrls,

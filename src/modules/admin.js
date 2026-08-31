@@ -642,16 +642,13 @@ if (btnPrivacyBack && pagePrivacyPolicy) {
 
 // Default-Deny: Admin access is strictly disabled by default until verified from user profile
 const profileSubscription = dependencies.profileSubscription;
-const isDefaultAdmin = Boolean(dependencies.isAdmin);
+const isDefaultAdmin = dependencies.isAdmin === true;
+let adminOverlayOpened = false;
 
 function isCurrentUserAdmin() {
   if (isDefaultAdmin) return true;
   const cached = profileSubscription?.getCachedProfile?.() || null;
-  return Boolean(
-    cached?.user?.is_admin ||
-    cached?.profile?.isAdmin ||
-    cached?.profile?.is_admin
-  );
+  return cached?.user?.is_admin === true;
 }
 
 const adminMockSession = GhostLinkV3.adminMockSession || {
@@ -884,6 +881,7 @@ async function refreshDashboard() {
 }
 
 async function refreshActiveAdminTab() {
+  if (!adminOverlayOpened || !isCurrentUserAdmin()) return;
   const activeTab = document.querySelector('#admin-main-nav .admin-tab-btn.active')?.dataset.tab || 'dashboard';
   if (activeTab === 'dashboard') {
     await refreshDashboard();
@@ -937,8 +935,10 @@ function setupAdminDashboardEntry() {
 
   if (btnSettingsAdmin) {
     btnSettingsAdmin.addEventListener('click', async () => {
+      if (!isCurrentUserAdmin()) return;
       const pageAdmin = document.getElementById('page-admin-dashboard');
       if (pageAdmin) {
+        adminOverlayOpened = true;
         openOverlay(pageAdmin);
         await refreshDashboard();
       }
@@ -951,6 +951,7 @@ function setupAdminDashboardEntry() {
       if (pageAdmin) {
         closeOverlay(pageAdmin);
       }
+      adminOverlayOpened = false;
     });
   }
 
@@ -963,6 +964,7 @@ function setupAdminDashboardEntry() {
 
   adminNavBtns.forEach(btn => {
     btn.addEventListener('click', () => {
+      if (!adminOverlayOpened || !isCurrentUserAdmin()) return;
       adminNavBtns.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       const targetTabId = 'admin-tab-' + btn.dataset.tab;
@@ -980,7 +982,9 @@ function setupAdminDashboardEntry() {
       } else if (btn.dataset.tab === 'partners') {
         if (typeof initPartnersTab === 'function') initPartnersTab();
       } else if (btn.dataset.tab === 'finance') {
-        if (typeof renderFinanceTab === 'function') void renderFinanceTab();
+        if (typeof initFinanceTab === 'function') void initFinanceTab();
+      } else if (btn.dataset.tab === 'system') {
+        if (typeof initSystemTab === 'function') void initSystemTab();
       }
     });
   });
@@ -999,11 +1003,7 @@ function setupAdminDashboardEntry() {
   updateAnalyticsData('month');
 }
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', setupAdminDashboardEntry);
-} else {
   setupAdminDashboardEntry();
-}
 
 function getProgressColor(percent) {
   if (percent < 70) return 'rgba(184, 255, 0, 0.4)'; // up to 69% (dimmer lime)
@@ -2270,17 +2270,7 @@ async function initUsersTab() {
   });
 }
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    if (document.getElementById('admin-tab-users')) {
-      void initUsersTab();
-    }
-  });
-} else {
-  if (document.getElementById('admin-tab-users')) {
-    void initUsersTab();
-  }
-}
+
 
 function maskMockDeviceReference(reference) {
   if (!reference || reference.length < 20) return 'mock-device-record-••••••••';
@@ -2836,14 +2826,11 @@ let finState = {
   hasLoaded: false
 };
 
-document.addEventListener('DOMContentLoaded', () => {
-  // Check if admin tab finance exists
-  if (!document.getElementById('admin-tab-finance')) return;
-
-  initFinanceTab();
-});
+let financeTabInitialized = false;
 
 function initFinanceTab() {
+  if (financeTabInitialized) return renderFinanceTab();
+  financeTabInitialized = true;
   // Period Switcher Segment Buttons
   const periodBtns = document.querySelectorAll('#finPeriodSegment .admin-segment-btn');
   periodBtns.forEach(btn => {
@@ -3480,18 +3467,6 @@ let partState = {
   isMutating: false,
   hasLoaded: false
 };
-
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    if (document.getElementById('admin-tab-partners')) {
-      initPartnersTab();
-    }
-  });
-} else {
-  if (document.getElementById('admin-tab-partners')) {
-    initPartnersTab();
-  }
-}
 
 function initPartnersTab() {
   if (partState.initialized) return;
@@ -4424,12 +4399,11 @@ let systemState = {
   refreshing: false
 };
 
-document.addEventListener('DOMContentLoaded', () => {
-  if (!document.getElementById('admin-tab-system')) return;
-  initSystemTab();
-});
+let systemTabInitialized = false;
 
 function initSystemTab() {
+  if (systemTabInitialized) return refreshSystemTab();
+  systemTabInitialized = true;
   // System Events Search Input
   const eventSearchInput = document.getElementById('sysEventSearchInput');
   if (eventSearchInput) {
