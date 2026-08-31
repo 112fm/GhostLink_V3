@@ -325,9 +325,9 @@
       const rawRecipient = String(data.recipient || '').trim();
       const parts = rawRecipient.split(/\s+/);
       const recipientNamePattern = /^[A-Za-zА-Яа-яЁё][A-Za-zА-Яа-яЁё\-\s']*$/;
-      const recipientInitialPattern = /^[A-Za-zА-Яа-яЁё]/;
+      const recipientSecondTokenPattern = /^[A-Za-zА-Яа-яЁё][A-Za-zА-Яа-яЁё'’\-]*\.?$/;
 
-      if (parts.length < 2 || !recipientNamePattern.test(parts[0]) || !recipientInitialPattern.test(parts[1])) {
+      if (parts.length < 2 || !recipientNamePattern.test(parts[0]) || !recipientSecondTokenPattern.test(parts[1])) {
         return null; // Invalid recipient format
       }
       const firstName = parts[0];

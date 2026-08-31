@@ -712,5 +712,63 @@ test('semantic phone validation: invalid phone format (<10 digits) rejects hydra
   assert.equal(toastMsg, 'Реквизиты не загружены. Повторите загрузку.');
 });
 
+test('strict recipient second token: digits in second token ("Иван А123") rejects hydration, locks form, and yields 0 POST calls', async () => {
+  const doc = createMockAdminDoc();
+  global.document = doc;
+  global.Telegram = { WebApp: { initData: 'admin-init-data' } };
+  global.GhostLinkV3 = {
+    adminMockSession: { isAdmin: () => true, assertAdmin: () => true },
+  };
+  global.window = {
+    document: doc,
+    Telegram: { WebApp: { initData: 'admin-init-data' } },
+    GhostLinkV3: global.GhostLinkV3,
+  };
+
+  let postCallsCount = 0;
+  let toastMsg = '';
+
+  const mockFetch = async (url, options) => {
+    if (options?.method === 'POST' || url.includes('/api/admin/payment/settings')) {
+      postCallsCount += 1;
+      return { ok: true, status: 200, json: async () => ({ ok: true }) };
+    }
+    // Server returns recipient with digits in second token: "Иван А123"
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        phone: '+7 985 771-91-39',
+        bank: 'alfa',
+        recipient: 'Иван А123',
+      }),
+    };
+  };
+
+  initAdminPaymentSettingsModule({
+    isAdmin: () => true,
+    fetch: mockFetch,
+    apiBase: 'https://api.test.ru',
+    showToast: (msg) => { toastMsg = msg; },
+    profileSubscription: { getToken: () => 'token-admin-func' },
+    openOverlay: () => {},
+  });
+
+  const openBtn = doc.getElementById('btnOpenPaymentSettings');
+  await openBtn.click();
+
+  // Verification: form remains disabled and error banner is displayed
+  assert.equal(doc.getElementById('paymentSettingsRecipientFirstName').disabled, true);
+  assert.equal(doc.getElementById('btnSavePaymentSettings').disabled, true);
+  assert.equal(doc.getElementById('paymentSettingsErrorBanner').classList.contains('hidden'), false);
+
+  // Attempt submit
+  const form = doc.getElementById('paymentSettingsForm');
+  await form.dispatchEvent({ type: 'submit', preventDefault: () => {} });
+
+  assert.equal(postCallsCount, 0, 'Must produce 0 POST calls when second token contains digits');
+  assert.equal(toastMsg, 'Реквизиты не загружены. Повторите загрузку.');
+});
+
 
 
