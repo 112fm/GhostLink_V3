@@ -81,7 +81,14 @@
     return '👻';
   }
 
-  function mapProfile(userResponse, tariffsResponse) {
+  function daysUntilExpiry(expiry, currentDate) {
+    const expiryMs = new Date(expiry).getTime();
+    const currentMs = new Date(currentDate).getTime();
+    if (!Number.isFinite(expiryMs) || !Number.isFinite(currentMs)) return null;
+    return Math.max(0, Math.ceil((expiryMs - currentMs) / 86400000));
+  }
+
+  function mapProfile(userResponse, tariffsResponse, currentDate = new Date()) {
     const user = userResponse?.user;
     const subscription = userResponse?.subscription;
     if (!user || !subscription || typeof subscription !== 'object') {
@@ -93,16 +100,23 @@
     const memberTier = String(userResponse.member_tier ?? subscription.member_tier ?? '').trim().toLowerCase();
     const rawExpiry = subscription.expiry || userResponse.expiry;
     const isVip = subscriptionStatus === 'vip' || responseStatus === 'vip' || memberTier === 'vip';
+    const rawTariffName = String(userResponse.tariff_name || subscription.tariff_name || '').trim();
+    const normTariff = rawTariffName.toLowerCase();
+    const isGift = normTariff === 'gift'
+      || normTariff === 'подарок'
+      || normTariff === 'подарочный'
+      || normTariff.includes('подар');
 
     // Бессрочный ТОЛЬКО если это VIP И у него НЕТ даты окончания в базе
     const isTimeless = isVip && !rawExpiry;
     const status = isTimeless ? 'vip' : (subscriptionStatus || responseStatus);
-    const rawTariffName = String(userResponse.tariff_name || subscription.tariff_name || '').trim();
-    
+
     const rawDaysLeft = subscription.days_left ?? userResponse.days_left;
     const remainingDays = isTimeless 
       ? null 
-      : (rawDaysLeft === null || rawDaysLeft === undefined ? null : toInteger(rawDaysLeft));
+      : (rawDaysLeft === null || rawDaysLeft === undefined
+        ? (isGift && rawExpiry ? daysUntilExpiry(rawExpiry, currentDate) : null)
+        : toInteger(rawDaysLeft));
 
     // Активность: бессрочный активен всегда, датированный активен ТОЛЬКО пока remainingDays > 0
     const active = isTimeless
@@ -119,7 +133,6 @@
     const startedAt = subscription.started_at ?? userResponse.started_at ?? null;
 
     let tariffName = '';
-    const normTariff = rawTariffName.toLowerCase();
     const isTrial = subscriptionStatus === 'trial'
       || responseStatus === 'trial'
       || normTariff === 'trial'
@@ -129,6 +142,8 @@
 
     if (isVip) {
       tariffName = 'VIP';
+    } else if (isGift) {
+      tariffName = 'ПОДАРОЧНЫЙ';
     } else if (isTrial) {
       tariffName = 'ПРОБНЫЙ ПЕРИОД';
     } else if (rawTariffName) {
@@ -141,9 +156,11 @@
 
     const planId = isVip
       ? 'vip'
-      : (isTrial
-        ? 'trial'
-        : (tariffName ? tariffName.toLowerCase().replace(/[^a-z0-9]+/g, '-') : (active ? 'solo' : 'ghostlink')));
+      : (isGift
+        ? 'gift'
+        : (isTrial
+          ? 'trial'
+          : (tariffName ? tariffName.toLowerCase().replace(/[^a-z0-9]+/g, '-') : (active ? 'solo' : 'ghostlink'))));
 
     const userIsAdmin = Boolean(user.is_admin ?? userResponse.is_admin ?? false);
     let rawSubToken = userResponse.sub_token || user.sub_token || subscription.sub_token || userResponse.subToken || user.subToken || '';
@@ -421,7 +438,7 @@
           }
 
           latestUserResponse = user;
-          const profileResult = mapProfile(user, null);
+          const profileResult = mapProfile(user, null, now());
           profileResult.tariffs = latestTariffsResponse || null;
           currentSnapshot = profileResult;
           notifyListeners(profileResult);

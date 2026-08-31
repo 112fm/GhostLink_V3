@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
-const { createRealBlock1Adapter } = require(path.join(root, 'src', 'api', 'real-block1-adapter.js'));
+const { createRealBlock1Adapter, mapProfile } = require(path.join(root, 'src', 'api', 'real-block1-adapter.js'));
 
 function response(status, body) {
   return {
@@ -425,6 +425,29 @@ test('real Block 1 maps Nikita dated VIP preserving remaining days 119 and diamo
   assert.equal(snapshot.subscription.usedDevices, 2);
 });
 
+test('real Block 1 normalizes gift aliases and derives 111 active days from expiry', () => {
+  for (const tariffName of ['ПОДАРОЧНЫЙ', 'gift', 'подарок']) {
+    const snapshot = mapProfile({
+      user: { id: 'gift-user', name: 'Gift User' },
+      subscription: {
+        active: true,
+        status: 'active',
+        expiry: '2026-12-20',
+      },
+      tariff_name: tariffName,
+      device_limit: 2,
+      connected_devices: 0,
+    }, null, new Date('2026-08-31T00:00:00Z'));
+
+    assert.equal(snapshot.subscription.state, 'active', tariffName);
+    assert.equal(snapshot.subscription.active, true, tariffName);
+    assert.equal(snapshot.subscription.remainingDays, 111, tariffName);
+    assert.equal(snapshot.subscription.plan.id, 'gift', tariffName);
+    assert.equal(snapshot.subscription.plan.title, 'ПОДАРОЧНЫЙ', tariffName);
+    assert.equal(snapshot.subscription.plan.emoji, '🎁', tariffName);
+  }
+});
+
 test('real Block 1 never persists initData or session tokens', () => {
   const source = require('node:fs').readFileSync(path.join(root, 'src', 'api', 'real-block1-adapter.js'), 'utf8');
 
@@ -496,5 +519,4 @@ test('Generation Guard prevents slow openSession response from overwriting newer
   // 5. Verify token was NOT overwritten by late response from request #1
   assert.equal(adapter.getToken(), 'token-generation-2');
 });
-
 

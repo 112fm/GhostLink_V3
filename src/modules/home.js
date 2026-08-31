@@ -132,8 +132,14 @@
     const isNewUser = state === 'new';
     const isExpired = state === 'expired';
     const isDemo = snapshot?.isMock === true;
-    const title = plan.title || (isNewUser ? 'ВЫБЕРИТЕ ТАРИФ' : (isExpired ? 'SOLO' : 'ТАРИФ НЕ УКАЗАН'));
-    const emoji = plan.emoji || (isExpired ? '👻' : '');
+    const planIdentity = `${plan.id || ''} ${plan.title || ''}`.trim().toLowerCase();
+    const isGift = planIdentity === 'gift'
+      || planIdentity.includes(' gift')
+      || planIdentity.includes('подар');
+    const title = isGift
+      ? 'ПОДАРОЧНЫЙ'
+      : (plan.title || (isNewUser ? 'ВЫБЕРИТЕ ТАРИФ' : (isExpired ? 'SOLO' : 'ТАРИФ НЕ УКАЗАН')));
+    const emoji = isGift ? '🎁' : (plan.emoji || (isExpired ? '👻' : ''));
     const daysValue = isTimeless
       ? 'Без срока'
       : (isExpired || remainingDays === 0

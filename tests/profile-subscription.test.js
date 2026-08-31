@@ -163,6 +163,24 @@ test('subscription presentation handles trial, solo, flex, and dated VIP categor
   assert.equal(datedVipPresentation.deviceLabel, '2 устройства · лимит 3');
 });
 
+test('gift subscription renders the canonical title, gift emoji, and active remaining days', () => {
+  const presentation = getSubscriptionPresentation({
+    isMock: false,
+    subscription: {
+      state: 'active', active: true, isTimeless: false, expiry: '2026-12-20',
+      remainingDays: 111, deviceLimit: 2, usedDevices: 0,
+      plan: { id: 'gift', title: 'подарок', emoji: '' },
+    },
+  });
+
+  assert.equal(presentation.state, 'active');
+  assert.equal(presentation.planTitle, 'ПОДАРОЧНЫЙ');
+  assert.equal(presentation.emoji, '🎁');
+  assert.equal(presentation.remainingDays, 111);
+  assert.equal(presentation.daysValue, '111');
+  assert.equal(presentation.daysLabel, 'ДНЕЙ');
+});
+
 test('TEST 1: timeless VIP (expiry: null) renders Без срока and active state', () => {
   const presentation = getSubscriptionPresentation({
     isMock: false,
