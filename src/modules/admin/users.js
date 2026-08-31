@@ -1051,17 +1051,7 @@ async function initUsersTab() {
   });
 }
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    if (document.getElementById('admin-tab-users')) {
-      void initUsersTab();
-    }
-  });
-} else {
-  if (document.getElementById('admin-tab-users')) {
-    void initUsersTab();
-  }
-}
+
 
 function maskMockDeviceReference(reference) {
   if (!reference || reference.length < 20) return 'mock-device-record-••••••••';

@@ -344,7 +344,9 @@ function setupAdminDashboardEntry() {
       } else if (btn.dataset.tab === 'partners') {
         if (typeof initPartnersTab === 'function') initPartnersTab();
       } else if (btn.dataset.tab === 'finance') {
-        if (typeof renderFinanceTab === 'function') void renderFinanceTab();
+        if (typeof initFinanceTab === 'function') void initFinanceTab();
+      } else if (btn.dataset.tab === 'system') {
+        if (typeof initSystemTab === 'function') void initSystemTab();
       }
     });
   });
@@ -363,11 +365,7 @@ function setupAdminDashboardEntry() {
   updateAnalyticsData('month');
 }
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', setupAdminDashboardEntry);
-} else {
-  setupAdminDashboardEntry();
-}
+setupAdminDashboardEntry();
 
 function getProgressColor(percent) {
   if (percent < 70) return 'rgba(184, 255, 0, 0.4)'; // up to 69% (dimmer lime)

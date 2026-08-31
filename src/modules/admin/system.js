@@ -220,12 +220,11 @@ let systemState = {
   refreshing: false
 };
 
-document.addEventListener('DOMContentLoaded', () => {
-  if (!document.getElementById('admin-tab-system')) return;
-  initSystemTab();
-});
+let systemTabInitialized = false;
 
 function initSystemTab() {
+  if (systemTabInitialized) return refreshSystemTab();
+  systemTabInitialized = true;
   // System Events Search Input
   const eventSearchInput = document.getElementById('sysEventSearchInput');
   if (eventSearchInput) {

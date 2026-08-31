@@ -1003,7 +1003,7 @@ function setupAdminDashboardEntry() {
   updateAnalyticsData('month');
 }
 
-  setupAdminDashboardEntry();
+setupAdminDashboardEntry();
 
 function getProgressColor(percent) {
   if (percent < 70) return 'rgba(184, 255, 0, 0.4)'; // up to 69% (dimmer lime)

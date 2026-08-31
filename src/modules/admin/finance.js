@@ -126,14 +126,11 @@ let finState = {
   hasLoaded: false
 };
 
-document.addEventListener('DOMContentLoaded', () => {
-  // Check if admin tab finance exists
-  if (!document.getElementById('admin-tab-finance')) return;
-
-  initFinanceTab();
-});
+let financeTabInitialized = false;
 
 function initFinanceTab() {
+  if (financeTabInitialized) return renderFinanceTab();
+  financeTabInitialized = true;
   // Period Switcher Segment Buttons
   const periodBtns = document.querySelectorAll('#finPeriodSegment .admin-segment-btn');
   periodBtns.forEach(btn => {
