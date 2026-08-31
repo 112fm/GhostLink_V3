@@ -640,6 +640,21 @@
         </header>
 
         <div class="payment-settings-content">
+          <!-- Banner при сбое загрузки с сервера -->
+          <div class="payment-settings-error-banner hidden" id="paymentSettingsErrorBanner" role="alert">
+            <div class="payment-error-info">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ff847c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+              <span>Не удалось загрузить настройки с сервера</span>
+            </div>
+            <button type="button" class="btn-retry-payment-settings" id="btnRetryPaymentSettings">
+              Повторить попытку
+            </button>
+          </div>
+
           <form id="paymentSettingsForm" class="payment-settings-form" novalidate>
             <div class="payment-settings-version-row">
               <div class="payment-settings-status-pill">

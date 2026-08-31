@@ -70,6 +70,7 @@ function createMockAdminDoc() {
     'paymentSettingsVersion', 'paymentSettingsPreviewMethod', 'paymentSettingsPreviewBank',
     'paymentSettingsPreviewDestinationLabel', 'paymentSettingsPreviewDestination',
     'paymentSettingsPreviewRecipient', 'paymentSettingsPreviewInstruction',
+    'paymentSettingsErrorBanner', 'btnRetryPaymentSettings',
   ];
 
   ids.forEach(id => elements.set(id, createMockElement(id)));
@@ -340,6 +341,117 @@ test('resolveIsAdmin callback function: isAdmin () => true allows form submit an
   assert.equal(postedBody.bank, 'alfabank');
   assert.equal(postedBody.recipient, 'Арсений А.');
   assert.equal(toastMsg, 'Реквизиты успешно обновлены в базе');
+});
+
+test('safe disabled state: GET /api/payment/settings failure locks all inputs and save button with error banner', async () => {
+  const doc = createMockAdminDoc();
+  global.document = doc;
+  global.Telegram = { WebApp: { initData: 'admin-init-data' } };
+  global.GhostLinkV3 = {
+    adminMockSession: { isAdmin: () => true, assertAdmin: () => true },
+  };
+  global.window = {
+    document: doc,
+    Telegram: { WebApp: { initData: 'admin-init-data' } },
+    GhostLinkV3: global.GhostLinkV3,
+  };
+
+  const mockFetch = async () => {
+    return {
+      ok: false,
+      status: 500,
+      json: async () => ({ error: 'Internal Server Error' }),
+    };
+  };
+
+  initAdminPaymentSettingsModule({
+    isAdmin: () => true,
+    fetch: mockFetch,
+    apiBase: 'https://api.test.ru',
+    profileSubscription: { getToken: () => 'token-admin-func' },
+    openOverlay: () => {},
+  });
+
+  const openBtn = doc.getElementById('btnOpenPaymentSettings');
+  await openBtn.click();
+
+  // Verify all form fields and save button are locked (disabled = true)
+  assert.equal(doc.getElementById('paymentSettingsMethod').disabled, true);
+  assert.equal(doc.getElementById('paymentSettingsBank').disabled, true);
+  assert.equal(doc.getElementById('paymentSettingsPhone').disabled, true);
+  assert.equal(doc.getElementById('paymentSettingsCard').disabled, true);
+  assert.equal(doc.getElementById('paymentSettingsRecipientFirstName').disabled, true);
+  assert.equal(doc.getElementById('paymentSettingsRecipientLastInitial').disabled, true);
+  assert.equal(doc.getElementById('paymentSettingsInstruction').disabled, true);
+  assert.equal(doc.getElementById('paymentSettingsStatus').disabled, true);
+  assert.equal(doc.getElementById('btnSavePaymentSettings').disabled, true);
+
+  // Verify error banner is visible and status is shown
+  assert.equal(doc.getElementById('paymentSettingsErrorBanner').classList.contains('hidden'), false);
+  assert.match(doc.getElementById('paymentSettingsFormStatus').textContent, /Ошибка загрузки с сервера/);
+});
+
+test('retry state: clicking btnRetryPaymentSettings retries GET request and unlocks form on success', async () => {
+  const doc = createMockAdminDoc();
+  global.document = doc;
+  global.Telegram = { WebApp: { initData: 'admin-init-data' } };
+  global.GhostLinkV3 = {
+    adminMockSession: { isAdmin: () => true, assertAdmin: () => true },
+  };
+  global.window = {
+    document: doc,
+    Telegram: { WebApp: { initData: 'admin-init-data' } },
+    GhostLinkV3: global.GhostLinkV3,
+  };
+
+  let attempts = 0;
+  const mockFetch = async () => {
+    attempts += 1;
+    if (attempts === 1) {
+      throw new Error('Network timeout');
+    }
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        phone: '+7 999 555-44-33',
+        bank: 'tbank',
+        recipient: 'Дмитрий Д.',
+      }),
+    };
+  };
+
+  initAdminPaymentSettingsModule({
+    isAdmin: () => true,
+    fetch: mockFetch,
+    apiBase: 'https://api.test.ru',
+    profileSubscription: { getToken: () => 'token-admin-func' },
+    openOverlay: () => {},
+  });
+
+  const openBtn = doc.getElementById('btnOpenPaymentSettings');
+  await openBtn.click();
+
+  // First attempt failed: locked
+  assert.equal(attempts, 1);
+  assert.equal(doc.getElementById('btnSavePaymentSettings').disabled, true);
+  assert.equal(doc.getElementById('paymentSettingsErrorBanner').classList.contains('hidden'), false);
+
+  // Click retry button
+  const retryBtn = doc.getElementById('btnRetryPaymentSettings');
+  await retryBtn.click();
+
+  // Second attempt succeeded: unlocked and populated
+  assert.equal(attempts, 2);
+  assert.equal(doc.getElementById('paymentSettingsMethod').disabled, false);
+  assert.equal(doc.getElementById('paymentSettingsBank').disabled, false);
+  assert.equal(doc.getElementById('paymentSettingsPhone').disabled, false);
+  assert.equal(doc.getElementById('btnSavePaymentSettings').disabled, false);
+  assert.equal(doc.getElementById('paymentSettingsPhone').value, '+7 999 555-44-33');
+  assert.equal(doc.getElementById('paymentSettingsRecipientFirstName').value, 'Дмитрий');
+  assert.equal(doc.getElementById('paymentSettingsRecipientLastInitial').value, 'Д');
+  assert.equal(doc.getElementById('paymentSettingsErrorBanner').classList.contains('hidden'), true);
+  assert.equal(doc.getElementById('paymentSettingsFormStatus').textContent, '');
 });
 
 

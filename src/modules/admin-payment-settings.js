@@ -175,6 +175,8 @@
     const formStatus = documentRef.getElementById('paymentSettingsFormStatus');
     const entrySummary = documentRef.getElementById('paymentSettingsEntrySummary');
     const versionLabel = documentRef.getElementById('paymentSettingsVersion');
+    const errorBanner = documentRef.getElementById('paymentSettingsErrorBanner');
+    const retryButton = documentRef.getElementById('btnRetryPaymentSettings');
     let saving = false;
     let activeProfilesCount = 1;
 
@@ -193,6 +195,23 @@
     });
 
     const versions = [currentProfile];
+
+    function setFormDisabled(disabled) {
+      const isDis = Boolean(disabled);
+      [
+        methodInput,
+        bankInput,
+        phoneInput,
+        cardInput,
+        firstNameInput,
+        lastInitialInput,
+        instructionInput,
+        statusInput,
+        saveButton,
+      ].forEach((field) => {
+        if (field) field.disabled = isDis;
+      });
+    }
 
     function readForm() {
       return normalizeProfile({
@@ -275,14 +294,23 @@
     }
 
     function closeSettings() {
-      writeForm(currentProfile);
       clearErrors();
       formStatus.textContent = '';
+      if (errorBanner) errorBanner.classList.add('hidden');
       closeOverlay(page);
     }
 
     async function loadLiveSettings() {
-      if (typeof fetchImpl !== 'function') return;
+      if (typeof fetchImpl !== 'function') {
+        writeForm(currentProfile);
+        setFormDisabled(false);
+        return;
+      }
+
+      setFormDisabled(true);
+      if (errorBanner) errorBanner.classList.add('hidden');
+      if (formStatus) formStatus.textContent = 'Загрузка настроек с сервера...';
+
       try {
         const token = profileSubscription?.getToken?.() || '';
         const initData = String(getInitData() || '').trim();
@@ -295,9 +323,10 @@
           headers,
           cache: 'no-store',
         });
+
         if (res && res.ok) {
           const data = await res.json();
-          if (data && (data.phone || data.bank || data.recipient)) {
+          if (data && (data.phone || data.bank || data.recipient || data.card || data.cardNumber)) {
             const rawBank = String(data.bank || '').toLowerCase().replace(/[^a-z0-9]/g, '');
             const bankKey = Object.hasOwn(BANKS, rawBank)
               ? rawBank
@@ -310,21 +339,37 @@
               ...currentProfile,
               bankKey,
               phone: data.phone || currentProfile.phone,
+              cardNumber: data.card || data.cardNumber || currentProfile.cardNumber,
               recipientFirstName: firstName || currentProfile.recipientFirstName,
               recipientLastInitial: initial || currentProfile.recipientLastInitial,
+              instruction: data.instruction || currentProfile.instruction,
+              method: data.method || (data.card ? 'card_number' : currentProfile.method),
             }, { actor: 'api' });
-            writeForm(currentProfile);
-            renderSavedProfile();
           }
+          writeForm(currentProfile);
+          renderSavedProfile();
+          if (formStatus) formStatus.textContent = '';
+          if (errorBanner) errorBanner.classList.add('hidden');
+          setFormDisabled(false);
+        } else {
+          setFormDisabled(true);
+          if (errorBanner) errorBanner.classList.remove('hidden');
+          if (formStatus) formStatus.textContent = 'Ошибка загрузки с сервера. Настройки заблокированы.';
         }
       } catch (_) {
-        // Fallback to locally cached version
+        setFormDisabled(true);
+        if (errorBanner) errorBanner.classList.remove('hidden');
+        if (formStatus) formStatus.textContent = 'Ошибка подключения к серверу. Настройки заблокированы.';
       }
     }
 
     openButton.addEventListener('click', async () => {
-      writeForm(currentProfile);
+      setFormDisabled(true);
       openOverlay(page);
+      await loadLiveSettings();
+    });
+
+    retryButton?.addEventListener('click', async () => {
       await loadLiveSettings();
     });
 
