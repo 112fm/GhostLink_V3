@@ -1422,34 +1422,79 @@
             <img src="./assets/icons/back.svg" alt="Назад" />
           </button>
           <div class="settings-pill-badge devices-list-heading">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--lime)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
-            <span style="font-size: 17px; font-weight: 700; line-height: 1;">Устройства</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--lime)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+            <span style="font-size: 16px; font-weight: 700; line-height: 1;">Устройства</span>
           </div>
         </header>
 
         <div class="devices-page-content">
+          <!-- Премиум-баннер счетчика слотов GhostLink V3 -->
           <section class="devices-slot-summary" aria-label="Лимит устройств">
-            <span class="devices-slot-eyebrow">Устройства</span>
-            <strong id="devices-slot-summary">Получаем данные…</strong>
-            <span id="devices-slot-free">Свободные места появятся после загрузки</span>
+            <div class="devices-slot-top-row">
+              <div class="devices-slot-badge-group">
+                <span class="devices-slot-pulse"></span>
+                <span class="devices-slot-eyebrow">СЛОТЫ ПОДКЛЮЧЕНИЯ</span>
+              </div>
+              <div class="devices-slot-icon-badge">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--lime)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="2" y="3" width="20" height="14" rx="2"></rect>
+                  <line x1="8" y1="21" x2="16" y2="21"></line>
+                  <line x1="12" y1="17" x2="12" y2="21"></line>
+                </svg>
+              </div>
+            </div>
+
+            <div class="devices-slot-counter-block">
+              <strong id="devices-slot-summary">Получаем данные…</strong>
+              <div class="devices-slot-track">
+                <div class="devices-slot-fill" id="devices-slot-bar-fill" style="width: 0%;"></div>
+              </div>
+            </div>
+
+            <div class="devices-slot-footer-row">
+              <span id="devices-slot-free">Свободные места появятся после загрузки</span>
+            </div>
           </section>
 
           <p class="devices-list-status" id="devices-list-status" role="status" aria-live="polite">Получаем список устройств…</p>
-          <!-- Список карточек устройств с изящными корзинками -->
+          
+          <!-- Список карточек устройств -->
           <div id="active-devices-container" class="devices-list-container" aria-live="polite"></div>
 
-
-          <section id="devices-empty-state" class="devices-list-state hidden" aria-live="polite">
+          <!-- Empty State в темном стиле GhostLink V3 -->
+          <section id="devices-empty-state" class="devices-list-state devices-empty-state-card hidden" aria-live="polite">
+            <div class="devices-empty-icon-wrap">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--lime)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="3" width="20" height="14" rx="2.5"></rect>
+                <line x1="8" y1="21" x2="16" y2="21"></line>
+                <line x1="12" y1="17" x2="12" y2="21"></line>
+                <circle cx="12" cy="10" r="1.5" fill="var(--lime)"></circle>
+              </svg>
+            </div>
             <strong>Устройств пока нет</strong>
-            <span>Добавьте первое устройство, чтобы получить ключ для подключения.</span>
+            <span>Подключите ваше первое устройство или используйте ссылку-ключ для настройки.</span>
           </section>
 
-          <section id="devices-unavailable-state" class="devices-list-state hidden" aria-live="polite">
+          <!-- Error State -->
+          <section id="devices-unavailable-state" class="devices-list-state devices-error-state-card hidden" aria-live="polite">
+            <div class="devices-unavailable-icon-wrap">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ff847c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+            </div>
             <strong>Не удалось обновить список</strong>
             <span>Последние подтверждённые устройства остаются на экране. Повторите обновление позже.</span>
           </section>
 
-          <button class="devices-add-button" id="btn-devices-add" type="button">Добавить устройство</button>
+          <button class="devices-add-button" id="btn-devices-add" type="button">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            <span>Добавить устройство</span>
+          </button>
         </div>
       </section>
 
@@ -2319,95 +2364,124 @@
       </section>
 
       <!-- OVERLAY: локальный фундамент настроек реквизитов ручной оплаты. -->
+      <!-- OVERLAY: Настройки реквизитов ручной оплаты (GhostLink V3) -->
       <section id="page-admin-payment-settings" class="page-overlay hidden" aria-label="Настройки оплаты">
         <header class="page-header payment-settings-header">
           <button class="btn-back" id="btnPaymentSettingsBack" type="button" aria-label="Назад">
             <img src="./assets/icons/back.svg" alt="" aria-hidden="true" />
           </button>
-          <div>
+          <div class="payment-settings-header-title">
             <h1>Настройки оплаты</h1>
             <p>Реквизиты для ручного перевода</p>
           </div>
         </header>
 
         <div class="payment-settings-content">
-          <div class="payment-settings-notice" role="note">
-            Локальный прототип использует только вымышленные реквизиты. В рабочей версии данные будут храниться на сервере.
-          </div>
-
           <form id="paymentSettingsForm" class="payment-settings-form" novalidate>
             <div class="payment-settings-version-row">
-              <span>Активная версия</span>
-              <strong id="paymentSettingsVersion">v1</strong>
+              <div class="payment-settings-status-pill">
+                <span class="payment-status-dot"></span>
+                <span>Реквизиты активны</span>
+              </div>
+              <div class="payment-version-tag">
+                <span>Версия:</span>
+                <strong id="paymentSettingsVersion">v1</strong>
+              </div>
             </div>
 
-            <label class="payment-settings-field">
-              <span>Способ перевода</span>
-              <select id="paymentSettingsMethod">
-                <option value="sbp_phone">СБП по номеру телефона</option>
-                <option value="phone_number">По номеру телефона</option>
-                <option value="card_number">По номеру карты</option>
-              </select>
-              <small data-error-for="method"></small>
-            </label>
+            <div class="payment-settings-card">
+              <div class="payment-card-title">Способ и Банк</div>
+              <div class="payment-fields-grid">
+                <label class="payment-settings-field">
+                  <span>Способ перевода</span>
+                  <div class="payment-select-wrapper">
+                    <select id="paymentSettingsMethod">
+                      <option value="sbp_phone">СБП по номеру телефона</option>
+                      <option value="phone_number">По номеру телефона</option>
+                      <option value="card_number">По номеру карты</option>
+                    </select>
+                  </div>
+                  <small data-error-for="method"></small>
+                </label>
 
-            <label class="payment-settings-field">
-              <span>Банк получателя</span>
-              <select id="paymentSettingsBank">
-                <option value="tbank">Т-Банк</option>
-                <option value="ozonbank">Озон-банк</option>
-                <option value="alfabank">Альфа-Банк</option>
-                <option value="sberbank">Сбербанк</option>
-              </select>
-              <small data-error-for="bankKey"></small>
-            </label>
+                <label class="payment-settings-field">
+                  <span>Банк получателя</span>
+                  <div class="payment-select-wrapper">
+                    <select id="paymentSettingsBank">
+                      <option value="tbank">Т-Банк</option>
+                      <option value="ozonbank">Озон-банк</option>
+                      <option value="alfabank">Альфа-Банк</option>
+                      <option value="sberbank">Сбербанк</option>
+                    </select>
+                  </div>
+                  <small data-error-for="bankKey"></small>
+                </label>
+              </div>
+            </div>
 
-            <label class="payment-settings-field" id="paymentSettingsPhoneField">
-              <span>Номер телефона</span>
-              <input id="paymentSettingsPhone" type="tel" inputmode="tel" value="+7 (000) 000-00-00" autocomplete="off" />
-              <small data-error-for="phone"></small>
-            </label>
+            <div class="payment-settings-card">
+              <div class="payment-card-title">Реквизиты и Получатель</div>
 
-            <label class="payment-settings-field hidden" id="paymentSettingsCardField">
-              <span>Номер карты</span>
-              <input id="paymentSettingsCard" type="text" inputmode="numeric" value="0000 0000 0000 0000" autocomplete="off" />
-              <small data-error-for="cardNumber"></small>
-            </label>
+              <label class="payment-settings-field" id="paymentSettingsPhoneField">
+                <span>Номер телефона</span>
+                <input id="paymentSettingsPhone" type="tel" inputmode="tel" value="+7 (000) 000-00-00" autocomplete="off" placeholder="+7 (999) 000-00-00" />
+                <small data-error-for="phone"></small>
+              </label>
 
-            <div class="payment-settings-recipient-grid">
+              <label class="payment-settings-field hidden" id="paymentSettingsCardField">
+                <span>Номер карты</span>
+                <input id="paymentSettingsCard" type="text" inputmode="numeric" value="0000 0000 0000 0000" autocomplete="off" placeholder="2200 0000 0000 0000" />
+                <small data-error-for="cardNumber"></small>
+              </label>
+
+              <div class="payment-settings-recipient-grid">
+                <label class="payment-settings-field">
+                  <span>Имя получателя</span>
+                  <input id="paymentSettingsRecipientFirstName" type="text" value="Тест" autocomplete="off" placeholder="Иван" />
+                  <small data-error-for="recipientFirstName"></small>
+                </label>
+                <label class="payment-settings-field payment-settings-initial-field">
+                  <span>Инициал фамилии</span>
+                  <input id="paymentSettingsRecipientLastInitial" type="text" value="Т" maxlength="1" autocomplete="off" placeholder="И" />
+                  <small data-error-for="recipientLastInitial"></small>
+                </label>
+              </div>
+
               <label class="payment-settings-field">
-                <span>Имя получателя</span>
-                <input id="paymentSettingsRecipientFirstName" type="text" value="Тест" autocomplete="off" />
-                <small data-error-for="recipientFirstName"></small>
+                <span>Комментарий к переводу</span>
+                <textarea id="paymentSettingsInstruction" rows="2" placeholder="Инструкция для назначения платежа">Не указывайте комментарий</textarea>
+                <small data-error-for="instruction"></small>
               </label>
-              <label class="payment-settings-field payment-settings-initial-field">
-                <span>Первая буква фамилии</span>
-                <input id="paymentSettingsRecipientLastInitial" type="text" value="Т" maxlength="1" autocomplete="off" />
-                <small data-error-for="recipientLastInitial"></small>
+
+              <label class="payment-settings-field">
+                <span>Статус реквизитов</span>
+                <div class="payment-select-wrapper">
+                  <select id="paymentSettingsStatus">
+                    <option value="active">Активны</option>
+                    <option value="inactive">Неактивны</option>
+                  </select>
+                </div>
+                <small data-error-for="status"></small>
               </label>
             </div>
 
-            <label class="payment-settings-field">
-              <span>Комментарий к переводу</span>
-              <textarea id="paymentSettingsInstruction" rows="3">Не указывайте комментарий</textarea>
-              <small data-error-for="instruction"></small>
-            </label>
-
-            <label class="payment-settings-field">
-              <span>Статус реквизитов</span>
-              <select id="paymentSettingsStatus">
-                <option value="active">Активны</option>
-                <option value="inactive">Неактивны</option>
-              </select>
-              <small data-error-for="status"></small>
-            </label>
-
+            <!-- Предпросмотр для клиента -->
             <section class="payment-settings-preview" aria-label="Предпросмотр для клиента">
-              <span>Клиент увидит</span>
-              <strong id="paymentSettingsPreviewMethod">СБП по номеру телефона</strong>
-              <div><span>Банк</span><b id="paymentSettingsPreviewBank">Т-Банк</b></div>
-              <div><span id="paymentSettingsPreviewDestinationLabel">Телефон</span><b id="paymentSettingsPreviewDestination">+7 (000) 000-00-00</b></div>
-              <div><span>Получатель</span><b id="paymentSettingsPreviewRecipient">Тест Т.</b></div>
+              <div class="payment-preview-header">
+                <div class="payment-preview-badge">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                  <span>КАК ВИДИТ КЛИЕНТ</span>
+                </div>
+                <strong id="paymentSettingsPreviewMethod">СБП по номеру телефона</strong>
+              </div>
+              <div class="payment-preview-rows">
+                <div class="payment-preview-row"><span>Банк</span><b id="paymentSettingsPreviewBank">Т-Банк</b></div>
+                <div class="payment-preview-row"><span id="paymentSettingsPreviewDestinationLabel">Телефон</span><b id="paymentSettingsPreviewDestination">+7 (000) 000-00-00</b></div>
+                <div class="payment-preview-row"><span>Получатель</span><b id="paymentSettingsPreviewRecipient">Тест Т.</b></div>
+              </div>
               <p id="paymentSettingsPreviewInstruction">Не указывайте комментарий</p>
             </section>
 

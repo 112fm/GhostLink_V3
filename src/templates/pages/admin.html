@@ -627,95 +627,124 @@
       </section>
 
       <!-- OVERLAY: локальный фундамент настроек реквизитов ручной оплаты. -->
+      <!-- OVERLAY: Настройки реквизитов ручной оплаты (GhostLink V3) -->
       <section id="page-admin-payment-settings" class="page-overlay hidden" aria-label="Настройки оплаты">
         <header class="page-header payment-settings-header">
           <button class="btn-back" id="btnPaymentSettingsBack" type="button" aria-label="Назад">
             <img src="./assets/icons/back.svg" alt="" aria-hidden="true" />
           </button>
-          <div>
+          <div class="payment-settings-header-title">
             <h1>Настройки оплаты</h1>
             <p>Реквизиты для ручного перевода</p>
           </div>
         </header>
 
         <div class="payment-settings-content">
-          <div class="payment-settings-notice" role="note">
-            Локальный прототип использует только вымышленные реквизиты. В рабочей версии данные будут храниться на сервере.
-          </div>
-
           <form id="paymentSettingsForm" class="payment-settings-form" novalidate>
             <div class="payment-settings-version-row">
-              <span>Активная версия</span>
-              <strong id="paymentSettingsVersion">v1</strong>
+              <div class="payment-settings-status-pill">
+                <span class="payment-status-dot"></span>
+                <span>Реквизиты активны</span>
+              </div>
+              <div class="payment-version-tag">
+                <span>Версия:</span>
+                <strong id="paymentSettingsVersion">v1</strong>
+              </div>
             </div>
 
-            <label class="payment-settings-field">
-              <span>Способ перевода</span>
-              <select id="paymentSettingsMethod">
-                <option value="sbp_phone">СБП по номеру телефона</option>
-                <option value="phone_number">По номеру телефона</option>
-                <option value="card_number">По номеру карты</option>
-              </select>
-              <small data-error-for="method"></small>
-            </label>
+            <div class="payment-settings-card">
+              <div class="payment-card-title">Способ и Банк</div>
+              <div class="payment-fields-grid">
+                <label class="payment-settings-field">
+                  <span>Способ перевода</span>
+                  <div class="payment-select-wrapper">
+                    <select id="paymentSettingsMethod">
+                      <option value="sbp_phone">СБП по номеру телефона</option>
+                      <option value="phone_number">По номеру телефона</option>
+                      <option value="card_number">По номеру карты</option>
+                    </select>
+                  </div>
+                  <small data-error-for="method"></small>
+                </label>
 
-            <label class="payment-settings-field">
-              <span>Банк получателя</span>
-              <select id="paymentSettingsBank">
-                <option value="tbank">Т-Банк</option>
-                <option value="ozonbank">Озон-банк</option>
-                <option value="alfabank">Альфа-Банк</option>
-                <option value="sberbank">Сбербанк</option>
-              </select>
-              <small data-error-for="bankKey"></small>
-            </label>
+                <label class="payment-settings-field">
+                  <span>Банк получателя</span>
+                  <div class="payment-select-wrapper">
+                    <select id="paymentSettingsBank">
+                      <option value="tbank">Т-Банк</option>
+                      <option value="ozonbank">Озон-банк</option>
+                      <option value="alfabank">Альфа-Банк</option>
+                      <option value="sberbank">Сбербанк</option>
+                    </select>
+                  </div>
+                  <small data-error-for="bankKey"></small>
+                </label>
+              </div>
+            </div>
 
-            <label class="payment-settings-field" id="paymentSettingsPhoneField">
-              <span>Номер телефона</span>
-              <input id="paymentSettingsPhone" type="tel" inputmode="tel" value="+7 (000) 000-00-00" autocomplete="off" />
-              <small data-error-for="phone"></small>
-            </label>
+            <div class="payment-settings-card">
+              <div class="payment-card-title">Реквизиты и Получатель</div>
 
-            <label class="payment-settings-field hidden" id="paymentSettingsCardField">
-              <span>Номер карты</span>
-              <input id="paymentSettingsCard" type="text" inputmode="numeric" value="0000 0000 0000 0000" autocomplete="off" />
-              <small data-error-for="cardNumber"></small>
-            </label>
+              <label class="payment-settings-field" id="paymentSettingsPhoneField">
+                <span>Номер телефона</span>
+                <input id="paymentSettingsPhone" type="tel" inputmode="tel" value="+7 (000) 000-00-00" autocomplete="off" placeholder="+7 (999) 000-00-00" />
+                <small data-error-for="phone"></small>
+              </label>
 
-            <div class="payment-settings-recipient-grid">
+              <label class="payment-settings-field hidden" id="paymentSettingsCardField">
+                <span>Номер карты</span>
+                <input id="paymentSettingsCard" type="text" inputmode="numeric" value="0000 0000 0000 0000" autocomplete="off" placeholder="2200 0000 0000 0000" />
+                <small data-error-for="cardNumber"></small>
+              </label>
+
+              <div class="payment-settings-recipient-grid">
+                <label class="payment-settings-field">
+                  <span>Имя получателя</span>
+                  <input id="paymentSettingsRecipientFirstName" type="text" value="Тест" autocomplete="off" placeholder="Иван" />
+                  <small data-error-for="recipientFirstName"></small>
+                </label>
+                <label class="payment-settings-field payment-settings-initial-field">
+                  <span>Инициал фамилии</span>
+                  <input id="paymentSettingsRecipientLastInitial" type="text" value="Т" maxlength="1" autocomplete="off" placeholder="И" />
+                  <small data-error-for="recipientLastInitial"></small>
+                </label>
+              </div>
+
               <label class="payment-settings-field">
-                <span>Имя получателя</span>
-                <input id="paymentSettingsRecipientFirstName" type="text" value="Тест" autocomplete="off" />
-                <small data-error-for="recipientFirstName"></small>
+                <span>Комментарий к переводу</span>
+                <textarea id="paymentSettingsInstruction" rows="2" placeholder="Инструкция для назначения платежа">Не указывайте комментарий</textarea>
+                <small data-error-for="instruction"></small>
               </label>
-              <label class="payment-settings-field payment-settings-initial-field">
-                <span>Первая буква фамилии</span>
-                <input id="paymentSettingsRecipientLastInitial" type="text" value="Т" maxlength="1" autocomplete="off" />
-                <small data-error-for="recipientLastInitial"></small>
+
+              <label class="payment-settings-field">
+                <span>Статус реквизитов</span>
+                <div class="payment-select-wrapper">
+                  <select id="paymentSettingsStatus">
+                    <option value="active">Активны</option>
+                    <option value="inactive">Неактивны</option>
+                  </select>
+                </div>
+                <small data-error-for="status"></small>
               </label>
             </div>
 
-            <label class="payment-settings-field">
-              <span>Комментарий к переводу</span>
-              <textarea id="paymentSettingsInstruction" rows="3">Не указывайте комментарий</textarea>
-              <small data-error-for="instruction"></small>
-            </label>
-
-            <label class="payment-settings-field">
-              <span>Статус реквизитов</span>
-              <select id="paymentSettingsStatus">
-                <option value="active">Активны</option>
-                <option value="inactive">Неактивны</option>
-              </select>
-              <small data-error-for="status"></small>
-            </label>
-
+            <!-- Предпросмотр для клиента -->
             <section class="payment-settings-preview" aria-label="Предпросмотр для клиента">
-              <span>Клиент увидит</span>
-              <strong id="paymentSettingsPreviewMethod">СБП по номеру телефона</strong>
-              <div><span>Банк</span><b id="paymentSettingsPreviewBank">Т-Банк</b></div>
-              <div><span id="paymentSettingsPreviewDestinationLabel">Телефон</span><b id="paymentSettingsPreviewDestination">+7 (000) 000-00-00</b></div>
-              <div><span>Получатель</span><b id="paymentSettingsPreviewRecipient">Тест Т.</b></div>
+              <div class="payment-preview-header">
+                <div class="payment-preview-badge">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                  <span>КАК ВИДИТ КЛИЕНТ</span>
+                </div>
+                <strong id="paymentSettingsPreviewMethod">СБП по номеру телефона</strong>
+              </div>
+              <div class="payment-preview-rows">
+                <div class="payment-preview-row"><span>Банк</span><b id="paymentSettingsPreviewBank">Т-Банк</b></div>
+                <div class="payment-preview-row"><span id="paymentSettingsPreviewDestinationLabel">Телефон</span><b id="paymentSettingsPreviewDestination">+7 (000) 000-00-00</b></div>
+                <div class="payment-preview-row"><span>Получатель</span><b id="paymentSettingsPreviewRecipient">Тест Т.</b></div>
+              </div>
               <p id="paymentSettingsPreviewInstruction">Не указывайте комментарий</p>
             </section>
 

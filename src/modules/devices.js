@@ -136,6 +136,13 @@ function renderDeviceList(snapshot) {
   if (devicesSlotFree) devicesSlotFree.textContent = snapshot.freeSlots > 0
     ? `Свободно мест: ${snapshot.freeSlots}`
     : 'Все места по тарифу заняты';
+
+  const slotFill = document.getElementById('devices-slot-bar-fill');
+  if (slotFill && snapshot.deviceLimit > 0) {
+    const pct = Math.min(100, Math.max(0, Math.round((snapshot.usedSlots / snapshot.deviceLimit) * 100)));
+    slotFill.style.width = `${pct}%`;
+  }
+
   if (settingsDevicesSubtitle) settingsDevicesSubtitle.textContent = `Подключено: ${snapshot.usedSlots} из ${snapshot.deviceLimit}`;
   devicesEmptyState?.classList.toggle('hidden', !isEmpty);
   devicesUnavailableState?.classList.add('hidden');
@@ -144,8 +151,8 @@ function renderDeviceList(snapshot) {
     btnDevicesAdd.textContent = isAtLimit ? 'Лимит устройств достигнут' : 'Добавить устройство';
   }
   setDevicesListStatus(isAtLimit
-    ? 'Демонстрационный список: свободных мест нет.'
-    : isEmpty ? 'Демонстрационный список пуст. Можно добавить первое устройство.' : 'Демонстрационные устройства обновлены.');
+    ? 'Все слоты по тарифу заняты.'
+    : isEmpty ? 'Список устройств пуст. Добавьте первое устройство.' : 'Список устройств обновлён.');
   resumeSavedDeviceMutations();
 }
 

@@ -433,33 +433,78 @@
             <img src="./assets/icons/back.svg" alt="Назад" />
           </button>
           <div class="settings-pill-badge devices-list-heading">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--lime)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
-            <span style="font-size: 17px; font-weight: 700; line-height: 1;">Устройства</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--lime)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+            <span style="font-size: 16px; font-weight: 700; line-height: 1;">Устройства</span>
           </div>
         </header>
 
         <div class="devices-page-content">
+          <!-- Премиум-баннер счетчика слотов GhostLink V3 -->
           <section class="devices-slot-summary" aria-label="Лимит устройств">
-            <span class="devices-slot-eyebrow">Устройства</span>
-            <strong id="devices-slot-summary">Получаем данные…</strong>
-            <span id="devices-slot-free">Свободные места появятся после загрузки</span>
+            <div class="devices-slot-top-row">
+              <div class="devices-slot-badge-group">
+                <span class="devices-slot-pulse"></span>
+                <span class="devices-slot-eyebrow">СЛОТЫ ПОДКЛЮЧЕНИЯ</span>
+              </div>
+              <div class="devices-slot-icon-badge">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--lime)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="2" y="3" width="20" height="14" rx="2"></rect>
+                  <line x1="8" y1="21" x2="16" y2="21"></line>
+                  <line x1="12" y1="17" x2="12" y2="21"></line>
+                </svg>
+              </div>
+            </div>
+
+            <div class="devices-slot-counter-block">
+              <strong id="devices-slot-summary">Получаем данные…</strong>
+              <div class="devices-slot-track">
+                <div class="devices-slot-fill" id="devices-slot-bar-fill" style="width: 0%;"></div>
+              </div>
+            </div>
+
+            <div class="devices-slot-footer-row">
+              <span id="devices-slot-free">Свободные места появятся после загрузки</span>
+            </div>
           </section>
 
           <p class="devices-list-status" id="devices-list-status" role="status" aria-live="polite">Получаем список устройств…</p>
-          <!-- Список карточек устройств с изящными корзинками -->
+          
+          <!-- Список карточек устройств -->
           <div id="active-devices-container" class="devices-list-container" aria-live="polite"></div>
 
-
-          <section id="devices-empty-state" class="devices-list-state hidden" aria-live="polite">
+          <!-- Empty State в темном стиле GhostLink V3 -->
+          <section id="devices-empty-state" class="devices-list-state devices-empty-state-card hidden" aria-live="polite">
+            <div class="devices-empty-icon-wrap">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--lime)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="3" width="20" height="14" rx="2.5"></rect>
+                <line x1="8" y1="21" x2="16" y2="21"></line>
+                <line x1="12" y1="17" x2="12" y2="21"></line>
+                <circle cx="12" cy="10" r="1.5" fill="var(--lime)"></circle>
+              </svg>
+            </div>
             <strong>Устройств пока нет</strong>
-            <span>Добавьте первое устройство, чтобы получить ключ для подключения.</span>
+            <span>Подключите ваше первое устройство или используйте ссылку-ключ для настройки.</span>
           </section>
 
-          <section id="devices-unavailable-state" class="devices-list-state hidden" aria-live="polite">
+          <!-- Error State -->
+          <section id="devices-unavailable-state" class="devices-list-state devices-error-state-card hidden" aria-live="polite">
+            <div class="devices-unavailable-icon-wrap">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ff847c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+            </div>
             <strong>Не удалось обновить список</strong>
             <span>Последние подтверждённые устройства остаются на экране. Повторите обновление позже.</span>
           </section>
 
-          <button class="devices-add-button" id="btn-devices-add" type="button">Добавить устройство</button>
+          <button class="devices-add-button" id="btn-devices-add" type="button">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            <span>Добавить устройство</span>
+          </button>
         </div>
       </section>
