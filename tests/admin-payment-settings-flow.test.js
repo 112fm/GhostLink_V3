@@ -149,7 +149,7 @@ test('admin payment settings submits POST /api/admin/payment/settings and shows 
 
   const mockFetch = async (url, options) => {
     if (url.includes('/api/payment/settings')) {
-      return { ok: true, status: 200, json: async () => ({ phone: '+7 000', bank: 'tbank', recipient: 'Тест Т.' }) };
+      return { ok: true, status: 200, json: async () => ({ phone: '+7 985 771-91-39', bank: 'alfa', recipient: 'Арсений А.' }) };
     }
     postedUrl = url;
     postedBody = JSON.parse(options.body);
@@ -165,7 +165,11 @@ test('admin payment settings submits POST /api/admin/payment/settings and shows 
     apiBase: 'https://api.test.ru',
     showToast: (msg) => { toastMsg = msg; },
     profileSubscription: { getToken: () => 'admin-token-123' },
+    openOverlay: () => {},
   });
+
+  const openBtn = doc.getElementById('btnOpenPaymentSettings');
+  await openBtn.click();
 
   doc.getElementById('paymentSettingsMethod').value = 'sbp_phone';
   doc.getElementById('paymentSettingsBank').value = 'alfabank';
@@ -216,7 +220,10 @@ test('security regression: non-admin form submit enforces strict default-deny wi
   let fetchCallsCount = 0;
   let toastMsg = '';
 
-  const mockFetch = async () => {
+  const mockFetch = async (url) => {
+    if (url.includes('/api/payment/settings')) {
+      return { ok: true, status: 200, json: async () => ({ phone: '+7 985 771-91-39', bank: 'alfa', recipient: 'Арсений А.' }) };
+    }
     fetchCallsCount += 1;
     return { ok: true, status: 200, json: async () => ({}) };
   };
@@ -230,7 +237,11 @@ test('security regression: non-admin form submit enforces strict default-deny wi
       getSnapshot: () => ({ user: { is_admin: false } }),
       getToken: () => '',
     },
+    openOverlay: () => {},
   });
+
+  const openBtn = doc.getElementById('btnOpenPaymentSettings');
+  await openBtn.click();
 
   doc.getElementById('paymentSettingsMethod').value = 'sbp_phone';
   doc.getElementById('paymentSettingsBank').value = 'alfabank';
@@ -261,7 +272,10 @@ test('resolveIsAdmin callback function: isAdmin () => false strictly denies acce
   let fetchCallsCount = 0;
   let toastMsg = '';
 
-  const mockFetch = async () => {
+  const mockFetch = async (url) => {
+    if (url.includes('/api/payment/settings')) {
+      return { ok: true, status: 200, json: async () => ({ phone: '+7 985 771-91-39', bank: 'alfa', recipient: 'Арсений А.' }) };
+    }
     fetchCallsCount += 1;
     return { ok: true, status: 200, json: async () => ({}) };
   };
@@ -275,7 +289,11 @@ test('resolveIsAdmin callback function: isAdmin () => false strictly denies acce
       getSnapshot: () => null,
       getToken: () => '',
     },
+    openOverlay: () => {},
   });
+
+  const openBtn = doc.getElementById('btnOpenPaymentSettings');
+  await openBtn.click();
 
   doc.getElementById('paymentSettingsMethod').value = 'sbp_phone';
   doc.getElementById('paymentSettingsBank').value = 'alfabank';
@@ -308,6 +326,9 @@ test('resolveIsAdmin callback function: isAdmin () => true allows form submit an
   let toastMsg = '';
 
   const mockFetch = async (url, options) => {
+    if (url.includes('/api/payment/settings')) {
+      return { ok: true, status: 200, json: async () => ({ phone: '+7 985 771-91-39', bank: 'alfa', recipient: 'Арсений А.' }) };
+    }
     postedUrl = url;
     postedBody = JSON.parse(options.body);
     return {
@@ -323,7 +344,11 @@ test('resolveIsAdmin callback function: isAdmin () => true allows form submit an
     apiBase: 'https://api.test.ru',
     showToast: (msg) => { toastMsg = msg; },
     profileSubscription: { getToken: () => 'token-admin-func' },
+    openOverlay: () => {},
   });
+
+  const openBtn = doc.getElementById('btnOpenPaymentSettings');
+  await openBtn.click();
 
   doc.getElementById('paymentSettingsMethod').value = 'sbp_phone';
   doc.getElementById('paymentSettingsBank').value = 'alfabank';
@@ -452,6 +477,65 @@ test('retry state: clicking btnRetryPaymentSettings retries GET request and unlo
   assert.equal(doc.getElementById('paymentSettingsRecipientLastInitial').value, 'Д');
   assert.equal(doc.getElementById('paymentSettingsErrorBanner').classList.contains('hidden'), true);
   assert.equal(doc.getElementById('paymentSettingsFormStatus').textContent, '');
+});
+
+test('strict schema guard: partial 200 OK response (missing fields) prevents submit with zero POST calls', async () => {
+  const doc = createMockAdminDoc();
+  global.document = doc;
+  global.Telegram = { WebApp: { initData: 'admin-init-data' } };
+  global.GhostLinkV3 = {
+    adminMockSession: { isAdmin: () => true, assertAdmin: () => true },
+  };
+  global.window = {
+    document: doc,
+    Telegram: { WebApp: { initData: 'admin-init-data' } },
+    GhostLinkV3: global.GhostLinkV3,
+  };
+
+  let postCallsCount = 0;
+  let toastMsg = '';
+
+  const mockFetch = async (url, options) => {
+    if (options?.method === 'POST' || url.includes('/api/admin/payment/settings')) {
+      postCallsCount += 1;
+      return { ok: true, status: 200, json: async () => ({ ok: true }) };
+    }
+    // Partial GET response missing recipient and bank
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        phone: '+7 985 771-91-39',
+        // bank is missing
+        // recipient is missing
+      }),
+    };
+  };
+
+  initAdminPaymentSettingsModule({
+    isAdmin: () => true,
+    fetch: mockFetch,
+    apiBase: 'https://api.test.ru',
+    showToast: (msg) => { toastMsg = msg; },
+    profileSubscription: { getToken: () => 'token-admin-func' },
+    openOverlay: () => {},
+  });
+
+  const openBtn = doc.getElementById('btnOpenPaymentSettings');
+  await openBtn.click();
+
+  // Form inputs must remain disabled due to incomplete schema
+  assert.equal(doc.getElementById('paymentSettingsPhone').disabled, true);
+  assert.equal(doc.getElementById('btnSavePaymentSettings').disabled, true);
+  assert.equal(doc.getElementById('paymentSettingsErrorBanner').classList.contains('hidden'), false);
+
+  // Attempt to submit form
+  const form = doc.getElementById('paymentSettingsForm');
+  await form.dispatchEvent({ type: 'submit', preventDefault: () => {} });
+
+  // Verify 0 POST network calls were made and toast was shown
+  assert.equal(postCallsCount, 0, 'Zero POST requests must be dispatched when settings are not loaded');
+  assert.equal(toastMsg, 'Реквизиты не загружены. Повторите загрузку.');
 });
 
 

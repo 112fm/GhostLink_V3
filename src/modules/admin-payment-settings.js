@@ -179,6 +179,7 @@
     const retryButton = documentRef.getElementById('btnRetryPaymentSettings');
     let saving = false;
     let activeProfilesCount = 1;
+    let settingsLoaded = false;
 
     let currentProfile = createVersion(null, {
       method: 'sbp_phone',
@@ -302,11 +303,13 @@
 
     async function loadLiveSettings() {
       if (typeof fetchImpl !== 'function') {
+        settingsLoaded = true;
         writeForm(currentProfile);
         setFormDisabled(false);
         return;
       }
 
+      settingsLoaded = false;
       setFormDisabled(true);
       if (errorBanner) errorBanner.classList.add('hidden');
       if (formStatus) formStatus.textContent = 'Загрузка настроек с сервера...';
@@ -326,7 +329,11 @@
 
         if (res && res.ok) {
           const data = await res.json();
-          if (data && (data.phone || data.bank || data.recipient || data.card || data.cardNumber)) {
+          const hasPhone = typeof data?.phone === 'string' && data.phone.trim().length > 0;
+          const hasBank = typeof data?.bank === 'string' && data.bank.trim().length > 0;
+          const hasRecipient = typeof data?.recipient === 'string' && data.recipient.trim().length > 0;
+
+          if (data && hasPhone && hasBank && hasRecipient) {
             const rawBank = String(data.bank || '').toLowerCase().replace(/[^a-z0-9]/g, '');
             const bankKey = Object.hasOwn(BANKS, rawBank)
               ? rawBank
@@ -338,25 +345,34 @@
             currentProfile = createVersion(currentProfile, {
               ...currentProfile,
               bankKey,
-              phone: data.phone || currentProfile.phone,
+              phone: data.phone.trim(),
               cardNumber: data.card || data.cardNumber || currentProfile.cardNumber,
               recipientFirstName: firstName || currentProfile.recipientFirstName,
               recipientLastInitial: initial || currentProfile.recipientLastInitial,
               instruction: data.instruction || currentProfile.instruction,
               method: data.method || (data.card ? 'card_number' : currentProfile.method),
             }, { actor: 'api' });
+
+            settingsLoaded = true;
+            writeForm(currentProfile);
+            renderSavedProfile();
+            if (formStatus) formStatus.textContent = '';
+            if (errorBanner) errorBanner.classList.add('hidden');
+            setFormDisabled(false);
+          } else {
+            settingsLoaded = false;
+            setFormDisabled(true);
+            if (errorBanner) errorBanner.classList.remove('hidden');
+            if (formStatus) formStatus.textContent = 'Неполные данные настроек оплаты от сервера. Настройки заблокированы.';
           }
-          writeForm(currentProfile);
-          renderSavedProfile();
-          if (formStatus) formStatus.textContent = '';
-          if (errorBanner) errorBanner.classList.add('hidden');
-          setFormDisabled(false);
         } else {
+          settingsLoaded = false;
           setFormDisabled(true);
           if (errorBanner) errorBanner.classList.remove('hidden');
           if (formStatus) formStatus.textContent = 'Ошибка загрузки с сервера. Настройки заблокированы.';
         }
       } catch (_) {
+        settingsLoaded = false;
         setFormDisabled(true);
         if (errorBanner) errorBanner.classList.remove('hidden');
         if (formStatus) formStatus.textContent = 'Ошибка подключения к серверу. Настройки заблокированы.';
@@ -384,6 +400,12 @@
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       if (saving) return;
+
+      if (!settingsLoaded) {
+        showToast('Реквизиты не загружены. Повторите загрузку.');
+        if (formStatus) formStatus.textContent = 'Реквизиты не загружены. Повторите загрузку.';
+        return;
+      }
 
       if (!checkAdminAccess()) {
         event.preventDefault();
