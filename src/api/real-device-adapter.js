@@ -11,6 +11,27 @@
     return error;
   }
 
+  function formatErrorMessage(codeOrMsg) {
+    const raw = String(codeOrMsg || '').trim();
+    if (!raw) return '';
+    if (raw.includes('partial_failure_restored')) {
+      return 'Не удалось завершить операцию. Исходное состояние устройства восстановлено.';
+    }
+    if (raw.includes('partial_failure_unrecovered')) {
+      return 'Ошибка операции: часть настроек не удалось применить. Обратитесь в поддержку.';
+    }
+    if (raw.includes('device_limit_reached') || raw.includes('limit_exceeded')) {
+      return 'Лимит устройств исчерпан. Освободите слот или увеличьте тариф.';
+    }
+    if (raw.includes('panel_pair_delete_failed')) {
+      return 'Не удалось удалить устройство на сервере. Повторите попытку позже.';
+    }
+    if (raw.includes('endpoint_deprecated')) {
+      return 'Функция устарела. Используйте обновление ключа.';
+    }
+    return raw;
+  }
+
   function normalizeDevice(item, index) {
     const source = item && typeof item === 'object' ? item : {};
     const id = String(source.id || source.uuid || '').trim();
@@ -19,10 +40,10 @@
       id,
       name: String(source.name || source.email || `Устройство ${index + 1}`),
       platform: String(source.platform || source.device_type || 'unknown'),
-      app: String(source.app || 'Не определено'),
+      app: source.app ? String(source.app) : '',
       status: source.is_active === false || source.enable === false ? 'offline' : (source.status || 'online'),
-      lastActive: source.lastActive || source.last_online || 'Нет данных',
-      traffic: source.traffic || 'Нет данных',
+      lastActive: source.lastActive || source.last_online || (source.is_active !== false ? 'Активно' : 'Офлайн'),
+      traffic: source.traffic ? String(source.traffic) : null,
       isCurrent: source.is_current === true || source.isCurrent === true,
       url: typeof source.url === 'string' ? source.url : (typeof source.subscription_url === 'string' ? source.subscription_url : ''),
       url_incy: typeof source.url_incy === 'string' ? source.url_incy : (typeof source.subscription_url_incy === 'string' ? source.subscription_url_incy : ''),
@@ -51,6 +72,7 @@
     const source = data && typeof data === 'object' ? data : {};
     const result = source.result && typeof source.result === 'object' ? source.result : {};
     const device = normalizeDevice(source.device || result.device, 0);
+    const rawMsg = source.error?.message || source.error_code || source.detail || source.message || '';
     return {
       ...source,
       requestId: source.request_id || source.requestId || null,
@@ -58,7 +80,7 @@
       device,
       type: source.type || result.type || (result.deleted_id || source.deleted_id ? 'remove' : device ? 'rotate' : undefined),
       deletedId: source.deleted_id || result.deleted_id || null,
-      message: source.error?.message || source.error_code || source.detail || source.message || '',
+      message: formatErrorMessage(rawMsg),
     };
   }
 

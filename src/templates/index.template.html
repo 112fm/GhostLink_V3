@@ -37,13 +37,12 @@
             </span>STLINK
           </span>
         </div>
+        <!-- Единая контекстная помощь: привязана к шапке страницы -->
+        <button class="icon-button context-help-trigger" id="helpButton" type="button"
+          aria-label="Помощь по текущему экрану" aria-controls="contextHelpAnnotation" aria-expanded="false">
+          <span class="icon-question" aria-hidden="true">?</span>
+        </button>
       </header>
-
-      <!-- Единая контекстная помощь только для клиентских экранов. -->
-      <button class="icon-button context-help-trigger" id="helpButton" type="button"
-        aria-label="Помощь по текущему экрану" aria-controls="contextHelpAnnotation" aria-expanded="false">
-        <span class="icon-question" aria-hidden="true">?</span>
-      </button>
 
 <!-- @include src/templates/pages/home.html -->
 <!-- @include src/templates/pages/invites.html -->

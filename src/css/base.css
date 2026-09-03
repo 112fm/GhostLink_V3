@@ -54,10 +54,10 @@ body.hide-header .topbar {
 
 
 .toast {
-  position: absolute;
-  bottom: calc(16px + env(safe-area-inset-bottom));
+  position: fixed;
+  bottom: calc(24px + env(safe-area-inset-bottom));
   left: 50%;
-  z-index: 300;
+  z-index: 10000;
   width: min(360px, calc(100% - 32px));
   max-width: calc(100% - 32px);
   padding: 12px 14px;

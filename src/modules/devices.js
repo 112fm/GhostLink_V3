@@ -43,6 +43,8 @@ const devicesUnavailableState = document.getElementById('devices-unavailable-sta
 const settingsDevicesSubtitle = document.getElementById('settings-devices-subtitle');
 let selectedSetupDeviceId = null;
 let selectedSetupDevice = null;
+let setupFlowMode = 'this-device';
+let pendingNewDevice = null;
 
 function getDeviceEmoji(platform) {
   return { phone: '📱', laptop: '💻', tv: '📺' }[platform] || '🔑';
@@ -75,7 +77,7 @@ function renderDeviceCards(devices) {
     name.textContent = device.name;
     const meta = document.createElement('span');
     meta.className = 'device-apple-meta';
-    meta.textContent = device.app ? `Подключено через ${device.app}` : 'Приложение не выбрано';
+    meta.textContent = device.app && device.app !== 'Не определено' ? `Подключено через ${device.app}` : 'Готово к подключению';
     info.append(name);
     if (device.isCurrent) {
       const row = document.createElement('div');
@@ -99,12 +101,15 @@ function renderDeviceCards(devices) {
     const dot = document.createElement('span');
     dot.className = `device-status-dot${device.status === 'online' ? '' : ' offline'}`;
     const activityText = document.createElement('span');
-    activityText.textContent = device.lastActive;
+    activityText.textContent = (device.lastActive && device.lastActive !== 'Нет данных') ? device.lastActive : 'Активно';
     activity.append(dot, activityText);
-    const traffic = document.createElement('span');
-    traffic.className = 'device-traffic-chip';
-    traffic.textContent = device.traffic;
-    stats.append(activity, traffic);
+    stats.append(activity);
+    if (device.traffic && device.traffic !== 'Нет данных') {
+      const traffic = document.createElement('span');
+      traffic.className = 'device-traffic-chip';
+      traffic.textContent = device.traffic;
+      stats.append(traffic);
+    }
     right.append(stats);
 
     const actions = document.createElement('div');
@@ -445,7 +450,7 @@ if (btnDevicesAdd && pageSetup) {
     
     input.value = '';
     modal.classList.remove('hidden');
-    input.focus();
+    input.focus?.();
     
     const cleanup = () => {
       modal.classList.add('hidden');
@@ -454,36 +459,15 @@ if (btnDevicesAdd && pageSetup) {
     };
     
     btnClose.onclick = cleanup;
-    btnSubmit.onclick = async () => {
+    btnSubmit.onclick = () => {
       const name = input.value.trim() || 'Новое устройство';
       cleanup();
-      
-      setDevicesListStatus('Создание устройства...', 'neutral');
-      
-      if (!deviceOperations?.createDevice) {
-        setDevicesListStatus('Создание устройства пока недоступно.', 'error');
-        return;
-      }
-      const requestId = createRequestId();
-      try {
-        const result = await deviceOperations.createDevice({ requestId, name, platform: 'unknown', target: 'other-device' });
-        if (result?.status === 'succeeded' && result.device?.id) {
-          await loadDeviceList();
-          selectDeviceForSetup(result.device);
-          showToast('Устройство создано. Выберите приложение для настройки.');
-          return;
-        }
-        if (result?.status === 'processing' || result?.status === 'accepted') {
-          currentDeviceOperation = { requestId, target: 'other-device', phase: result.status, resultShown: false, replayAttempted: false };
-          saveDeviceOperation();
-          setSetupOperationUi(result.status);
-          scheduleDeviceStatusCheck();
-          return;
-        }
-        setDevicesListStatus(result?.message || 'Устройство не создано. Список не изменён.', 'error');
-      } catch (error) {
-        setDevicesListStatus(error?.status === 409 ? 'Операция уже существует. Проверьте её статус.' : error?.type === 'timeout' ? 'Нет ответа от сервера. Операция сохранена, повторно не создаём.' : 'Не удалось создать устройство. Список не изменён.', 'error');
-      }
+      pendingNewDevice = { name, platform: 'unknown', target: 'other-device' };
+      selectedSetupDeviceId = null;
+      selectedSetupDevice = null;
+      setupFlowMode = 'new-other-device';
+      autoSelectDefaultAppForCurrentPlatform('windows');
+      openOverlay(pageAppSelect);
     };
   });
 }
@@ -875,6 +859,44 @@ async function openOtherDevicePicker() {
   otherDevicePickerList?.replaceChildren();
   setOtherDevicePickerStatus('Получаем список устройств…');
 
+  const btnOtherDeviceAddNew = document.getElementById('btnOtherDeviceAddNew');
+  if (btnOtherDeviceAddNew && !btnOtherDeviceAddNew._hasAddNewListener) {
+    btnOtherDeviceAddNew._hasAddNewListener = true;
+    btnOtherDeviceAddNew.addEventListener('click', () => {
+      if (lastConfirmedDeviceList && lastConfirmedDeviceList.freeSlots <= 0) {
+        showToast('Все слоты по тарифу заняты. Освободите слот или увеличьте тариф.');
+        return;
+      }
+      const modal = document.getElementById('modalAddDeviceName');
+      const input = document.getElementById('addDeviceNameInput');
+      const btnSubmit = document.getElementById('btnAddDeviceSubmit');
+      const btnClose = document.getElementById('btnAddDeviceClose');
+      if (!modal) return;
+
+      input.value = '';
+      modal.classList.remove('hidden');
+      input.focus?.();
+
+      const cleanup = () => {
+        modal.classList.add('hidden');
+        btnSubmit.onclick = null;
+        btnClose.onclick = null;
+      };
+
+      btnClose.onclick = cleanup;
+      btnSubmit.onclick = () => {
+        const name = input.value.trim() || 'Новое устройство';
+        cleanup();
+        pendingNewDevice = { name, platform: 'unknown', target: 'other-device' };
+        selectedSetupDeviceId = null;
+        selectedSetupDevice = null;
+        setupFlowMode = 'new-other-device';
+        autoSelectDefaultAppForCurrentPlatform('windows');
+        openOverlay(pageAppSelect);
+      };
+    });
+  }
+
   try {
     const snapshot = await deviceList?.fetchList?.();
     if (!snapshot) throw new Error('Device list is unavailable');
@@ -1191,14 +1213,98 @@ if (btnInstallApp) {
   });
 }
 
-if (btnAlreadyHaveApp) {
-  btnAlreadyHaveApp.addEventListener('click', () => {
-    const pageKeyView = document.getElementById('page-key-view');
-    if (pageKeyView) {
+async function proceedToKeyView() {
+  const pageKeyView = document.getElementById('page-key-view');
+  if (!pageKeyView) return;
+
+  const token = getCurrentUserToken();
+  if (!token) {
+    showToast('Сессия Telegram ещё загружается. Попробуйте через секунду.');
+    return;
+  }
+
+  // Scenario 2: New device creation confirmed after choosing app
+  if (setupFlowMode === 'new-other-device' && pendingNewDevice) {
+    if (!deviceOperations?.createDevice) {
+      showToast('Сервис создания устройств недоступен.');
+      return;
+    }
+    showToast('Создаём устройство…');
+    const requestId = createRequestId();
+    try {
+      const res = await deviceOperations.createDevice({
+        requestId,
+        name: pendingNewDevice.name,
+        platform: pendingNewDevice.platform || 'unknown',
+        target: 'other-device',
+      });
+      if (res?.status === 'succeeded' && res.device?.id) {
+        selectedSetupDeviceId = res.device.id;
+        selectedSetupDevice = { ...res.device };
+        pendingNewDevice = null;
+        setupFlowMode = 'existing-device';
+        await loadDeviceList();
+        updateDisplayedSubscriptionUrls(currentSelectedApp);
+        openOverlay(pageKeyView);
+        showToast('Устройство создано и готово к подключению!');
+        return;
+      }
+      showToast(res?.message || 'Не удалось создать устройство на сервере.');
+      return;
+    } catch (err) {
+      showToast(err?.message || 'Ошибка создания устройства.');
+      return;
+    }
+  }
+
+  // Scenario 1: On this device
+  if (setupFlowMode === 'this-device' && !selectedSetupDevice) {
+    // Check if this device is already in confirmed list
+    const existingCurrent = lastConfirmedDeviceList?.devices?.find((d) => d.isCurrent);
+    if (existingCurrent) {
+      selectedSetupDeviceId = existingCurrent.id;
+      selectedSetupDevice = { ...existingCurrent };
       updateDisplayedSubscriptionUrls(currentSelectedApp);
       openOverlay(pageKeyView);
+      return;
     }
-  });
+
+    if (deviceOperations?.createDevice) {
+      showToast('Подготавливаем устройство…');
+      const platform = getDevicePlatform();
+      const pName = { ios: 'iPhone', android: 'Android', macos: 'Mac', windows: 'ПК' }[platform] || 'Устройство';
+      const name = 'Мой ' + pName;
+      const requestId = createRequestId();
+      try {
+        const res = await deviceOperations.createDevice({
+          requestId,
+          name,
+          platform,
+          target: 'this-device',
+        });
+        if (res?.status === 'succeeded' && res.device?.id) {
+          selectedSetupDeviceId = res.device.id;
+          selectedSetupDevice = { ...res.device };
+          await loadDeviceList();
+          updateDisplayedSubscriptionUrls(currentSelectedApp);
+          openOverlay(pageKeyView);
+          return;
+        }
+        showToast(res?.message || 'Не удалось настроить устройство.');
+        return;
+      } catch (err) {
+        showToast(err?.message || 'Ошибка получения ключа для устройства.');
+        return;
+      }
+    }
+  }
+
+  updateDisplayedSubscriptionUrls(currentSelectedApp);
+  openOverlay(pageKeyView);
+}
+
+if (btnAlreadyHaveApp) {
+  btnAlreadyHaveApp.addEventListener('click', proceedToKeyView);
 }
 
 // Key View Screen (#page-key-view) Logic
@@ -1253,27 +1359,30 @@ if (btnAddToApp && userKeyUrl) {
 
     // 1. Auto-copy subscription URL to clipboard first so user can paste if needed
     const copied = await copyText(subUrl);
-    showToast(copied
-      ? `Ссылка скопирована. Переходим в ${isIncy ? 'INCY' : 'Karing'}...`
-      : `Открываем ${isIncy ? 'INCY' : 'Karing'}...`);
 
     if (isIncy) {
-      // Safe external opening in Telegram WebApp without iframe navigation
+      // INCY deep link: incy://import/{url}
+      const incyDeepLink = `incy://import/${encodeURI(subUrl)}`;
+      showToast(copied
+        ? 'Ссылка скопирована! Открываем INCY... (Если не открылось, вставьте ссылку в приложении)'
+        : 'Открываем INCY... (Вставьте ссылку в приложении)');
       setTimeout(() => {
-        if (window.Telegram?.WebApp?.openLink) {
-          window.Telegram.WebApp.openLink(subUrl);
-        } else {
-          window.open(subUrl, '_blank', 'noopener,noreferrer');
-        }
-      }, 400);
+        try {
+          window.location.href = incyDeepLink;
+        } catch (_) {}
+      }, 350);
     } else {
       // Karing deep link scheme with URI-encoded subscription URL
       const encoded = encodeURIComponent(subUrl);
       const karingInstallUrl = `karing://install-config?url=${encoded}`;
-
+      showToast(copied
+        ? 'Ссылка скопирована. Переходим в Karing...'
+        : 'Открываем Karing...');
       setTimeout(() => {
-        window.location.href = karingInstallUrl;
-      }, 400);
+        try {
+          window.location.href = karingInstallUrl;
+        } catch (_) {}
+      }, 350);
     }
   });
 }
@@ -1519,6 +1628,26 @@ if (btnDeviceDownload) {
   autoSelectDefaultAppForCurrentPlatform();
   updateDisplayedSubscriptionUrls(currentSelectedApp);
 
+  if (settingsDevicesSubtitle) {
+    const cached = profileSubscription?.getCachedProfile?.() || profileSubscription?.getSnapshot?.();
+    const used = cached?.user?.connected_devices ?? cached?.connected_devices;
+    const limit = cached?.user?.device_limit ?? cached?.device_limit;
+    if (used !== undefined && limit !== undefined) {
+      settingsDevicesSubtitle.textContent = `Подключено: ${used} из ${limit}`;
+    }
+    if (deviceList?.fetchList) {
+      loadDeviceList().then((snapshot) => {
+        if (snapshot && settingsDevicesSubtitle) {
+          settingsDevicesSubtitle.textContent = `Подключено: ${snapshot.usedSlots} из ${snapshot.deviceLimit}`;
+        }
+      }).catch(() => {
+        if (settingsDevicesSubtitle && settingsDevicesSubtitle.textContent === 'Проверяем устройства…') {
+          settingsDevicesSubtitle.textContent = 'Управление устройствами';
+        }
+      });
+    }
+  }
+
   GhostLinkV3.devices = Object.freeze({
     selectAppChoice,
     autoSelectDefaultAppForCurrentPlatform,
@@ -1531,6 +1660,9 @@ if (btnDeviceDownload) {
     selectDeviceForSetup,
     getSelectedSetupDeviceId: () => selectedSetupDeviceId,
     getSelectedSetupDevice: () => selectedSetupDevice ? { ...selectedSetupDevice } : null,
+    getPendingNewDevice: () => pendingNewDevice ? { ...pendingNewDevice } : null,
+    getSetupFlowMode: () => setupFlowMode,
+    proceedToKeyView,
     isValidSubToken,
     isSubscriptionReady,
     updateDisplayedSubscriptionUrls,

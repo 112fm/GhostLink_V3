@@ -155,7 +155,7 @@
           <!-- Key Copy Field -->
           <div class="key-box-container">
             <div class="key-box-field" id="key-box-field">
-              <span class="key-box-text" id="user-key-url">https://api.112prd.ru:2053/sub/••••••••</span>
+              <span class="key-box-text" id="user-key-url">Получаем ссылку…</span>
               <div class="key-box-copy-icon">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <rect x="9" y="9" width="13" height="13" rx="3" ry="3"/>
@@ -373,6 +373,13 @@
             <h4 class="devices-section-title">Ваши устройства</h4>
             <p id="other-device-picker-status" class="other-device-picker-status" role="status" aria-live="polite">Получаем список устройств…</p>
             <div id="other-device-picker-list" class="other-device-picker-list" aria-live="polite"></div>
+            <button class="devices-add-button other-device-add-new-btn" id="btnOtherDeviceAddNew" type="button" style="margin-top: 14px; width: 100%;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              <span>+ Добавить новое устройство</span>
+            </button>
           </div>
         </div>
       </section>
@@ -472,9 +479,8 @@
           <button class="btn-back" id="btn-devices-back" aria-label="Назад">
             <img src="./assets/icons/back.svg" alt="Назад" />
           </button>
-          <div class="settings-pill-badge devices-list-heading">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--lime)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
-            <span style="font-size: 16px; font-weight: 700; line-height: 1;">Устройства</span>
+          <div class="page-header-text devices-list-heading">
+            <h2>Устройства</h2>
           </div>
         </header>
 
