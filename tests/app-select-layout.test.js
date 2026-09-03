@@ -150,7 +150,7 @@ test('subscription URL builder exposes only API-provided Karing and INCY URLs wi
   assert.doesNotMatch(devicesHtml, /vless:\/\//);
 });
 
-test('regression 1: when url_incy is present from backend, INCY selects and copies exactly url_incy', async () => {
+test('regression 1: account-wide INCY URL is not used without a selected device', async () => {
   const elements = new Map();
   let textCopied = '';
   function createMockElement(id = '', tagName = 'div') {
@@ -240,10 +240,10 @@ test('regression 1: when url_incy is present from backend, INCY selects and copi
   const { getSubscriptionUrl, isSubscriptionReady } = global.window.GhostLinkV3.devices;
   const btnAddToApp = mockDoc.getElementById('btn-add-to-app');
 
-  assert.equal(isSubscriptionReady('incy'), true);
-  assert.equal(btnAddToApp.disabled, false);
-  assert.equal(btnAddToApp.querySelector('span').textContent, 'Добавить в INCY');
-  assert.equal(getSubscriptionUrl('incy'), 'https://api.112prd.ru:2053/sub/custom_incy_token?compat=incy');
+  assert.equal(isSubscriptionReady('incy'), false);
+  assert.equal(btnAddToApp.disabled, true);
+  assert.equal(btnAddToApp.querySelector('span').textContent, 'Ссылка для INCY недоступна');
+  assert.equal(getSubscriptionUrl('incy'), '');
 });
 
 test('regression 2: when url_incy is absent, INCY button is disabled and does not build synthetic url from sub_token', () => {
@@ -340,7 +340,7 @@ test('regression 2: when url_incy is absent, INCY button is disabled and does no
   assert.equal(getSubscriptionUrl('incy'), '');
 });
 
-test('regression 3: Karing strictly uses url from backend snapshot and disables button if absent', () => {
+test('regression 3: account-wide Karing URL is not used without a selected device', () => {
   const elements = new Map();
   function createMockElement(id = '', tagName = 'div') {
     let textContent = '';
@@ -429,13 +429,13 @@ test('regression 3: Karing strictly uses url from backend snapshot and disables 
   selectAppChoice('karing');
 
   const btnAddToApp = mockDoc.getElementById('btn-add-to-app');
-  assert.equal(isSubscriptionReady('karing'), true);
-  assert.equal(btnAddToApp.disabled, false);
-  assert.equal(btnAddToApp.querySelector('span').textContent, 'Добавить в Karing');
-  assert.equal(getSubscriptionUrl('karing'), 'https://api.112prd.ru:2053/sub/official_karing_url');
+  assert.equal(isSubscriptionReady('karing'), false);
+  assert.equal(btnAddToApp.disabled, true);
+  assert.equal(btnAddToApp.querySelector('span').textContent, 'Ссылка для Karing недоступна');
+  assert.equal(getSubscriptionUrl('karing'), '');
 });
 
-test('subscription token prioritizes sub_token from profile snapshot and adapter', () => {
+test('subscription token stays separate from device-scoped subscription URLs', () => {
   const elements = new Map();
   function createMockElement(id = '', tagName = 'div') {
     const classes = new Set();
@@ -517,8 +517,8 @@ test('subscription token prioritizes sub_token from profile snapshot and adapter
 
   const { getCurrentUserToken, getSubscriptionUrl, isValidSubToken } = global.window.GhostLinkV3.devices;
   assert.equal(getCurrentUserToken(), 'sub_live_999');
-  assert.equal(getSubscriptionUrl('karing'), 'https://api.112prd.ru:2053/sub/sub_live_999');
-  assert.equal(getSubscriptionUrl('incy'), 'https://api.112prd.ru:2053/sub/sub_live_999?compat=incy');
+  assert.equal(getSubscriptionUrl('karing'), '');
+  assert.equal(getSubscriptionUrl('incy'), '');
 
   // Test isValidSubToken
   assert.equal(isValidSubToken('Oe6Sa-G7Hs9tVJR9xwRqT1iYztBQ8lAz'), true);
@@ -665,8 +665,8 @@ test('mapProfile and getCurrentUserToken robustly extract sub_token from subscri
 
   const { getCurrentUserToken, getSubscriptionUrl } = global.window.GhostLinkV3.devices;
   assert.equal(getCurrentUserToken(), 'Oe6Sa-G7Hs9tVJR9xwRqT1iYztBQ8lAz');
-  assert.equal(getSubscriptionUrl('karing'), 'https://api.112prd.ru:2053/sub/Oe6Sa-G7Hs9tVJR9xwRqT1iYztBQ8lAz');
-  assert.equal(getSubscriptionUrl('incy'), 'https://api.112prd.ru:2053/sub/Oe6Sa-G7Hs9tVJR9xwRqT1iYztBQ8lAz?compat=incy');
+  assert.equal(getSubscriptionUrl('karing'), '');
+  assert.equal(getSubscriptionUrl('incy'), '');
 });
 
 test('devices module consumes backend url/url_incy directly and disables btnAddToApp until subscription is ready', () => {
@@ -793,20 +793,19 @@ test('devices module consumes backend url/url_incy directly and disables btnAddT
 
   subscriberCallback(currentProfile);
 
-  assert.equal(isSubscriptionReady('incy'), true);
-  assert.equal(btnAddToApp.disabled, false);
-  assert.equal(btnAddToApp.querySelector('span').textContent, 'Добавить в INCY');
-  assert.equal(getSubscriptionUrl('karing'), 'https://api.112prd.ru:2053/sub/my_karing_custom');
-  assert.equal(getSubscriptionUrl('incy'), 'https://api.112prd.ru:2053/sub/my_incy_custom?compat=incy');
+  assert.equal(isSubscriptionReady('incy'), false);
+  assert.equal(btnAddToApp.disabled, true);
+  assert.equal(btnAddToApp.querySelector('span').textContent, 'Ссылка для INCY недоступна');
+  assert.equal(getSubscriptionUrl('karing'), '');
+  assert.equal(getSubscriptionUrl('incy'), '');
 
   // Test switching to Karing
   const { selectAppChoice } = global.window.GhostLinkV3.devices;
   selectAppChoice('karing');
-  assert.equal(isSubscriptionReady('karing'), true);
-  assert.equal(btnAddToApp.disabled, false);
-  assert.equal(btnAddToApp.querySelector('span').textContent, 'Добавить в Karing');
+  assert.equal(isSubscriptionReady('karing'), false);
+  assert.equal(btnAddToApp.disabled, true);
+  assert.equal(btnAddToApp.querySelector('span').textContent, 'Ссылка для Karing недоступна');
 });
-
 
 
 

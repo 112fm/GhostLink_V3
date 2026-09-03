@@ -121,6 +121,6 @@ test('Block 2 never persists raw list data or exposes subscription URLs in sourc
   const main = fs.readFileSync(path.join(root, 'src/main.js'), 'utf8');
 
   assert.doesNotMatch(adapterSource, /localStorage|sessionStorage|fetch\(|XMLHttpRequest|WebSocket|https?:\/\//);
-  assert.match(template, /src="\.\/src\/api\/local-block2-device-list-adapter\.js\?v=3"/);
-  assert.match(main, /createLocalDeviceListAdapter/);
+  assert.doesNotMatch(template, /src="\.\/src\/(?:api\/local-block2-device-list-adapter|mocks\/device-list|mocks\/device-operations|mocks\/device-mutations)/);
+  assert.doesNotMatch(main, /createLocalDeviceListAdapter|createMockDeviceList/);
 });

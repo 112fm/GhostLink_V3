@@ -90,7 +90,7 @@ test('picker renders the adapter device UUID and app choice does not start a dev
     closeOverlay: () => {},
     returnToHome: () => {},
     deviceList: {
-      fetchList: async () => ({ devices: [{ id: 'uuid-from-adapter', name: 'MacBook', app: 'Не выбрано', platform: 'laptop' }] }),
+      fetchList: async () => ({ devices: [{ id: 'uuid-from-adapter', name: 'MacBook', app: 'Не выбрано', platform: 'laptop', url: 'https://api.112prd.ru:2053/sub/mac', url_incy: 'https://api.112prd.ru:2053/sub/mac?compat=incy' }] }),
     },
     deviceOperations: { createDevice: async () => { createCalls += 1; return {}; } },
   });
@@ -103,6 +103,43 @@ test('picker renders the adapter device UUID and app choice does not start a dev
 
   picker.children[0].click();
   assert.equal(devices.getSelectedSetupDeviceId(), 'uuid-from-adapter');
+  assert.equal(devices.getSubscriptionUrl('karing'), 'https://api.112prd.ru:2053/sub/mac');
+  assert.equal(devices.getSubscriptionUrl('incy'), 'https://api.112prd.ru:2053/sub/mac?compat=incy');
   assert.deepEqual(overlays, ['page-other-device', 'page-app-select']);
   assert.equal(createCalls, 0);
+});
+
+test('device runtime has no mock-success path and creates canonical UUIDv4 request ids', () => {
+  const source = require('node:fs').readFileSync(join(root, 'src/modules/devices.js'), 'utf8');
+  assert.doesNotMatch(source, /mock:\/\/|Макет устройства готов|addOperationDevice/);
+  assert.doesNotMatch(source, /Math\.random/);
+  assert.match(source, /selectedSetupDeviceId = result\.device\.id/);
+  assert.match(source, /crypto\.getRandomValues/);
+
+  global.window.crypto = { getRandomValues: (bytes) => bytes.fill(7) };
+  const requestId = global.window.GhostLinkV3.devices.createRequestId();
+  assert.match(requestId, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+});
+
+test('selected device URLs pass one strict validator and unsafe values stay unavailable', () => {
+  const devices = global.window.GhostLinkV3.devices;
+  devices.selectDeviceForSetup({
+    id: 'safe-device',
+    url: 'https://api.112prd.ru:2053/sub/device-karing',
+    url_incy: 'https://api.112prd.ru:2053/sub/device-incy?compat=incy',
+  });
+  assert.equal(devices.getSubscriptionUrl('karing'), 'https://api.112prd.ru:2053/sub/device-karing');
+  assert.equal(devices.getSubscriptionUrl('incy'), 'https://api.112prd.ru:2053/sub/device-incy?compat=incy');
+
+  for (const value of [
+    'not-a-url',
+    'https://evil.example/sub/foreign',
+    'https://api.112prd.ru/api/session?access_token=secret',
+    'https://api.112prd.ru:2053/sub/placeholder',
+    'itms-apps://apps.apple.com/app/karing/id6472431552',
+  ]) {
+    devices.selectDeviceForSetup({ id: 'unsafe-device', url: value, url_incy: value });
+    assert.equal(devices.getSubscriptionUrl('karing'), '', value);
+    assert.equal(devices.getSubscriptionUrl('incy'), '', value);
+  }
 });

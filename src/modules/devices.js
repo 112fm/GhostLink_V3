@@ -5,12 +5,12 @@ GhostLinkV3.initDevicesModule = function initDevicesModule(dependencies = {}) {
   const { showToast, copyText, openOverlay, closeOverlay, returnToHome, profileSubscription } = dependencies;
 
   // Local-only operation adapter. The future API must preserve this request_id contract.
-  const deviceOperations = dependencies.deviceOperations || GhostLinkV3.createMockDeviceOperations?.();
+  const deviceOperations = dependencies.deviceOperations;
   // Mutations are deliberately separate from creation: future API calls need
   // independent request_id tracking and must never retry a destructive POST.
-  const deviceMutations = dependencies.deviceMutations || GhostLinkV3.createMockDeviceMutations?.();
+  const deviceMutations = dependencies.deviceMutations;
   // Local-only list adapter. It mirrors the future server snapshot contract.
-  const deviceList = dependencies.deviceList || GhostLinkV3.createMockDeviceList?.();
+  const deviceList = dependencies.deviceList;
   const DEVICE_OPERATION_STATE_KEY = 'ghostlink-v3-device-operation-v1';
   const DEVICE_MUTATION_STATE_KEY = 'ghostlink-v3-device-mutations-v1';
   const DEVICE_POLL_DELAY_MS = 600;
@@ -217,37 +217,6 @@ function getMutationCopy(type) {
   }[type] || { pending: 'Выполняем операцию…', success: 'Операция завершена.' };
 }
 
-function applyMutationToSnapshot(snapshot, result) {
-  if (!snapshot) return null;
-  const next = JSON.parse(JSON.stringify(snapshot));
-  const index = next.devices.findIndex((device) => device.id === result.deviceId);
-  if (index < 0) return next;
-
-  if (result.type === 'remove') {
-    next.devices.splice(index, 1);
-  } else if (result.type === 'rotate') {
-    next.devices[index] = {
-      ...next.devices[index],
-      setupToken: `mock-rotated-${result.requestId}`,
-      status: 'setup',
-      lastActive: 'Ключ обновлён',
-    };
-  } else if (result.type === 'reset') {
-    next.devices[index] = {
-      ...next.devices[index],
-      app: 'Не выбрано',
-      status: 'setup',
-      lastActive: 'Нужна повторная настройка',
-      traffic: '0 Б',
-    };
-  }
-
-  next.usedSlots = next.devices.length;
-  next.freeSlots = Math.max(0, next.deviceLimit - next.usedSlots);
-  next.status = next.usedSlots === 0 ? 'empty' : next.freeSlots === 0 ? 'limit' : 'loaded';
-  return next;
-}
-
 function scheduleDeviceMutationCheck(deviceId, requestId) {
   window.setTimeout(() => checkDeviceMutationStatus(deviceId, requestId), DEVICE_POLL_DELAY_MS);
 }
@@ -288,26 +257,38 @@ async function checkDeviceMutationStatus(deviceId, requestId) {
 }
 
 function finishDeviceMutation(deviceId, result) {
-  const copy = getMutationCopy(result.type);
-  const applied = deviceList?.applyMutation?.(result);
+  const mutationType = result?.type || 'remove';
+  const copy = getMutationCopy(mutationType);
   pendingDeviceMutations.delete(deviceId);
   saveDeviceMutations();
 
-  if (!applied) {
-    setDevicesListStatus('Операция подтверждена, но локальный список нужно обновить.', 'warning');
-    loadDeviceList();
-    return;
+  if (mutationType === 'rotate' && result?.device?.id) {
+    if (selectedSetupDeviceId === deviceId) {
+      selectedSetupDeviceId = result.device.id;
+      selectedSetupDevice = { ...result.device };
+      updateDisplayedSubscriptionUrls(currentSelectedApp);
+    }
+  } else if (mutationType === 'remove') {
+    if (selectedSetupDeviceId === deviceId) {
+      selectedSetupDeviceId = null;
+      selectedSetupDevice = null;
+      updateDisplayedSubscriptionUrls(currentSelectedApp);
+    }
   }
 
-  const optimisticSnapshot = applyMutationToSnapshot(lastConfirmedDeviceList, result);
-  if (optimisticSnapshot) renderDeviceList(optimisticSnapshot);
   showToast(copy.success);
+
+  const applied = deviceList?.applyMutation?.(result);
+  if (applied) {
+    const optimisticSnapshot = applyMutationToSnapshot(lastConfirmedDeviceList, result);
+    if (optimisticSnapshot) renderDeviceList(optimisticSnapshot);
+  }
 
   loadDeviceList().then((snapshot) => {
     if (snapshot) {
       setDevicesListStatus(`${copy.success} Список обновлён.`);
     } else {
-      setDevicesListStatus(`${copy.success} Список временно не обновился.`, 'warning');
+      setDevicesListStatus(copy.success);
     }
   });
 }
@@ -363,20 +344,6 @@ function confirmDeviceDeletion(device) {
   btnSubmit.onclick = async () => {
     cleanup();
     
-    // Check if we need to call actual API or fallback to adapter
-    try {
-      const token = profileSubscription?.getToken?.();
-      if (token && window.GhostLinkV3?.apiBase) {
-        await fetch(window.GhostLinkV3.apiBase + '/api/device/delete', {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ deviceId: device.id })
-        });
-      }
-    } catch (e) {
-      console.error(e);
-    }
-    
     if (deviceMutations) {
       startDeviceMutation(device, 'remove');
     }
@@ -385,7 +352,7 @@ function confirmDeviceDeletion(device) {
 
 async function startDeviceMutation(device, type) {
   if (!deviceMutations || !device?.id) {
-    setDevicesListStatus('Локальный контур операции не загрузился.', 'error');
+    setDevicesListStatus('Сервис операций с устройствами недоступен.', 'error');
     return;
   }
   if (pendingDeviceMutations.has(device.id)) {
@@ -493,47 +460,45 @@ if (btnDevicesAdd && pageSetup) {
       
       setDevicesListStatus('Создание устройства...', 'neutral');
       
-      let newDevice = null;
+      if (!deviceOperations?.createDevice) {
+        setDevicesListStatus('Создание устройства пока недоступно.', 'error');
+        return;
+      }
+      const requestId = createRequestId();
       try {
-        const token = profileSubscription?.getToken?.();
-        if (token && window.GhostLinkV3?.apiBase) {
-          const res = await fetch(window.GhostLinkV3.apiBase + '/api/device/create', {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, platform: 'unknown' })
-          });
-          if (res.ok) {
-            const data = await res.json();
-            newDevice = data.device;
-          }
+        const result = await deviceOperations.createDevice({ requestId, name, platform: 'unknown', target: 'other-device' });
+        if (result?.status === 'succeeded' && result.device?.id) {
+          await loadDeviceList();
+          selectDeviceForSetup(result.device);
+          showToast('Устройство создано. Выберите приложение для настройки.');
+          return;
         }
-      } catch (e) {
-        console.error(e);
+        if (result?.status === 'processing' || result?.status === 'accepted') {
+          currentDeviceOperation = { requestId, target: 'other-device', phase: result.status, resultShown: false, replayAttempted: false };
+          saveDeviceOperation();
+          setSetupOperationUi(result.status);
+          scheduleDeviceStatusCheck();
+          return;
+        }
+        setDevicesListStatus(result?.message || 'Устройство не создано. Список не изменён.', 'error');
+      } catch (error) {
+        setDevicesListStatus(error?.status === 409 ? 'Операция уже существует. Проверьте её статус.' : error?.type === 'timeout' ? 'Нет ответа от сервера. Операция сохранена, повторно не создаём.' : 'Не удалось создать устройство. Список не изменён.', 'error');
       }
-      
-      // Fallback/Update Mock adapter
-      if (!newDevice) {
-        // mock random device
-        newDevice = { id: createRequestId(), name };
-      }
-      
-      if (deviceMutations) {
-        // Mock add
-        deviceList?.addOperationDevice?.({ device: newDevice, target: 'other-device' });
-        loadDeviceList();
-      }
-      
-      showToast('Устройство создано. Выберите приложение для настройки.');
-      
-      // Open INCY/Karing setup for this specific device
-      selectDeviceForSetup(newDevice);
     };
   });
 }
 
 function createRequestId() {
   if (window.crypto?.randomUUID) return window.crypto.randomUUID();
-  return `device-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  if (window.crypto?.getRandomValues) {
+    const bytes = new Uint8Array(16);
+    window.crypto.getRandomValues(bytes);
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  }
+  throw new Error('Криптографический генератор request_id недоступен.');
 }
 
 function readSavedDeviceOperation() {
@@ -583,35 +548,29 @@ function stopDevicePolling() {
   devicePollingTimer = null;
 }
 
-function setMockDeviceToken(device) {
-  if (!device?.setupToken) return;
-  const mockToken = `mock://${device.setupToken}`;
-  const keyViewToken = document.getElementById('user-key-url');
-  const otherDeviceToken = document.getElementById('other-device-key-text');
-  if (keyViewToken) keyViewToken.textContent = mockToken;
-  if (otherDeviceToken) otherDeviceToken.textContent = mockToken;
-}
-
 function finishDeviceOperation(result) {
+  if (!result?.device?.id) {
+    currentDeviceOperation.phase = 'failed';
+    saveDeviceOperation();
+    setSetupOperationUi('failed');
+    showToast('Сервер не подтвердил созданное устройство.');
+    return;
+  }
   stopDevicePolling();
+  selectedSetupDeviceId = result.device.id;
+  selectedSetupDevice = { ...result.device };
   currentDeviceOperation = {
     ...currentDeviceOperation,
     phase: 'succeeded',
     resultShown: currentDeviceOperation?.resultShown || false,
   };
-  setMockDeviceToken(result.device);
-  deviceList?.addOperationDevice?.({
-    requestId: currentDeviceOperation.requestId,
-    target: currentDeviceOperation.target,
-    device: result.device,
-  });
   if (!pageDevicesList?.classList.contains('hidden')) loadDeviceList();
   setSetupOperationUi('succeeded');
 
   if (!currentDeviceOperation.resultShown) {
     currentDeviceOperation.resultShown = true;
     saveDeviceOperation();
-    showToast('Макет устройства готов. Реальный ключ не выпускался.');
+    showToast('Устройство создано. Выберите приложение для настройки.');
     const nextPage = currentDeviceOperation.target === 'other-device'
       ? document.getElementById('page-other-device')
       : document.getElementById('page-app-select');
@@ -735,7 +694,7 @@ async function checkDeviceOperationStatus() {
 
 async function startDeviceOperation(target) {
   if (!deviceOperations) {
-    showToast('Локальный mock-контур устройства не загрузился.');
+    showToast('Операции устройств сейчас недоступны.');
     return;
   }
 
@@ -903,8 +862,9 @@ function renderOtherDevicePicker(devices) {
 
 function selectDeviceForSetup(device) {
   if (!device?.id) return;
+  const matched = lastConfirmedDeviceList?.devices?.find((d) => d.id === device.id);
   selectedSetupDeviceId = device.id;
-  selectedSetupDevice = device;
+  selectedSetupDevice = matched ? { ...matched, ...device } : { ...device };
   autoSelectDefaultAppForCurrentPlatform();
   openOverlay(pageAppSelect);
 }
@@ -995,17 +955,39 @@ function isSubscriptionReady(app = currentSelectedApp || 'karing') {
   return Boolean(getSubscriptionUrl(app));
 }
 
-function getProvidedSubscriptionUrl(...candidates) {
-  for (const candidate of candidates) {
-    if (typeof candidate !== 'string') continue;
-    const value = candidate.trim();
-    if (!value || value.includes('••••')) continue;
-    try {
-      const parsed = new URL(value);
-      if (parsed.protocol === 'https:' || parsed.protocol === 'http:') return value;
-    } catch (_) {
-      // The API value is unusable; do not replace it with a synthetic URL.
+function getAllowedSubscriptionOrigins() {
+  const configured = profileSubscription?.getApiBase?.() || window.GhostLinkV3?.apiBase || 'https://api.112prd.ru';
+  const origins = new Set([String(configured).replace(/\/+$/, '')]);
+  try {
+    const parsed = new URL(configured);
+    origins.add(parsed.origin);
+    if (parsed.port === '') origins.add(`${parsed.origin}:2053`);
+  } catch (_) {}
+  return origins;
+}
+
+function isSafeSubscriptionUrl(candidate, expectedOrigins = getAllowedSubscriptionOrigins()) {
+  if (typeof candidate !== 'string') return false;
+  const value = candidate.trim();
+  if (!value || /mock|placeholder|undefined|null|••••|session|init_data|pwa_token|access_token/i.test(value)) return false;
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== 'https:' || !expectedOrigins.has(parsed.origin)) return false;
+    if (/^\/api(?:\/|$)/i.test(parsed.pathname)) return false;
+    if (!/^\/(?:sub|s)(?:\/|$)/i.test(parsed.pathname)) return false;
+    for (const key of parsed.searchParams.keys()) {
+      if (/token|auth|session|init/i.test(key)) return false;
     }
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+function getProvidedSubscriptionUrl(...candidates) {
+  const expectedOrigins = getAllowedSubscriptionOrigins();
+  for (const candidate of candidates) {
+    if (isSafeSubscriptionUrl(candidate, expectedOrigins)) return candidate.trim();
   }
   return '';
 }
@@ -1021,27 +1003,13 @@ function getSubscriptionUrl(app = 'karing') {
 
   if (targetDevice) {
     if (app === 'incy') {
-      const incyUrl = targetDevice.url_incy || targetDevice.subscription_url_incy;
-      if (incyUrl) return incyUrl;
+      return getProvidedSubscriptionUrl(targetDevice.url_incy, targetDevice.subscription_url_incy);
     } else {
-      const karingUrl = targetDevice.url || targetDevice.subscription_url;
-      if (karingUrl) return karingUrl;
+      return getProvidedSubscriptionUrl(targetDevice.url, targetDevice.subscription_url);
     }
   }
 
-  if (app === 'incy') {
-    return getProvidedSubscriptionUrl(
-      snapshot?.user?.url_incy, snapshot?.url_incy, snapshot?.subscription?.url_incy, snapshot?.profile?.url_incy,
-      cached?.user?.url_incy, cached?.url_incy, cached?.subscription?.url_incy, cached?.profile?.url_incy,
-    );
-  }
-
-  return getProvidedSubscriptionUrl(
-    snapshot?.user?.subscription_url, snapshot?.user?.url, snapshot?.subscription_url, snapshot?.url,
-    snapshot?.subscription?.subscription_url, snapshot?.subscription?.url, snapshot?.profile?.subscription_url,
-    cached?.user?.subscription_url, cached?.user?.url, cached?.subscription_url, cached?.url,
-    cached?.subscription?.subscription_url, cached?.subscription?.url,
-  );
+  return '';
 }
 
 let currentSelectedApp = 'incy';
@@ -1181,16 +1149,16 @@ function getDevicePlatform() {
 }
 
 const KARING_URLS = {
-  ios: 'itms-apps://apps.apple.com/app/karing/id6472431552',
-  macos: 'itms-apps://apps.apple.com/app/karing/id6472431552',
+  ios: 'https://apps.apple.com/app/karing/id6472431552',
+  macos: 'https://apps.apple.com/app/karing/id6472431552',
   android: 'https://github.com/KaringX/karing/releases/download/v1.2.21.2408/karing_1.2.21.2408_android_arm.apk',
   windows: 'https://github.com/KaringX/karing/releases/tag/v1.2.18.2102',
   other: 'https://apps.apple.com/us/app/karing/id6472431552'
 };
 
 const INCY_URLS = {
-  ios: 'itms-apps://apps.apple.com/app/incy/id6756943388',
-  macos: 'itms-apps://apps.apple.com/app/incy/id6756943388',
+  ios: 'https://apps.apple.com/app/incy/id6756943388',
+  macos: 'https://apps.apple.com/app/incy/id6756943388',
   android: 'https://play.google.com/store/apps/details?id=llc.itdev.incy&hl=ru',
   windows: null,
   other: 'https://apps.apple.com/us/app/incy/id6756943388?l=ru'
@@ -1214,13 +1182,10 @@ if (btnInstallApp) {
     const pName = platformNames[platform] || 'устройства';
     showToast(`Открываем магазин для ${appName} (${pName})...`);
     setTimeout(() => {
-      if ((platform === 'ios' || platform === 'macos') && targetUrl.startsWith('itms-apps://')) {
-        // Direct native App Store deep link trigger
-        window.location.href = targetUrl;
-      } else if (window.Telegram?.WebApp?.openLink) {
+      if (window.Telegram?.WebApp?.openLink) {
         window.Telegram.WebApp.openLink(targetUrl);
       } else {
-        window.open(targetUrl, '_blank');
+        window.open(targetUrl, '_blank', 'noopener,noreferrer');
       }
     }, 400);
   });
@@ -1267,7 +1232,11 @@ if (keyBoxField && userKeyUrl) {
       return;
     }
     const copied = await copyText(subUrl);
-    showToast(copied ? 'Ссылка-подписка скопирована' : 'Не удалось скопировать. Нажмите и удерживайте ссылку.');
+    if (isIncy) {
+      showToast(copied ? 'Ссылка скопирована! Откройте INCY и нажмите Вставить' : 'Не удалось скопировать. Нажмите и удерживайте ссылку.');
+    } else {
+      showToast(copied ? 'Ссылка-подписка скопирована' : 'Не удалось скопировать. Нажмите и удерживайте ссылку.');
+    }
   });
 }
 
@@ -1339,9 +1308,9 @@ const PLATFORM_CONFIG = {
   ios: {
     title: 'Настроить на iOS',
     svg: `<svg width="36" height="36" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>`,
-    karingUrl: 'itms-apps://apps.apple.com/us/app/karing/id6472431552',
+    karingUrl: 'https://apps.apple.com/us/app/karing/id6472431552',
     karingText: 'App Store',
-    incyUrl: 'itms-apps://apps.apple.com/app/incy/id6756943388',
+    incyUrl: 'https://apps.apple.com/app/incy/id6756943388',
     incyText: 'App Store'
   },
   android: {
@@ -1355,9 +1324,9 @@ const PLATFORM_CONFIG = {
   macos: {
     title: 'Настроить на macOS',
     svg: `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>`,
-    karingUrl: 'itms-apps://apps.apple.com/us/app/karing/id6472431552',
+    karingUrl: 'https://apps.apple.com/us/app/karing/id6472431552',
     karingText: 'App Store',
-    incyUrl: 'itms-apps://apps.apple.com/app/incy/id6756943388',
+    incyUrl: 'https://apps.apple.com/app/incy/id6756943388',
     incyText: 'App Store'
   },
   windows: {
@@ -1509,7 +1478,11 @@ if (btnDeviceCopyKey) {
       return;
     }
     const copied = await copyText(subUrl);
-    showToast(copied ? 'Ссылка-подписка скопирована' : 'Не удалось скопировать. Нажмите и удерживайте ссылку.');
+    if (currentAppChoice === 'incy') {
+      showToast(copied ? 'Ссылка скопирована! Откройте INCY и нажмите Вставить' : 'Не удалось скопировать. Нажмите и удерживайте ссылку.');
+    } else {
+      showToast(copied ? 'Ссылка-подписка скопирована' : 'Не удалось скопировать. Нажмите и удерживайте ссылку.');
+    }
   });
 }
 
@@ -1521,7 +1494,11 @@ if (deviceDetailKeyText) {
       return;
     }
     const copied = await copyText(subUrl);
-    showToast(copied ? 'Ссылка-подписка скопирована' : 'Не удалось скопировать. Нажмите и удерживайте ссылку.');
+    if (currentAppChoice === 'incy') {
+      showToast(copied ? 'Ссылка скопирована! Откройте INCY и нажмите Вставить' : 'Не удалось скопировать. Нажмите и удерживайте ссылку.');
+    } else {
+      showToast(copied ? 'Ссылка-подписка скопирована' : 'Не удалось скопировать. Нажмите и удерживайте ссылку.');
+    }
   });
 }
 
@@ -1533,10 +1510,9 @@ if (btnDeviceDownload) {
       e.preventDefault();
       return;
     }
-    if (targetUrl.startsWith('itms-apps://')) {
-      e.preventDefault();
-      window.location.href = targetUrl;
-    }
+    e.preventDefault();
+    if (window.Telegram?.WebApp?.openLink) window.Telegram.WebApp.openLink(targetUrl);
+    else window.open(targetUrl, '_blank', 'noopener,noreferrer');
   });
 }
 
@@ -1548,7 +1524,9 @@ if (btnDeviceDownload) {
     autoSelectDefaultAppForCurrentPlatform,
     getDevicePlatform,
     getSubscriptionUrl,
+    isSafeSubscriptionUrl,
     getCurrentUserToken,
+    createRequestId,
     openOtherDevicePicker,
     selectDeviceForSetup,
     getSelectedSetupDeviceId: () => selectedSetupDeviceId,

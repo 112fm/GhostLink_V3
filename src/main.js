@@ -16,17 +16,22 @@
   if (!profileSubscription) {
     throw new Error("GhostLink V3 real Block 1 adapter is missing");
   }
-  // Block 2 maps the future /api/device/list shape in memory. It does not
-  // retain raw device responses, UUIDs, or subscription URLs in browser storage.
-  const deviceList = GhostLinkV3.createLocalDeviceListAdapter?.()
-    || GhostLinkV3.createMockDeviceList?.();
+  const deviceAdapter = GhostLinkV3.createRealDeviceAdapter?.({
+    apiBase: profileSubscription.getApiBase?.(),
+    getToken: () => profileSubscription.getToken?.(),
+  });
+  if (!deviceAdapter) {
+    throw new Error("GhostLink V3 real device adapter is missing");
+  }
   const invites = GhostLinkV3.createMockInvites?.();
   const support = GhostLinkV3.createMockSupport?.();
   const dependencies = {
     showToast,
     copyText,
     profileSubscription,
-    deviceList,
+    deviceList: deviceAdapter,
+    deviceOperations: deviceAdapter,
+    deviceMutations: deviceAdapter,
     invites,
     support,
     openOverlay: (page) => overlayNavigator.open(page),
