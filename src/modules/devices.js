@@ -1361,8 +1361,8 @@ if (btnAddToApp && userKeyUrl) {
     const copied = await copyText(subUrl);
 
     if (isIncy) {
-      // INCY deep link: incy://import/{url}
-      const incyDeepLink = `incy://import/${encodeURI(subUrl)}`;
+      // INCY deep link: incy://import/{encoded_url}
+      const incyDeepLink = `incy://import/${encodeURIComponent(subUrl)}`;
       showToast(copied
         ? 'Ссылка скопирована! Открываем INCY... (Если не открылось, вставьте ссылку в приложении)'
         : 'Открываем INCY... (Вставьте ссылку в приложении)');
@@ -1663,6 +1663,7 @@ if (btnDeviceDownload) {
     getPendingNewDevice: () => pendingNewDevice ? { ...pendingNewDevice } : null,
     getSetupFlowMode: () => setupFlowMode,
     proceedToKeyView,
+    createIncyDeepLink: (url) => url ? `incy://import/${encodeURIComponent(url)}` : '',
     isValidSubToken,
     isSubscriptionReady,
     updateDisplayedSubscriptionUrls,

@@ -232,12 +232,26 @@ test('2. Scenario 2 (Other device): new device deferred until app choice and add
   assert.equal(devices.getSubscriptionUrl('karing'), 'https://api.112prd.ru:2053/s/tok-laptop#GhostLink');
 });
 
-test('3. INCY deep-link format and browser-free opening', () => {
-  // Verifies that btnAddToApp uses incy://import/ with URI encoding
-  assert.match(devicesJs, /const incyDeepLink = `incy:\/\/import\/\$\{encodeURI\(subUrl\)\}`;/);
+test('3. INCY deep-link format and browser-free opening with lossless encoding', () => {
+  // Verifies that btnAddToApp uses incy://import/ with encodeURIComponent
+  assert.match(devicesJs, /const incyDeepLink = `incy:\/\/import\/\$\{encodeURIComponent\(subUrl\)\}`;/);
   // Verifies that window.location.href is used for incyDeepLink instead of openLink on https://
   assert.match(devicesJs, /window\.location\.href = incyDeepLink/);
   assert.doesNotMatch(devicesJs, /Telegram\.WebApp\.openLink\(subUrl\)/);
+
+  // Test with a full production-like URL containing token, query parameters, and hash
+  const fullSubUrl = 'https://api.112prd.ru:2053/s/test-token-xyz789?compat=incy&routing=true#GhostLink';
+  const deepLink = `incy://import/${encodeURIComponent(fullSubUrl)}`;
+
+  // Verifies scheme and prefix
+  assert.ok(deepLink.startsWith('incy://import/'));
+  // Verifies that characters like '#', '?', '&' are encoded safely in payload
+  assert.doesNotMatch(deepLink.slice('incy://import/'.length), /[#?&]/);
+
+  // Verifies lossless decoding
+  const encodedPayload = deepLink.replace('incy://import/', '');
+  const decodedUrl = decodeURIComponent(encodedPayload);
+  assert.equal(decodedUrl, fullSubUrl, 'Decoded URL must exactly match the full original URL without loss');
 });
 
 test('4. Error mapping replaces partial_failure_restored with human-friendly message', async () => {
