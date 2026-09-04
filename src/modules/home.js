@@ -87,8 +87,14 @@
       : toNonNegativeInteger(rawRemainingDays, 0);
     const deviceLimit = toNonNegativeInteger(subscription.deviceLimit ?? subscription.deviceCount, 0);
     const usedDevices = toNonNegativeInteger(subscription.usedDevices, 0);
-    const isTimeless = Boolean(subscription.isTimeless);
-    const isVip = isTimeless || subscription.state === 'vip' || (subscription.plan?.id === 'vip');
+    const plan = subscription.plan || {};
+    const planIdentity = `${plan.id || ''} ${plan.title || ''}`.trim().toLowerCase();
+    const isGift = planIdentity === 'gift'
+      || planIdentity.includes(' gift')
+      || planIdentity.includes('подар');
+    const isTimeless = Boolean(subscription.isTimeless)
+      || (subscription.active !== false && subscription.expiry === null && subscription.daysLeft === null && subscription.remainingDays === null && !hasTotalDays);
+    const isVip = (isTimeless && !isGift) || subscription.state === 'vip' || (subscription.plan?.id === 'vip');
     const isPending = subscription.state === 'pending'
       || subscription.payment_status === 'pending_verification'
       || subscription.payment_status === 'pending'
@@ -102,7 +108,9 @@
     const hasProgressBasis = hasTotalDays
       && remainingDays !== null
       && (Boolean(subscription.startedAt) || snapshot?.isMock === true);
-    const progress = isTimeless || (isVip && isActive) ? 100 : (hasProgressBasis ? Math.min(100, Math.round((remainingDays / totalDays) * 100)) : null);
+    const progress = isTimeless || (isVip && isActive)
+      ? 100
+      : (hasProgressBasis ? Math.min(100, Math.round((remainingDays / totalDays) * 100)) : null);
 
     let state = 'active';
     if (isPending) state = 'pending';
@@ -110,10 +118,9 @@
     else if (isNew) state = 'new';
     else if (!isActive) state = 'expired';
     else if (isVip) state = 'vip';
-    else if (progress !== null && progress < 20) state = 'critical';
-    else if (progress !== null && progress <= 50) state = 'warning';
+    else if (!isGift && progress !== null && progress < 20) state = 'critical';
+    else if (!isGift && progress !== null && progress <= 50) state = 'warning';
 
-    const plan = subscription.plan || {};
     if (state === 'pending') {
       return {
         state, planTitle: 'ОЖИДАЕТ ПОДТВЕРЖДЕНИЯ', emoji: '⏳', remainingDays: null,
@@ -132,10 +139,6 @@
     const isNewUser = state === 'new';
     const isExpired = state === 'expired';
     const isDemo = snapshot?.isMock === true;
-    const planIdentity = `${plan.id || ''} ${plan.title || ''}`.trim().toLowerCase();
-    const isGift = planIdentity === 'gift'
-      || planIdentity.includes(' gift')
-      || planIdentity.includes('подар');
     const title = isGift
       ? 'ПОДАРОЧНЫЙ'
       : (plan.title || (isNewUser ? 'ВЫБЕРИТЕ ТАРИФ' : (isExpired ? 'SOLO' : 'ТАРИФ НЕ УКАЗАН')));
@@ -181,11 +184,15 @@
 
     const presentation = loading ? getLoadingSubscriptionPresentation() : getSubscriptionPresentation(snapshot);
     const isUnavailable = presentation.state === 'unavailable';
+    const isGreenActive = ['active', 'vip'].includes(presentation.state)
+      && !['critical', 'warning', 'expired', 'denied', 'unavailable', 'pending'].includes(presentation.state);
+
     documentRef.querySelector('.app-shell')?.classList.toggle('is-access-denied', presentation.state === 'denied');
     island.dataset.subscriptionState = presentation.state;
     island.setAttribute('aria-busy', String(loading));
     island.classList.toggle('is-subscription-loading', loading);
     island.classList.toggle('is-subscription-demo', presentation.isDemo);
+    island.classList.toggle('is-subscription-active', isGreenActive);
     island.classList.toggle('is-subscription-warning', presentation.state === 'warning');
     island.classList.toggle('is-subscription-critical', ['critical', 'expired'].includes(presentation.state));
     island.classList.toggle('is-subscription-unavailable', presentation.state === 'unavailable');
@@ -220,11 +227,24 @@
     if (!documentRef) return null;
 
     const profileSubscription = dependencies.profileSubscription || GhostLinkV3.createMockProfileSubscription?.();
+    const deviceList = dependencies.deviceList;
     let requestSequence = 0;
     let currentLoad = null;
 
     function renderLoading() {
       renderSubscriptionStatus(null, documentRef, { loading: true });
+    }
+
+    function syncDeviceCounterFromAdapter() {
+      if (!deviceList?.fetchList) return;
+      deviceList.fetchList().then((devSnapshot) => {
+        if (devSnapshot && devSnapshot.deviceLimit > 0) {
+          const used = toNonNegativeInteger(devSnapshot.usedSlots, 0);
+          const limit = toNonNegativeInteger(devSnapshot.deviceLimit, 0);
+          const text = `${used} ${pluralize(used, ['устройство', 'устройства', 'устройств'])} · лимит ${limit}`;
+          setElementText(documentRef, 'subscriptionDeviceCount', text);
+        }
+      }).catch(() => {});
     }
 
     function loadProfileSubscription() {
@@ -235,9 +255,9 @@
         .then(() => profileSubscription.fetchProfileSubscription())
         .then((snapshot) => {
           if (currentRequest === requestSequence) {
-            clearSubscriptionLoading(documentRef);
             renderSubscriptionStatus(snapshot, documentRef);
             updateAdminSettingsVisibility(snapshot, documentRef);
+            syncDeviceCounterFromAdapter();
             try {
               root.GhostLinkPayment?.restorePaymentStateFromProfile?.(snapshot);
             } catch (_) {
@@ -248,13 +268,13 @@
         })
         .catch((error) => {
           if (currentRequest === requestSequence) {
-            clearSubscriptionLoading(documentRef);
             renderSubscriptionStatus({ error }, documentRef);
             updateAdminSettingsVisibility(null, documentRef);
           }
           return null;
         })
         .finally(() => {
+          clearSubscriptionLoading(documentRef);
           currentLoad = null;
         });
       return currentLoad;

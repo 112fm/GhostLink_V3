@@ -1,0 +1,110 @@
+/* GhostLink V3: Devices Screen & Modals (Neon Bento Glassmorphism) */
+
+#page-devices-list {
+  background:
+    radial-gradient(circle at 85% 12%, rgba(184, 255, 0, 0.09), transparent 45%),
+    radial-gradient(circle at 15% 88%, rgba(0, 240, 255, 0.07), transparent 45%),
+    #111211;
+}
+
+/* Device Item Card (Neon Glass Bento) */
+.device-apple-card {
+  position: relative;
+  background: linear-gradient(145deg, rgba(26, 32, 26, 0.75) 0%, rgba(16, 20, 16, 0.88) 100%);
+  border: 1px solid rgba(184, 255, 0, 0.18);
+  border-radius: 22px;
+  padding: 16px 18px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.device-apple-card:hover {
+  border-color: rgba(184, 255, 0, 0.35);
+  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.5), 0 0 16px rgba(184, 255, 0, 0.12);
+}
+
+.device-apple-card.is-current {
+  border-color: rgba(184, 255, 0, 0.42);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), 0 0 20px rgba(184, 255, 0, 0.14);
+}
+
+/* Modal Overlays: Placed right on top of Devices Screen */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 10, 8, 0.82);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: modalFadeIn 0.2s ease-out;
+}
+
+.modal-overlay.hidden {
+  display: none !important;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-content {
+  position: relative;
+  background: linear-gradient(145deg, rgba(24, 28, 24, 0.98) 0%, rgba(14, 18, 14, 0.98) 100%);
+  border: 1px solid rgba(184, 255, 0, 0.25);
+  border-radius: 24px;
+  max-width: 360px;
+  width: 100%;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.7), 0 0 24px rgba(184, 255, 0, 0.1);
+  overflow: hidden;
+  animation: modalScaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalScaleUp {
+  from { transform: scale(0.92); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.01em;
+}
+
+.btn-close-modal {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: all 0.15s ease;
+}
+
+.btn-close-modal:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+}

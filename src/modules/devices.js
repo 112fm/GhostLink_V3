@@ -780,6 +780,7 @@ if (setupContinueBtn) {
     if (isThisDevice) {
       selectedSetupDeviceId = null;
       selectedSetupDevice = null;
+      setupFlowMode = 'this-device';
       autoSelectDefaultAppForCurrentPlatform();
       openOverlay(pageAppSelect);
       return;
@@ -1025,9 +1026,27 @@ function getSubscriptionUrl(app = 'karing') {
 
   if (targetDevice) {
     if (app === 'incy') {
-      return getProvidedSubscriptionUrl(targetDevice.url_incy, targetDevice.subscription_url_incy);
+      const explicitIncy = getProvidedSubscriptionUrl(targetDevice.url_incy, targetDevice.subscription_url_incy);
+      if (explicitIncy) return explicitIncy;
+
+      const baseDeviceUrl = getProvidedSubscriptionUrl(targetDevice.url, targetDevice.subscription_url);
+      if (baseDeviceUrl) {
+        if (baseDeviceUrl.includes('compat=incy')) return baseDeviceUrl;
+        const [baseAndQuery, hash] = baseDeviceUrl.split('#');
+        const sep = baseAndQuery.includes('?') ? '&' : '?';
+        return `${baseAndQuery}${sep}compat=incy${hash ? `#${hash}` : ''}`;
+      }
+      const token = targetDevice.sub_token || getCurrentUserToken();
+      if (token && isValidSubToken(token)) {
+        return `https://api.112prd.ru:2053/sub/${token}?compat=incy`;
+      }
     } else {
-      return getProvidedSubscriptionUrl(targetDevice.url, targetDevice.subscription_url);
+      const baseDeviceUrl = getProvidedSubscriptionUrl(targetDevice.url, targetDevice.subscription_url);
+      if (baseDeviceUrl) return baseDeviceUrl;
+      const token = targetDevice.sub_token || getCurrentUserToken();
+      if (token && isValidSubToken(token)) {
+        return `https://api.112prd.ru:2053/sub/${token}`;
+      }
     }
   }
 
@@ -1175,15 +1194,15 @@ const KARING_URLS = {
   macos: 'https://apps.apple.com/app/karing/id6472431552',
   android: 'https://github.com/KaringX/karing/releases/download/v1.2.21.2408/karing_1.2.21.2408_android_arm.apk',
   windows: 'https://github.com/KaringX/karing/releases/tag/v1.2.18.2102',
-  other: 'https://apps.apple.com/us/app/karing/id6472431552'
+  other: 'https://apps.apple.com/app/karing/id6472431552'
 };
 
 const INCY_URLS = {
   ios: 'https://apps.apple.com/app/incy/id6756943388',
   macos: 'https://apps.apple.com/app/incy/id6756943388',
-  android: 'https://play.google.com/store/apps/details?id=llc.itdev.incy&hl=ru',
+  android: 'https://play.google.com/store/apps/details?id=llc.itdev.incy',
   windows: null,
-  other: 'https://apps.apple.com/us/app/incy/id6756943388?l=ru'
+  other: 'https://apps.apple.com/app/incy/id6756943388'
 };
 
 if (btnInstallApp) {
@@ -1363,9 +1382,7 @@ if (btnAddToApp && userKeyUrl) {
     if (isIncy) {
       // INCY deep link: incy://import/{encoded_url}
       const incyDeepLink = `incy://import/${encodeURIComponent(subUrl)}`;
-      showToast(copied
-        ? 'Ссылка скопирована! Открываем INCY... (Если не открылось, вставьте ссылку в приложении)'
-        : 'Открываем INCY... (Вставьте ссылку в приложении)');
+      showToast('Ссылка скопирована! Открываем INCY... (вставьте ссылку в приложении)');
       setTimeout(() => {
         try {
           window.location.href = incyDeepLink;
@@ -1417,7 +1434,7 @@ const PLATFORM_CONFIG = {
   ios: {
     title: 'Настроить на iOS',
     svg: `<svg width="36" height="36" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>`,
-    karingUrl: 'https://apps.apple.com/us/app/karing/id6472431552',
+    karingUrl: 'https://apps.apple.com/app/karing/id6472431552',
     karingText: 'App Store',
     incyUrl: 'https://apps.apple.com/app/incy/id6756943388',
     incyText: 'App Store'
@@ -1427,13 +1444,13 @@ const PLATFORM_CONFIG = {
     svg: `<svg width="40" height="40" viewBox="0 0 28 28" fill="currentColor"><path d="M3.99078 1.12012L16.1183 13.1601L19.4433 9.83512L4.74328 1.34762C4.49828 1.20543 4.23578 1.12668 3.99078 1.12012ZM2.97578 1.68012C2.86641 1.8748 2.80078 2.10449 2.80078 2.36262V25.7601C2.80078 25.9482 2.84016 26.1167 2.90578 26.2676L15.3133 13.9476L2.97578 1.68012ZM20.4583 10.4126L16.9058 13.9476L20.4583 17.4651L24.7983 14.9801C25.4152 14.6236 25.5027 14.1707 25.4983 13.9301C25.4917 13.532 25.2402 13.1601 24.8158 12.9326C24.4461 12.7336 21.7008 11.1345 20.4583 10.4126ZM16.1183 14.7351L3.88578 26.8626C4.08922 26.8517 4.31016 26.8079 4.51578 26.6876C4.99484 26.4098 14.6833 20.8076 14.6833 20.8076L19.4608 18.0601L16.1183 14.7351Z"/></svg>`,
     karingUrl: 'https://github.com/KaringX/karing/releases/download/v1.2.21.2408/karing_1.2.21.2408_android_arm.apk',
     karingText: 'Google Play / APK',
-    incyUrl: 'https://play.google.com/store/apps/details?id=llc.itdev.incy&hl=ru',
+    incyUrl: 'https://play.google.com/store/apps/details?id=llc.itdev.incy',
     incyText: 'Google Play'
   },
   macos: {
     title: 'Настроить на macOS',
     svg: `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>`,
-    karingUrl: 'https://apps.apple.com/us/app/karing/id6472431552',
+    karingUrl: 'https://apps.apple.com/app/karing/id6472431552',
     karingText: 'App Store',
     incyUrl: 'https://apps.apple.com/app/incy/id6756943388',
     incyText: 'App Store'
@@ -1628,17 +1645,25 @@ if (btnDeviceDownload) {
   autoSelectDefaultAppForCurrentPlatform();
   updateDisplayedSubscriptionUrls(currentSelectedApp);
 
+  function updateSettingsDevicesSubtitle(used, limit) {
+    if (!settingsDevicesSubtitle) return;
+    const u = Number(used);
+    const l = Number(limit);
+    if (Number.isFinite(u) && Number.isFinite(l) && l > 0) {
+      settingsDevicesSubtitle.textContent = `Подключено: ${u} из ${l}`;
+    }
+  }
+
   if (settingsDevicesSubtitle) {
     const cached = profileSubscription?.getCachedProfile?.() || profileSubscription?.getSnapshot?.();
-    const used = cached?.user?.connected_devices ?? cached?.connected_devices;
-    const limit = cached?.user?.device_limit ?? cached?.device_limit;
-    if (used !== undefined && limit !== undefined) {
-      settingsDevicesSubtitle.textContent = `Подключено: ${used} из ${limit}`;
-    }
+    const used = cached?.user?.connected_devices ?? cached?.connected_devices ?? cached?.usedDevices;
+    const limit = cached?.user?.device_limit ?? cached?.device_limit ?? cached?.deviceLimit;
+    updateSettingsDevicesSubtitle(used, limit);
+
     if (deviceList?.fetchList) {
       loadDeviceList().then((snapshot) => {
         if (snapshot && settingsDevicesSubtitle) {
-          settingsDevicesSubtitle.textContent = `Подключено: ${snapshot.usedSlots} из ${snapshot.deviceLimit}`;
+          updateSettingsDevicesSubtitle(snapshot.usedSlots, snapshot.deviceLimit);
         }
       }).catch(() => {
         if (settingsDevicesSubtitle && settingsDevicesSubtitle.textContent === 'Проверяем устройства…') {
@@ -1646,6 +1671,17 @@ if (btnDeviceDownload) {
         }
       });
     }
+  }
+
+  if (typeof profileSubscription?.subscribe === 'function') {
+    try {
+      profileSubscription.subscribe((snap) => {
+        updateDisplayedSubscriptionUrls(currentSelectedApp);
+        const u = snap?.user?.connected_devices ?? snap?.connected_devices ?? snap?.usedDevices;
+        const l = snap?.user?.device_limit ?? snap?.device_limit ?? snap?.deviceLimit;
+        updateSettingsDevicesSubtitle(u, l);
+      });
+    } catch (_) {}
   }
 
   GhostLinkV3.devices = Object.freeze({

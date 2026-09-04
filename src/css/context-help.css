@@ -1,7 +1,7 @@
 .context-help-trigger {
-  position: fixed;
-  top: max(24px, env(safe-area-inset-top));
-  right: max(24px, calc((100vw - min(100vw, 480px)) / 2 + 24px));
+  position: absolute;
+  right: 0;
+  top: 0;
   z-index: 180;
   transition: transform 160ms ease, box-shadow 160ms ease;
 }

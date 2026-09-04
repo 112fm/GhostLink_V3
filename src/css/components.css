@@ -200,6 +200,11 @@
   to { width: 100%; }
 }
 
+.status-island.is-subscription-active {
+  --subscription-color: #b8ff00;
+  --subscription-glow: rgba(184, 255, 0, 0.58);
+}
+
 .status-island.is-subscription-warning {
   --subscription-color: #ffbf2f;
   --subscription-glow: rgba(255, 191, 47, 0.58);

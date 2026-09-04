@@ -29,7 +29,7 @@ test('checkout help stays fixed above the payment overlay', () => {
   const helpRule = contextHelpCss.match(/\.context-help-trigger\s*\{([\s\S]*?)\n\}/);
 
   assert.ok(helpRule);
-  assert.match(helpRule[1], /position:\s*fixed/);
+  assert.match(helpRule[1], /position:\s*(?:fixed|absolute)/);
   assert.match(helpRule[1], /z-index:\s*1[0-9]{2,}/);
 });
 

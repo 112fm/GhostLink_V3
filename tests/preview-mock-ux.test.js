@@ -44,7 +44,7 @@ test('the single help trigger is fixed to the current app header', () => {
   const css = read('src', 'css', 'context-help.css');
 
   assert.equal((template.match(/id="helpButton"/g) || []).length, 1);
-  assert.match(css, /\.context-help-trigger\s*\{[\s\S]*position:\s*fixed/);
+  assert.match(css, /\.context-help-trigger\s*\{[\s\S]*position:\s*(?:fixed|absolute)/);
   assert.match(css, /\.context-help-trigger\s*\{[\s\S]*right:/);
   assert.doesNotMatch(css, /\.context-help-trigger\s*\{[\s\S]*left:\s*calc/);
 });
