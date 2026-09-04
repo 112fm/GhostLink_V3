@@ -23,7 +23,11 @@
   if (!deviceAdapter) {
     throw new Error("GhostLink V3 real device adapter is missing");
   }
-  const invites = GhostLinkV3.createMockInvites?.();
+  const invitesAdapter = GhostLinkV3.createRealInvitesAdapter?.({
+    apiBase: profileSubscription.getApiBase?.(),
+    getToken: () => profileSubscription.getToken?.(),
+    profileSubscription,
+  });
   const support = GhostLinkV3.createMockSupport?.();
   const dependencies = {
     showToast,
@@ -32,7 +36,7 @@
     deviceList: deviceAdapter,
     deviceOperations: deviceAdapter,
     deviceMutations: deviceAdapter,
-    invites,
+    invites: invitesAdapter,
     support,
     openOverlay: (page) => overlayNavigator.open(page),
     closeOverlay: (page) => overlayNavigator.close(page),
