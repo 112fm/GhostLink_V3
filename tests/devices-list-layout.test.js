@@ -347,6 +347,151 @@ test('key view page has rotate button, modal confirmation and synced state', () 
   assert.match(devicesJs, /syncKeyRotateButtonState,/);
 });
 
+test('key rotation UI safety: Cancel closes modal with 0 mutations; Confirm triggers exactly 1 rotate mutation', async () => {
+  const elements = new Map();
+
+  function createElement(id = '', className = '') {
+    const listeners = new Map();
+    const children = [];
+    const classes = new Set(className ? className.split(/\s+/).filter(Boolean) : []);
+    return {
+      id,
+      className,
+      children,
+      dataset: {},
+      style: {},
+      classList: {
+        _classes: classes,
+        add(...c) { c.forEach(n => this._classes.add(n)); },
+        remove(...c) { c.forEach(n => this._classes.delete(n)); },
+        toggle(c, force) { if (force !== undefined) { force ? this.add(c) : this.remove(c); } else { this._classes.has(c) ? this.remove(c) : this.add(c); } },
+        contains(c) { return this._classes.has(c); },
+      },
+      append: (...items) => children.push(...items),
+      replaceChildren: (...items) => { children.splice(0, children.length, ...items); },
+      addEventListener: (name, handler) => listeners.set(name, handler),
+      click: function() { listeners.get('click')?.(); this.onclick?.(); },
+      querySelector: () => null,
+      querySelectorAll: () => [],
+      setAttribute: () => {},
+      getAttribute: () => null,
+      textContent: '',
+      innerHTML: '',
+    };
+  }
+
+  const modal = createElement('modalConfirmRotateKey', 'modal-overlay hidden');
+  const modalText = createElement('rotateKeyModalText');
+  const btnSubmit = createElement('btnConfirmRotateSubmit');
+  const btnCancel = createElement('btnConfirmRotateCancel');
+  const btnClose = createElement('btnConfirmRotateClose');
+  const btnKeyRotate = createElement('btn-key-rotate', 'btn-rotate-key');
+  const userKeyUrl = createElement('user-key-url');
+  const pageKeyView = createElement('page-key-view', 'page-overlay hidden');
+
+  elements.set('modalConfirmRotateKey', modal);
+  elements.set('rotateKeyModalText', modalText);
+  elements.set('btnConfirmRotateSubmit', btnSubmit);
+  elements.set('btnConfirmRotateCancel', btnCancel);
+  elements.set('btnConfirmRotateClose', btnClose);
+  elements.set('btn-key-rotate', btnKeyRotate);
+  elements.set('user-key-url', userKeyUrl);
+  elements.set('page-key-view', pageKeyView);
+
+  const documentMock = {
+    readyState: 'complete',
+    getElementById: (id) => {
+      if (!elements.has(id)) elements.set(id, createElement(id));
+      return elements.get(id);
+    },
+    createElement: () => createElement(),
+    createTextNode: (text) => ({ textContent: String(text) }),
+    querySelector: () => null,
+    querySelectorAll: () => [],
+    addEventListener: () => {},
+    body: createElement('body'),
+  };
+
+  global.document = documentMock;
+  global.navigator = { userAgent: 'iPhone' };
+  global.window = {
+    document: documentMock,
+    crypto: { randomUUID: () => 'test-req-rotate-safety-123' },
+    GhostLinkV3: { apiBase: 'https://api.112prd.ru' },
+    Telegram: { WebApp: { platform: 'ios' } },
+  };
+
+  delete require.cache[require.resolve(join(root, 'src', 'modules', 'devices.js'))];
+  require(join(root, 'src', 'modules', 'devices.js'));
+
+  const activeDevice = {
+    id: 'dev-active-ios',
+    name: 'Мой iPhone',
+    platform: 'ios',
+    url: 'https://api.112prd.ru:2053/s/tok-initial#GhostLink',
+    url_incy: 'https://api.112prd.ru:2053/s/tok-initial?compat=incy#GhostLink',
+    isCurrent: true,
+  };
+
+  const mutationCalls = [];
+  global.window.GhostLinkV3.initDevicesModule({
+    showToast: () => {},
+    copyText: async () => true,
+    openOverlay: () => {},
+    closeOverlay: () => {},
+    returnToHome: () => {},
+    profileSubscription: {
+      getApiBase: () => 'https://api.112prd.ru',
+      getToken: () => 'auth-token-123',
+    },
+    deviceList: {
+      fetchList: async () => ({
+        devices: [activeDevice],
+        usedSlots: 1,
+        deviceLimit: 3,
+        freeSlots: 2,
+      }),
+    },
+    deviceMutations: {
+      start: async (operation) => {
+        mutationCalls.push({ ...operation });
+        return { status: 'processing', requestId: operation.requestId, deviceId: operation.deviceId };
+      },
+      getStatus: async () => ({ status: 'processing' }),
+    },
+  });
+
+  // Await async initial load of device list
+  await new Promise((resolve) => setTimeout(resolve, 15));
+
+  // Verify initial state: modal is hidden, no mutations dispatched
+  assert.equal(mutationCalls.length, 0);
+  assert.equal(modal.classList.contains('hidden'), true);
+
+  // 1. User clicks the rotate button on key view screen
+  btnKeyRotate.click();
+
+  // Modal must open and show warning with device name
+  assert.equal(modal.classList.contains('hidden'), false);
+  assert.match(modalText.innerHTML, /Мой iPhone/);
+
+  // 2. User clicks "Cancel" -> modal closes, exactly 0 mutations dispatched
+  btnCancel.click();
+  assert.equal(modal.classList.contains('hidden'), true);
+  assert.equal(mutationCalls.length, 0, 'Canceling key rotation must dispatch zero mutations');
+
+  // 3. User clicks rotate button again -> modal opens
+  btnKeyRotate.click();
+  assert.equal(modal.classList.contains('hidden'), false);
+
+  // 4. User clicks "Confirm" -> modal closes, exactly 1 rotate mutation dispatched for active device
+  btnSubmit.click();
+  assert.equal(modal.classList.contains('hidden'), true);
+  assert.equal(mutationCalls.length, 1, 'Confirming key rotation must dispatch exactly 1 mutation');
+  assert.equal(mutationCalls[0].type, 'rotate');
+  assert.equal(mutationCalls[0].deviceId, 'dev-active-ios');
+});
+
 
 
 

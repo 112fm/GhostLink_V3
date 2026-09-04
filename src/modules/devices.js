@@ -991,50 +991,6 @@ if (currentDeviceOperation && ['preparing', 'accepted', 'processing', 'unknown',
 // On Another Device Screen (#page-other-device) Logic
 const pageOtherDevice = document.getElementById('page-other-device');
 const btnOtherDeviceBack = document.getElementById('btn-other-device-back');
-const otherDevicePickerList = document.getElementById('other-device-picker-list');
-const otherDevicePickerStatus = document.getElementById('other-device-picker-status');
-
-function setOtherDevicePickerStatus(message, tone = 'neutral') {
-  if (!otherDevicePickerStatus) return;
-  otherDevicePickerStatus.textContent = message;
-  otherDevicePickerStatus.dataset.tone = tone;
-}
-
-function renderOtherDevicePicker(devices) {
-  if (!otherDevicePickerList) return;
-  otherDevicePickerList.replaceChildren();
-
-  if (!Array.isArray(devices) || devices.length === 0) {
-    setOtherDevicePickerStatus('В списке пока нет устройств. Создание новой записи появится после подключения API.', 'neutral');
-    return;
-  }
-
-  devices.forEach((device) => {
-    if (!device?.id) return;
-    const card = document.createElement('button');
-    card.type = 'button';
-    card.className = 'other-device-picker-card';
-    card.dataset.deviceUuid = device.id;
-
-    const icon = document.createElement('span');
-    icon.className = 'other-device-picker-icon';
-    icon.innerHTML = getDevicePlatformSvg(device);
-    const copy = document.createElement('span');
-    copy.className = 'other-device-picker-copy';
-    const name = document.createElement('strong');
-    name.textContent = device.name || 'Устройство';
-    const meta = document.createElement('small');
-    meta.textContent = device.app || 'Приложение не выбрано';
-    copy.append(name, meta);
-    const arrow = document.createElement('span');
-    arrow.className = 'other-device-picker-arrow';
-    arrow.textContent = '›';
-    card.append(icon, copy, arrow);
-    card.addEventListener('click', () => selectDeviceForSetup(device));
-    otherDevicePickerList.append(card);
-  });
-  setOtherDevicePickerStatus('Выберите устройство для настройки приложения.');
-}
 
 function selectDeviceForSetup(device) {
   if (!device?.id) return;
@@ -1048,8 +1004,6 @@ function selectDeviceForSetup(device) {
 async function openOtherDevicePicker() {
   if (!pageOtherDevice) return;
   openOverlay(pageOtherDevice);
-  otherDevicePickerList?.replaceChildren();
-  setOtherDevicePickerStatus('Получаем список устройств…');
 
   const btnOtherDeviceAddNew = document.getElementById('btnOtherDeviceAddNew');
   if (btnOtherDeviceAddNew && !btnOtherDeviceAddNew._hasAddNewListener) {
@@ -1089,17 +1043,6 @@ async function openOtherDevicePicker() {
         openOverlay(pageAppSelect);
       };
     });
-  }
-
-  try {
-    const snapshot = await deviceList?.fetchList?.();
-    if (!snapshot) throw new Error('Device list is unavailable');
-    lastConfirmedDeviceList = snapshot;
-    renderOtherDevicePicker(snapshot.devices);
-  } catch (error) {
-    setOtherDevicePickerStatus(error?.type === 'timeout'
-      ? 'Список устройств отвечает слишком долго. Попробуйте ещё раз.'
-      : 'Не удалось получить список устройств. Проверьте подключение и повторите.', 'error');
   }
 }
 
