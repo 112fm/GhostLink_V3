@@ -152,6 +152,16 @@
             <p class="key-view-subtitle">Нажмите «Добавить в приложение», чтобы автоматически добавить ключ</p>
           </div>
 
+          <!-- App Switcher (INCY / Karing) on Key View -->
+          <div class="key-app-switcher" id="key-app-switcher">
+            <button type="button" class="key-app-tab active" id="key-tab-incy" data-app="incy">
+              <span>INCY</span>
+            </button>
+            <button type="button" class="key-app-tab" id="key-tab-karing" data-app="karing">
+              <span>Karing</span>
+            </button>
+          </div>
+
           <!-- Key Copy Field -->
           <div class="key-box-container">
             <div class="key-box-field" id="key-box-field">
@@ -165,6 +175,15 @@
             </div>
             <p class="key-box-subnote">Или нажмите на поле, чтобы скопировать ключ</p>
           </div>
+
+          <!-- Smart Routing Banner (INCY) -->
+          <div class="smart-routing-banner hidden" id="smart-routing-banner">
+            <div class="smart-routing-header">
+              <span class="smart-routing-icon">🛡️</span>
+              <strong class="smart-routing-title">Умный обход РФ сайтов активен</strong>
+            </div>
+            <p class="smart-routing-text">Банки (Сбер, Т-Банк), Госуслуги, Ozon и VK работают напрямую без замедления и отключения VPN.</p>
+          </div>
         </div>
 
         <!-- Fixed Bottom Actions -->
@@ -175,7 +194,7 @@
               <polyline points="10 17 15 12 10 7"/>
               <line x1="15" y1="12" x2="3" y2="12"/>
             </svg>
-            <span>Добавить в приложение</span>
+            <span id="btn-add-to-app-text">Добавить в INCY</span>
           </button>
         </div>
       </section>
@@ -271,8 +290,8 @@
 
           <!-- Devices Selection List -->
           <div class="devices-section">
-            <h4 class="devices-section-title">Устройства</h4>
-            <div class="devices-grid" hidden aria-hidden="true">
+            <h4 class="devices-section-title">Система устройства</h4>
+            <div class="devices-grid" id="other-devices-grid">
               <!-- iOS -->
               <div class="platform-card" data-platform="ios">
                 <div class="platform-card-left">
@@ -386,7 +405,7 @@
           </div>
 
           <div class="devices-section other-device-picker-section">
-            <h4 class="devices-section-title">Ваши устройства</h4>
+            <h4 class="devices-section-title">Или выберите созданное устройство</h4>
             <p id="other-device-picker-status" class="other-device-picker-status" role="status" aria-live="polite">Получаем список устройств…</p>
             <div id="other-device-picker-list" class="other-device-picker-list" aria-live="polite"></div>
             <button class="devices-add-button other-device-add-new-btn" id="btnOtherDeviceAddNew" type="button" style="margin-top: 14px; width: 100%;">

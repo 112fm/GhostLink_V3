@@ -86,6 +86,80 @@ function getDevicePlatformSvg(device) {
   return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>';
 }
 
+function getDeviceNormalizedPlatform(device) {
+  const p = (device?.platform || '').toLowerCase();
+  const n = (device?.name || '').toLowerCase();
+
+  if (p.includes('macos') || p.includes('mac') || n.includes('mac') || n.includes('macbook')) {
+    return 'macos';
+  }
+  if (p.includes('ios') || p.includes('iphone') || p.includes('ipad') || n.includes('iphone') || n.includes('ipad') || p.includes('apple') || n.includes('apple')) {
+    return 'ios';
+  }
+  if (p.includes('win') || n.includes('win') || n.includes('windows') || n.includes('пк')) {
+    return 'windows';
+  }
+  if (p.includes('android') || n.includes('android') || n.includes('samsung') || n.includes('xiaomi') || n.includes('pixel') || n.includes('redmi')) {
+    return 'android';
+  }
+  if (p.includes('tv') || n.includes('tv')) {
+    return 'tv';
+  }
+  if (p.includes('linux') || n.includes('linux') || n.includes('ubuntu')) {
+    return 'linux';
+  }
+  return 'other';
+}
+
+function isDeviceCurrentForPlatform(device, currentPlatform = getDevicePlatform()) {
+  if (!device) return false;
+  if (!device.isCurrent) return false;
+  const devPlatform = getDeviceNormalizedPlatform(device);
+  if (currentPlatform === 'macos') {
+    return devPlatform === 'macos';
+  }
+  if (currentPlatform === 'ios') {
+    return devPlatform === 'ios';
+  }
+  if (currentPlatform === 'android') {
+    return devPlatform === 'android';
+  }
+  if (currentPlatform === 'windows') {
+    return devPlatform === 'windows';
+  }
+  if (currentPlatform === 'linux') {
+    return devPlatform === 'linux';
+  }
+  if (currentPlatform === 'tv') {
+    return devPlatform === 'tv';
+  }
+  return false;
+}
+
+function openDeviceManageView(device) {
+  if (!device?.id) return;
+  const matched = lastConfirmedDeviceList?.devices?.find((d) => d.id === device.id);
+  selectedSetupDeviceId = device.id;
+  selectedSetupDevice = matched ? { ...matched, ...device } : { ...device };
+  setupFlowMode = 'existing-device';
+
+  const devApp = String(selectedSetupDevice.app || '').toLowerCase();
+  let chosenApp = 'incy';
+  if (devApp.includes('karing')) {
+    chosenApp = 'karing';
+  } else if (devApp.includes('incy')) {
+    chosenApp = 'incy';
+  } else if (!selectedSetupDevice.url_incy && !selectedSetupDevice.subscription_url_incy && (selectedSetupDevice.url || selectedSetupDevice.subscription_url)) {
+    chosenApp = 'karing';
+  } else {
+    const devPlatform = getDeviceNormalizedPlatform(selectedSetupDevice);
+    chosenApp = ['windows', 'linux', 'tv'].includes(devPlatform) ? 'karing' : 'incy';
+  }
+
+  selectAppChoice(chosenApp);
+  openOverlay(pageKeyView);
+}
+
 function setDevicesListStatus(message, tone = 'neutral') {
   if (!devicesListStatus) return;
   devicesListStatus.textContent = message;
@@ -115,7 +189,8 @@ function renderDeviceCards(devices) {
     meta.className = 'device-apple-meta';
     meta.textContent = device.app && device.app !== 'Не определено' ? `Подключено через ${device.app}` : 'Готово к подключению';
     info.append(name);
-    if (device.isCurrent) {
+    const isThis = isDeviceCurrentForPlatform(device, getDevicePlatform());
+    if (isThis) {
       const row = document.createElement('div');
       row.className = 'device-apple-sub-row';
       const badge = document.createElement('span');
@@ -134,10 +209,15 @@ function renderDeviceCards(devices) {
     stats.className = 'device-right-stats';
     const activity = document.createElement('span');
     activity.className = 'device-activity';
+    const isOnline = device.status !== 'offline';
     const dot = document.createElement('span');
-    dot.className = `device-status-dot${device.status === 'online' ? '' : ' offline'}`;
+    dot.className = `device-status-dot${isOnline ? '' : ' offline'}`;
     const activityText = document.createElement('span');
-    activityText.textContent = (device.lastActive && device.lastActive !== 'Нет данных') ? device.lastActive : 'Активно';
+    const appName = (device.app && device.app !== 'Не определено')
+      ? device.app
+      : (device.url_incy ? 'INCY' : (device.url ? 'Karing' : ''));
+    const statusText = isOnline ? 'Активно 🟢' : 'Офлайн 🔴';
+    activityText.textContent = appName ? `${appName} · ${statusText}` : statusText;
     activity.append(dot, activityText);
     stats.append(activity);
     if (device.traffic && device.traffic !== 'Нет данных') {
@@ -152,13 +232,13 @@ function renderDeviceCards(devices) {
     actions.className = 'device-card-actions';
     const isBusy = pendingDeviceMutations.has(device.id);
     
-    // Подключить
+    // ⚙️ Настроить
     const btnConnect = document.createElement('button');
     btnConnect.type = 'button';
     btnConnect.className = 'device-card-action device-card-action--connect';
-    btnConnect.textContent = isBusy ? 'Загрузка...' : 'Подключить';
+    btnConnect.textContent = isBusy ? 'Загрузка...' : '⚙️ Настроить';
     btnConnect.disabled = isBusy;
-    btnConnect.addEventListener('click', () => selectDeviceForSetup(device));
+    btnConnect.addEventListener('click', () => openDeviceManageView(device));
     
     // Удалить
     const btnRemove = document.createElement('button');
@@ -1083,7 +1163,9 @@ function getProvidedSubscriptionUrl(...candidates) {
 function getSubscriptionUrl(app = 'karing') {
   let targetDevice = selectedSetupDevice;
   if (!targetDevice && lastConfirmedDeviceList?.devices) {
-    targetDevice = lastConfirmedDeviceList.devices.find((d) => d.isCurrent);
+    const curPlatform = getDevicePlatform();
+    targetDevice = lastConfirmedDeviceList.devices.find((d) => isDeviceCurrentForPlatform(d, curPlatform))
+      || lastConfirmedDeviceList.devices.find((d) => d.isCurrent);
   }
 
   if (targetDevice) {
@@ -1124,10 +1206,40 @@ function updateDisplayedSubscriptionUrls(app = currentSelectedApp || 'karing') {
       setBtnAddToAppText(btnAddToApp, `Ссылка для ${appName} недоступна`);
     } else {
       btnAddToApp.disabled = false;
-      setBtnAddToAppText(btnAddToApp, `Добавить в ${app === 'incy' ? 'INCY' : 'Karing'}`);
+      setBtnAddToAppText(btnAddToApp, `Добавить в ${appName}`);
+    }
+  }
+
+  const tabIncy = document.getElementById('key-tab-incy');
+  const tabKaring = document.getElementById('key-tab-karing');
+  if (app === 'incy') {
+    tabIncy?.classList.add('active');
+    tabKaring?.classList.remove('active');
+  } else {
+    tabKaring?.classList.add('active');
+    tabIncy?.classList.remove('active');
+  }
+
+  const smartRoutingBanner = document.getElementById('smart-routing-banner');
+  if (smartRoutingBanner) {
+    if (app === 'incy') {
+      smartRoutingBanner.classList.remove('hidden');
+    } else {
+      smartRoutingBanner.classList.add('hidden');
     }
   }
 }
+
+const keyTabIncy = document.getElementById('key-tab-incy');
+const keyTabKaring = document.getElementById('key-tab-karing');
+
+keyTabIncy?.addEventListener('click', () => {
+  selectAppChoice('incy');
+});
+
+keyTabKaring?.addEventListener('click', () => {
+  selectAppChoice('karing');
+});
 
 if (typeof profileSubscription?.subscribe === 'function') {
   try {
@@ -1321,8 +1433,9 @@ async function proceedToKeyView() {
 
   // Scenario 1: On this device
   if (setupFlowMode === 'this-device' && !selectedSetupDevice) {
-    // Check if this device is already in confirmed list
-    const existingCurrent = lastConfirmedDeviceList?.devices?.find((d) => d.isCurrent);
+    const curPlatform = getDevicePlatform();
+    // Check if this device is already in confirmed list for current platform
+    const existingCurrent = lastConfirmedDeviceList?.devices?.find((d) => isDeviceCurrentForPlatform(d, curPlatform));
     if (existingCurrent) {
       selectedSetupDeviceId = existingCurrent.id;
       selectedSetupDevice = { ...existingCurrent };
@@ -1392,9 +1505,9 @@ if (btnOpenBotGuide) {
 
 if (keyBoxField && userKeyUrl) {
   keyBoxField.addEventListener('click', async () => {
-    const selectedRadio = document.querySelector('input[name="app-choice"]:checked');
-    const isIncy = selectedRadio && selectedRadio.value === 'incy';
-    const subUrl = getSubscriptionUrl(isIncy ? 'incy' : 'karing');
+    const app = currentSelectedApp || 'incy';
+    const isIncy = app === 'incy';
+    const subUrl = getSubscriptionUrl(app);
     if (!subUrl) {
       showToast(`Ссылка для ${isIncy ? 'INCY' : 'Karing'} ещё не получена.`);
       return;
@@ -1410,9 +1523,8 @@ if (keyBoxField && userKeyUrl) {
 
 if (btnAddToApp && userKeyUrl) {
   btnAddToApp.addEventListener('click', async () => {
-    const selectedRadio = document.querySelector('input[name="app-choice"]:checked');
-    const isIncy = selectedRadio && selectedRadio.value === 'incy';
-    const app = isIncy ? 'incy' : 'karing';
+    const app = currentSelectedApp || 'incy';
+    const isIncy = app === 'incy';
     const subUrl = getSubscriptionUrl(app);
     if (!subUrl) {
       showToast(`Ссылка для ${isIncy ? 'INCY' : 'Karing'} ещё не получена.`);
@@ -1425,10 +1537,14 @@ if (btnAddToApp && userKeyUrl) {
     if (isIncy) {
       // INCY deep link: incy://import/{encoded_url}
       const incyDeepLink = `incy://import/${encodeURIComponent(subUrl)}`;
-      showToast('Ссылка скопирована! Открываем INCY... (вставьте ссылку в приложении)');
+      showToast('Открываем INCY... Ссылка скопирована!');
       setTimeout(() => {
         try {
-          window.location.href = incyDeepLink;
+          if (window.Telegram?.WebApp?.openLink) {
+            window.Telegram.WebApp.openLink(incyDeepLink);
+          } else {
+            window.location.href = incyDeepLink;
+          }
         } catch (_) {}
       }, 350);
     } else {
@@ -1440,7 +1556,11 @@ if (btnAddToApp && userKeyUrl) {
         : 'Открываем Karing...');
       setTimeout(() => {
         try {
-          window.location.href = karingInstallUrl;
+          if (window.Telegram?.WebApp?.openLink) {
+            window.Telegram.WebApp.openLink(karingInstallUrl);
+          } else {
+            window.location.href = karingInstallUrl;
+          }
         } catch (_) {}
       }, 350);
     }
@@ -1567,45 +1687,21 @@ function updateDownloadButton() {
   }
 }
 
-// Open platform detail modal when platform card is clicked
+// Open app selection when platform card is clicked on other devices page
 document.querySelectorAll('.platform-card').forEach(card => {
   card.addEventListener('click', () => {
-    const platform = card.dataset.platform || 'ios';
-    currentPlatform = platform;
-    const config = PLATFORM_CONFIG[platform];
-
-    if (config) {
-      if (deviceDetailHeroIcon) deviceDetailHeroIcon.innerHTML = config.svg;
-      if (deviceDetailTitle) deviceDetailTitle.textContent = config.title;
-
-      if (config.karingOnly || platform === 'windows') {
-        // Linux and Windows only support Karing, so do not offer a dead INCY choice.
-        if (deviceAppChoice) deviceAppChoice.style.display = 'none';
-        if (btnSelectIncy) btnSelectIncy.style.display = 'none';
-        currentAppChoice = 'karing';
-        if (btnSelectKaring) btnSelectKaring.classList.add('active');
-        if (btnSelectIncy) btnSelectIncy.classList.remove('active');
-      } else {
-        // Platforms that offer both supported apps keep the selector visible.
-        if (deviceAppChoice) deviceAppChoice.style.display = '';
-        if (btnSelectIncy) btnSelectIncy.style.display = '';
-        currentAppChoice = config.incyUrl ? 'incy' : 'karing';
-        if (currentAppChoice === 'incy') {
-          if (btnSelectIncy) btnSelectIncy.classList.add('active');
-          if (btnSelectKaring) btnSelectKaring.classList.remove('active');
-        } else {
-          if (btnSelectKaring) btnSelectKaring.classList.add('active');
-          if (btnSelectIncy) btnSelectIncy.classList.remove('active');
-        }
-      }
-
-      if (step1Title) step1Title.textContent = `Скачайте приложение ${currentAppChoice === 'karing' ? 'Karing' : 'INCY'}`;
-      if (deviceDetailKeyText) deviceDetailKeyText.textContent = getSubscriptionUrl(currentAppChoice);
-      updateDownloadButton();
-      updateKaringGuideVisibility();
-    }
-
-    openOverlay(pageDeviceDetail);
+    const platform = card.dataset.platform || 'windows';
+    const platformNames = { ios: 'iPhone', android: 'Android', macos: 'Mac', windows: 'Windows', tv: 'TV', linux: 'Linux' };
+    pendingNewDevice = {
+      name: `Мой ${platformNames[platform] || 'ПК'}`,
+      platform: platform,
+      target: 'other-device',
+    };
+    setupFlowMode = 'new-other-device';
+    selectedSetupDeviceId = null;
+    selectedSetupDevice = null;
+    autoSelectDefaultAppForCurrentPlatform(platform);
+    openOverlay(pageAppSelect);
   });
 });
 
@@ -1742,11 +1838,14 @@ if (btnDeviceDownload) {
     selectAppChoice,
     autoSelectDefaultAppForCurrentPlatform,
     getDevicePlatform,
+    getDeviceNormalizedPlatform,
+    isDeviceCurrentForPlatform,
     getSubscriptionUrl,
     isSafeSubscriptionUrl,
     getCurrentUserToken,
     createRequestId,
     openOtherDevicePicker,
+    openDeviceManageView,
     selectDeviceForSetup,
     getSelectedSetupDeviceId: () => selectedSetupDeviceId,
     getSelectedSetupDevice: () => selectedSetupDevice ? { ...selectedSetupDevice } : null,

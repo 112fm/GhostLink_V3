@@ -456,3 +456,92 @@
 .btn-modal-action--lime:active {
   transform: translateY(0);
 }
+
+/* App Switcher (INCY / Karing) on Key View */
+.key-app-switcher {
+  display: flex;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 4px;
+  margin: 16px 0 10px;
+  width: 100%;
+  max-width: 320px;
+  box-sizing: border-box;
+}
+
+.key-app-tab {
+  flex: 1;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.key-app-tab:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.key-app-tab.active {
+  background: rgba(184, 255, 0, 0.12);
+  color: var(--lime);
+  border: 1px solid rgba(184, 255, 0, 0.3);
+  box-shadow: 0 0 12px rgba(184, 255, 0, 0.15);
+}
+
+/* Smart Routing Banner (INCY) */
+.smart-routing-banner {
+  margin: 14px 0 6px;
+  padding: 14px 16px;
+  background: rgba(24, 27, 24, 0.85);
+  border: 1px solid rgba(184, 255, 0, 0.22);
+  border-radius: 16px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+  text-align: left;
+  transition: all 0.25s ease;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.smart-routing-banner.hidden {
+  display: none !important;
+}
+
+.smart-routing-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.smart-routing-icon {
+  font-size: 16px;
+}
+
+.smart-routing-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.01em;
+}
+
+.smart-routing-text {
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.72);
+  margin: 0;
+}
+

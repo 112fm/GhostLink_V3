@@ -13,7 +13,7 @@ test('other-device page has a dynamic device picker and hides the legacy static 
   assert.ok(picker, 'other-device page must exist');
   assert.match(picker[0], /id="other-device-picker-list"/);
   assert.match(picker[0], /id="other-device-picker-status"/);
-  assert.match(picker[0], /class="devices-grid" hidden aria-hidden="true"/);
+  assert.match(picker[0], /class="devices-grid"/);
   assert.match(picker[0], /key-box-container"[^>]*hidden aria-hidden="true"[\s\S]*?id="other-device-key-field"/);
 });
 

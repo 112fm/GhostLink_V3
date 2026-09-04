@@ -98,4 +98,120 @@ test('help button is hidden when any modal overlay is active or body has modal o
   assert.match(devicesJs, /document\.body\.classList\.toggle\('has-modal-open'/);
 });
 
+test('device card connect button is ⚙️ Настроить and opens openDeviceManageView', () => {
+  assert.match(devicesJs, /btnConnect\.textContent\s*=\s*isBusy \? 'Загрузка\.\.\.' : '⚙️ Настроить';/);
+  assert.match(devicesJs, /btnConnect\.addEventListener\('click',\s*\(\)\s*=>\s*openDeviceManageView\(device\)\);/);
+  assert.match(devicesJs, /function openDeviceManageView\(device\)/);
+  assert.match(devicesJs, /openDeviceManageView,/);
+});
+
+test('smart routing banner and key app switcher exist in template and CSS', () => {
+  assert.match(template, /id="smart-routing-banner"/);
+  assert.match(template, /Умный обход РФ сайтов активен/);
+  assert.match(template, /Банки \(Сбер, Т-Банк\), Госуслуги, Ozon и VK работают напрямую/);
+  assert.match(template, /id="key-app-switcher"/);
+  assert.match(template, /id="key-tab-incy"/);
+  assert.match(template, /id="key-tab-karing"/);
+
+  assert.match(devicesCss, /\.smart-routing-banner\s*\{[\s\S]*?border:\s*1px\s*solid\s*rgba\(184,\s*255,\s*0,\s*0\.22\);/);
+  assert.match(devicesCss, /\.key-app-switcher\s*\{[\s\S]*?display:\s*flex;/);
+  assert.match(devicesCss, /\.key-app-tab\.active\s*\{[\s\S]*?color:\s*var\(--lime\);/);
+});
+
+test('strict platform detection prevents cross-platform isCurrent false positives', () => {
+  const elements = new Map();
+  function createElement(id = '') {
+    const listeners = new Map();
+    const children = [];
+    return {
+      id,
+      children,
+      dataset: {},
+      style: {},
+      classList: {
+        _classes: new Set(),
+        add(c) { this._classes.add(c); },
+        remove(c) { this._classes.delete(c); },
+        toggle(c, force) { if (force !== undefined) { force ? this.add(c) : this.remove(c); } else { this._classes.has(c) ? this.remove(c) : this.add(c); } },
+        contains(c) { return this._classes.has(c); },
+      },
+      append: (...items) => children.push(...items),
+      replaceChildren: (...items) => { children.splice(0, children.length, ...items); },
+      addEventListener: (name, handler) => listeners.set(name, handler),
+      click: function() { listeners.get('click')?.(); this.onclick?.(); },
+      querySelector: () => null,
+      querySelectorAll: () => [],
+      setAttribute: () => {},
+      getAttribute: () => null,
+      textContent: '',
+    };
+  }
+
+  const documentMock = {
+    readyState: 'complete',
+    getElementById: (id) => {
+      if (!elements.has(id)) elements.set(id, createElement(id));
+      return elements.get(id);
+    },
+    createElement: () => createElement(),
+    createTextNode: (text) => ({ textContent: String(text) }),
+    querySelector: () => null,
+    querySelectorAll: () => [],
+    addEventListener: () => {},
+    body: createElement('body'),
+  };
+
+  global.document = documentMock;
+  global.navigator = { userAgent: 'Macintosh; Intel Mac OS X 10_15_7' };
+  global.window = {
+    document: documentMock,
+    crypto: { randomUUID: () => 'test-req-mac-1' },
+    GhostLinkV3: { apiBase: 'https://api.112prd.ru' },
+    Telegram: { WebApp: { platform: 'macos' } },
+  };
+
+  delete require.cache[require.resolve(join(root, 'src', 'modules', 'devices.js'))];
+  require(join(root, 'src', 'modules', 'devices.js'));
+
+  global.window.GhostLinkV3.initDevicesModule({
+    showToast: () => {},
+    copyText: async () => true,
+    openOverlay: () => {},
+    closeOverlay: () => {},
+    returnToHome: () => {},
+    profileSubscription: {
+      getApiBase: () => 'https://api.112prd.ru',
+      getToken: () => 'auth-token-123',
+    },
+  });
+
+  const devicesMod = global.window.GhostLinkV3.devices;
+  assert.equal(devicesMod.getDevicePlatform(), 'macos');
+
+  // iPhone device marked isCurrent: true by backend must NOT be recognized as "This device" on Mac
+  const iphoneDevice = {
+    id: 'dev-1',
+    name: 'Мой iPhone',
+    platform: 'ios',
+    isCurrent: true,
+  };
+  assert.equal(devicesMod.isDeviceCurrentForPlatform(iphoneDevice, 'macos'), false);
+
+  // Mac device marked isCurrent: true IS recognized on Mac
+  const macDevice = {
+    id: 'dev-2',
+    name: 'Мой MacBook',
+    platform: 'macos',
+    isCurrent: true,
+  };
+  assert.equal(devicesMod.isDeviceCurrentForPlatform(macDevice, 'macos'), true);
+
+  // Platform normalization checks
+  assert.equal(devicesMod.getDeviceNormalizedPlatform({ name: 'iPhone 15' }), 'ios');
+  assert.equal(devicesMod.getDeviceNormalizedPlatform({ name: 'MacBook Air' }), 'macos');
+  assert.equal(devicesMod.getDeviceNormalizedPlatform({ name: 'Домашний ПК', platform: 'windows' }), 'windows');
+  assert.equal(devicesMod.getDeviceNormalizedPlatform({ name: 'Samsung S24', platform: 'android' }), 'android');
+});
+
+
 
