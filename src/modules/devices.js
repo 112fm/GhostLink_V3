@@ -1016,9 +1016,6 @@ function getProvidedSubscriptionUrl(...candidates) {
 }
 
 function getSubscriptionUrl(app = 'karing') {
-  const cached = profileSubscription?.getCachedProfile?.();
-  const snapshot = profileSubscription?.getSnapshot?.();
-
   let targetDevice = selectedSetupDevice;
   if (!targetDevice && lastConfirmedDeviceList?.devices) {
     targetDevice = lastConfirmedDeviceList.devices.find((d) => d.isCurrent);
@@ -1026,28 +1023,9 @@ function getSubscriptionUrl(app = 'karing') {
 
   if (targetDevice) {
     if (app === 'incy') {
-      const explicitIncy = getProvidedSubscriptionUrl(targetDevice.url_incy, targetDevice.subscription_url_incy);
-      if (explicitIncy) return explicitIncy;
-
-      const baseDeviceUrl = getProvidedSubscriptionUrl(targetDevice.url, targetDevice.subscription_url);
-      if (baseDeviceUrl) {
-        if (baseDeviceUrl.includes('compat=incy')) return baseDeviceUrl;
-        const [baseAndQuery, hash] = baseDeviceUrl.split('#');
-        const sep = baseAndQuery.includes('?') ? '&' : '?';
-        return `${baseAndQuery}${sep}compat=incy${hash ? `#${hash}` : ''}`;
-      }
-      const token = targetDevice.sub_token || getCurrentUserToken();
-      if (token && isValidSubToken(token)) {
-        return `https://api.112prd.ru:2053/sub/${token}?compat=incy`;
-      }
-    } else {
-      const baseDeviceUrl = getProvidedSubscriptionUrl(targetDevice.url, targetDevice.subscription_url);
-      if (baseDeviceUrl) return baseDeviceUrl;
-      const token = targetDevice.sub_token || getCurrentUserToken();
-      if (token && isValidSubToken(token)) {
-        return `https://api.112prd.ru:2053/sub/${token}`;
-      }
+      return getProvidedSubscriptionUrl(targetDevice.url_incy, targetDevice.subscription_url_incy);
     }
+    return getProvidedSubscriptionUrl(targetDevice.url, targetDevice.subscription_url);
   }
 
   return '';

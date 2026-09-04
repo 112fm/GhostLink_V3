@@ -807,5 +807,138 @@ test('devices module consumes backend url/url_incy directly and disables btnAddT
   assert.equal(btnAddToApp.querySelector('span').textContent, 'Ссылка для Karing недоступна');
 });
 
+test('regression: selected device without URL and profile with sub_token does not generate URL and disables button', () => {
+  const elements = new Map();
+  function createMockElement(id = '', tagName = 'div') {
+    let textContent = '';
+    let disabled = false;
+    const spanEl = {
+      tagName: 'SPAN',
+      get textContent() { return textContent; },
+      set textContent(v) { textContent = String(v); },
+      replaceChildren: (...ch) => { textContent = ch.map(c => typeof c === 'string' ? c : c?.textContent || '').join(''); },
+      appendChild: (c) => { textContent += typeof c === 'string' ? c : c?.textContent || ''; },
+      classList: { add: () => {}, remove: () => {}, contains: () => false },
+      style: {},
+    };
+    return {
+      id,
+      tagName: tagName.toUpperCase(),
+      get disabled() { return disabled; },
+      set disabled(v) { disabled = Boolean(v); },
+      get textContent() { return textContent; },
+      set textContent(v) { textContent = String(v); },
+      classList: { add: () => {}, remove: () => {}, contains: () => false },
+      addEventListener: () => {},
+      setAttribute: () => {},
+      getAttribute: () => null,
+      removeAttribute: () => {},
+      replaceChildren: (...ch) => { textContent = ch.map(c => typeof c === 'string' ? c : c?.textContent || '').join(''); },
+      appendChild: (c) => { textContent += typeof c === 'string' ? c : c?.textContent || ''; },
+      querySelector: (sel) => (sel === 'span' ? spanEl : null),
+      querySelectorAll: () => [],
+      style: {},
+    };
+  }
+
+  const mockDoc = {
+    readyState: 'complete',
+    getElementById: (id) => {
+      if (!elements.has(id)) elements.set(id, createMockElement(id));
+      return elements.get(id);
+    },
+    createElement: (tag) => createMockElement('', tag),
+    createTextNode: (text) => ({ textContent: String(text) }),
+    querySelector: () => null,
+    querySelectorAll: () => [],
+    addEventListener: () => {},
+  };
+
+  global.window = {
+    document: mockDoc,
+    GhostLinkV3: {},
+    Telegram: { WebApp: { platform: 'ios', openLink: () => {} } },
+  };
+  global.document = mockDoc;
+  global.navigator = { userAgent: 'iPhone' };
+
+  const mockProfileSubscription = {
+    getSubToken: () => 'profile_sub_token_999',
+    getToken: () => 'auth_token_999',
+    getCachedProfile: () => ({
+      user: {
+        id: 'u999',
+        sub_token: 'profile_sub_token_999',
+      },
+    }),
+    getSnapshot: () => ({
+      user: {
+        id: 'u999',
+        sub_token: 'profile_sub_token_999',
+      },
+    }),
+    subscribe: () => () => {},
+  };
+
+  delete require.cache[require.resolve(join(root, 'src/modules/devices.js'))];
+  require(join(root, 'src/modules/devices.js'));
+  global.window.GhostLinkV3.initDevicesModule({
+    showToast: () => {},
+    copyText: () => true,
+    openOverlay: () => {},
+    closeOverlay: () => {},
+    returnToHome: () => {},
+    profileSubscription: mockProfileSubscription,
+  });
+
+  const { getSubscriptionUrl, isSubscriptionReady, selectDeviceForSetup, selectAppChoice } = global.window.GhostLinkV3.devices;
+  const btnAddToApp = mockDoc.getElementById('btn-add-to-app');
+
+  // Select a device that has NO url and NO url_incy
+  selectDeviceForSetup({
+    id: 'dev-empty-urls',
+    name: 'Empty URLs Device',
+    platform: 'ios',
+    url: '',
+    url_incy: '',
+  });
+
+  // Default app for iPhone is INCY
+  selectAppChoice('incy');
+  assert.equal(getSubscriptionUrl('incy'), '');
+  assert.equal(isSubscriptionReady('incy'), false);
+  assert.equal(btnAddToApp.disabled, true);
+  assert.equal(btnAddToApp.querySelector('span').textContent, 'Ссылка для INCY недоступна');
+
+  // Switch to Karing
+  selectAppChoice('karing');
+  assert.equal(getSubscriptionUrl('karing'), '');
+  assert.equal(isSubscriptionReady('karing'), false);
+  assert.equal(btnAddToApp.disabled, true);
+  assert.equal(btnAddToApp.querySelector('span').textContent, 'Ссылка для Karing недоступна');
+
+  // Now select a device that has only Karing url
+  selectDeviceForSetup({
+    id: 'dev-karing-only',
+    name: 'Karing Only Device',
+    platform: 'ios',
+    url: 'https://api.112prd.ru:2053/sub/karing_only_token',
+    url_incy: '',
+  });
+
+  selectAppChoice('incy');
+  assert.equal(getSubscriptionUrl('incy'), '');
+  assert.equal(isSubscriptionReady('incy'), false);
+  assert.equal(btnAddToApp.disabled, true);
+  assert.equal(btnAddToApp.querySelector('span').textContent, 'Ссылка для INCY недоступна');
+
+  selectAppChoice('karing');
+  assert.equal(getSubscriptionUrl('karing'), 'https://api.112prd.ru:2053/sub/karing_only_token');
+  assert.equal(isSubscriptionReady('karing'), true);
+  assert.equal(btnAddToApp.disabled, false);
+  assert.equal(btnAddToApp.querySelector('span').textContent, 'Добавить в Karing');
+});
+
+
 
 
