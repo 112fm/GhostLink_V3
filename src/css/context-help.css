@@ -9,9 +9,16 @@
 
 body:has(.page-overlay:not(.hidden)) #helpButton,
 body:has(.page-overlay:not(.hidden)) .context-help-trigger,
+body:has(.modal-overlay:not(.hidden)) #helpButton,
+body:has(.modal-overlay:not(.hidden)) .context-help-trigger,
+body:has(.admin-modal-overlay:not(.hidden)) #helpButton,
+body:has(.admin-modal-overlay:not(.hidden)) .context-help-trigger,
 body.has-overlay-open #helpButton,
 body.has-overlay-open .context-help-trigger,
-.page-overlay:not(.hidden) ~ * #helpButton {
+body.has-modal-open #helpButton,
+body.has-modal-open .context-help-trigger,
+.page-overlay:not(.hidden) ~ * #helpButton,
+.modal-overlay:not(.hidden) ~ * #helpButton {
   display: none !important;
 }
 

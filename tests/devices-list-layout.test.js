@@ -85,3 +85,17 @@ test('confirmDeviceDeletion formats device name safely in strong tag and deletes
   assert.match(devicesJs, /startDeviceMutation\(device,\s*'remove'\)/);
 });
 
+const contextHelpCss = readFileSync(join(root, 'src/css/context-help.css'), 'utf8');
+
+test('help button is hidden when any modal overlay is active or body has modal open', () => {
+  assert.match(contextHelpCss, /body:has\(\.modal-overlay:not\(\.hidden\)\)\s*#helpButton/);
+  assert.match(contextHelpCss, /body:has\(\.page-overlay:not\(\.hidden\)\)\s*#helpButton/);
+  assert.match(contextHelpCss, /body\.has-modal-open\s*#helpButton/);
+  assert.match(contextHelpCss, /body\.has-overlay-open\s*#helpButton/);
+  assert.match(contextHelpCss, /\.modal-overlay:not\(\.hidden\)\s*~\s*\* #helpButton/);
+  assert.match(contextHelpCss, /display:\s*none\s*!important/);
+  assert.match(devicesJs, /function syncModalBodyState/);
+  assert.match(devicesJs, /document\.body\.classList\.toggle\('has-modal-open'/);
+});
+
+

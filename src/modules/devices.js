@@ -373,6 +373,13 @@ function escapeHtml(value) {
   }[char]));
 }
 
+function syncModalBodyState() {
+  if (typeof document !== 'undefined' && document.body) {
+    const hasOpenModal = !!document.querySelector('.modal-overlay:not(.hidden), .admin-modal-overlay:not(.hidden)');
+    document.body.classList.toggle('has-modal-open', hasOpenModal);
+  }
+}
+
 function confirmDeviceDeletion(device) {
   const modal = document.getElementById('modalConfirmDeleteDevice');
   const modalText = document.getElementById('deleteDeviceModalText');
@@ -385,9 +392,11 @@ function confirmDeviceDeletion(device) {
   const devName = escapeHtml(device?.name || 'Устройство');
   modalText.innerHTML = `Доступ для устройства <strong style="color: #fff;">${devName}</strong> будет отключен, а слот станет доступен для нового подключения.`;
   modal.classList.remove('hidden');
+  syncModalBodyState();
   
   const cleanup = () => {
     modal.classList.add('hidden');
+    syncModalBodyState();
     if (btnSubmit) btnSubmit.onclick = null;
     if (btnCancel) btnCancel.onclick = null;
     if (btnClose) btnClose.onclick = null;
@@ -502,10 +511,12 @@ if (btnDevicesAdd && pageSetup) {
     
     input.value = '';
     modal.classList.remove('hidden');
+    syncModalBodyState();
     input.focus?.();
     
     const cleanup = () => {
       modal.classList.add('hidden');
+      syncModalBodyState();
       btnSubmit.onclick = null;
       btnClose.onclick = null;
     };
@@ -928,10 +939,12 @@ async function openOtherDevicePicker() {
 
       input.value = '';
       modal.classList.remove('hidden');
+      syncModalBodyState();
       input.focus?.();
 
       const cleanup = () => {
         modal.classList.add('hidden');
+        syncModalBodyState();
         btnSubmit.onclick = null;
         btnClose.onclick = null;
       };
