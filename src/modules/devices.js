@@ -1160,13 +1160,18 @@ function getProvidedSubscriptionUrl(...candidates) {
   return '';
 }
 
+function resolveCurrentDevice(platform = getDevicePlatform()) {
+  if (!lastConfirmedDeviceList?.devices) return null;
+  return lastConfirmedDeviceList.devices.find((d) => isDeviceCurrentForPlatform(d, platform)) || null;
+}
+
+function resolveTargetDevice(platform = getDevicePlatform()) {
+  if (selectedSetupDevice) return selectedSetupDevice;
+  return resolveCurrentDevice(platform);
+}
+
 function getSubscriptionUrl(app = 'karing') {
-  let targetDevice = selectedSetupDevice;
-  if (!targetDevice && lastConfirmedDeviceList?.devices) {
-    const curPlatform = getDevicePlatform();
-    targetDevice = lastConfirmedDeviceList.devices.find((d) => isDeviceCurrentForPlatform(d, curPlatform))
-      || lastConfirmedDeviceList.devices.find((d) => d.isCurrent);
-  }
+  const targetDevice = resolveTargetDevice(getDevicePlatform());
 
   if (targetDevice) {
     if (app === 'incy') {
@@ -1851,6 +1856,8 @@ if (btnDeviceDownload) {
     getSelectedSetupDevice: () => selectedSetupDevice ? { ...selectedSetupDevice } : null,
     getPendingNewDevice: () => pendingNewDevice ? { ...pendingNewDevice } : null,
     getSetupFlowMode: () => setupFlowMode,
+    resolveCurrentDevice: (platform = getDevicePlatform()) => resolveCurrentDevice(platform),
+    resolveTargetDevice: (platform = getDevicePlatform()) => resolveTargetDevice(platform),
     proceedToKeyView,
     createIncyDeepLink: (url) => url ? `incy://import/${encodeURIComponent(url)}` : '',
     isValidSubToken,

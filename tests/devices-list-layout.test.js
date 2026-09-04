@@ -213,5 +213,112 @@ test('strict platform detection prevents cross-platform isCurrent false positive
   assert.equal(devicesMod.getDeviceNormalizedPlatform({ name: 'Samsung S24', platform: 'android' }), 'android');
 });
 
+test('cross-platform isCurrent fallback is completely removed: Mac client with iPhone list has null targetDevice and no badge', async () => {
+  const elements = new Map();
+  function createElement(id = '') {
+    const listeners = new Map();
+    const children = [];
+    return {
+      id,
+      children,
+      dataset: {},
+      style: {},
+      classList: {
+        _classes: new Set(),
+        add(c) { this._classes.add(c); },
+        remove(c) { this._classes.delete(c); },
+        toggle(c, force) { if (force !== undefined) { force ? this.add(c) : this.remove(c); } else { this._classes.has(c) ? this.remove(c) : this.add(c); } },
+        contains(c) { return this._classes.has(c); },
+      },
+      append: (...items) => children.push(...items),
+      replaceChildren: (...items) => { children.splice(0, children.length, ...items); },
+      addEventListener: (name, handler) => listeners.set(name, handler),
+      click: function() { listeners.get('click')?.(); this.onclick?.(); },
+      querySelector: () => null,
+      querySelectorAll: () => [],
+      setAttribute: () => {},
+      getAttribute: () => null,
+      textContent: '',
+    };
+  }
+
+  const documentMock = {
+    readyState: 'complete',
+    getElementById: (id) => {
+      if (!elements.has(id)) elements.set(id, createElement(id));
+      return elements.get(id);
+    },
+    createElement: () => createElement(),
+    createTextNode: (text) => ({ textContent: String(text) }),
+    querySelector: () => null,
+    querySelectorAll: () => [],
+    addEventListener: () => {},
+    body: createElement('body'),
+  };
+
+  global.document = documentMock;
+  global.navigator = { userAgent: 'Macintosh; Intel Mac OS X 10_15_7' };
+  global.window = {
+    document: documentMock,
+    crypto: { randomUUID: () => 'test-req-mac-only-iphone' },
+    GhostLinkV3: { apiBase: 'https://api.112prd.ru' },
+    Telegram: { WebApp: { platform: 'macos' } },
+  };
+
+  delete require.cache[require.resolve(join(root, 'src', 'modules', 'devices.js'))];
+  require(join(root, 'src', 'modules', 'devices.js'));
+
+  const latestDevicesJs = readFileSync(join(root, 'src/modules/devices.js'), 'utf8');
+  // Verify that the fallback d.isCurrent is completely removed from getSubscriptionUrl and devices.js
+  assert.doesNotMatch(latestDevicesJs, /devices\.find\(\(d\)\s*=>\s*d\.isCurrent\)/);
+
+  const iphoneDevice = {
+    id: 'dev-iphone-only',
+    name: 'Мой iPhone',
+    platform: 'ios',
+    url: 'https://api.112prd.ru:2053/s/tok-iphone#GhostLink',
+    url_incy: 'https://api.112prd.ru:2053/s/tok-iphone?compat=incy#GhostLink',
+    isCurrent: true,
+  };
+
+  global.window.GhostLinkV3.initDevicesModule({
+    showToast: () => {},
+    copyText: async () => true,
+    openOverlay: () => {},
+    closeOverlay: () => {},
+    returnToHome: () => {},
+    profileSubscription: {
+      getApiBase: () => 'https://api.112prd.ru',
+      getToken: () => 'auth-token-123',
+    },
+    deviceList: {
+      fetchList: async () => ({
+        devices: [iphoneDevice],
+        usedSlots: 1,
+        deviceLimit: 3,
+        freeSlots: 2,
+      }),
+    },
+  });
+
+  const devicesMod = global.window.GhostLinkV3.devices;
+  assert.equal(devicesMod.getDevicePlatform(), 'macos');
+
+  // targetDevice for Mac must be null when only iPhone is present
+  assert.equal(devicesMod.resolveCurrentDevice('macos'), null);
+  assert.equal(devicesMod.resolveTargetDevice('macos'), null);
+
+  // getSubscriptionUrl must return empty string (not falling back to iPhone)
+  assert.equal(devicesMod.getSubscriptionUrl('karing'), '');
+  assert.equal(devicesMod.getSubscriptionUrl('incy'), '');
+
+  // Render cards and verify that iPhone does NOT have "Это устройство" badge
+  const container = documentMock.getElementById('active-devices-container');
+  assert.ok(container);
+  await new Promise((r) => setTimeout(r, 20));
+  const renderedBadges = container.children.flatMap(c => c.children).filter(el => el.classList?.contains?.('device-is-this-badge'));
+  assert.equal(renderedBadges.length, 0, 'Badge "Это устройство" must NOT be shown for iPhone when on Mac');
+});
+
 
 
