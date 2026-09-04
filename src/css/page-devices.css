@@ -1,37 +1,232 @@
-/* GhostLink V3: Devices Screen & Modals (Neon Bento Glassmorphism) */
+/* GhostLink V3: Devices Screen & Modals (Bento Glassmorphism) */
 
 #page-devices-list {
   background:
-    radial-gradient(circle at 85% 12%, rgba(184, 255, 0, 0.09), transparent 45%),
-    radial-gradient(circle at 15% 88%, rgba(0, 240, 255, 0.07), transparent 45%),
-    #111211;
+    radial-gradient(circle at 80% 8%, rgba(184, 255, 0, 0.05), transparent 50%),
+    radial-gradient(circle at 20% 92%, rgba(0, 240, 255, 0.04), transparent 50%),
+    #0d0f0d;
 }
 
-/* Device Item Card (Neon Glass Bento) */
+/* 1. Modernized Slot Summary Banner (Harmonized with Home Status Island) */
+.devices-slot-summary {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 20px;
+  border-radius: 18px;
+  background: rgba(20, 22, 20, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+
+.devices-slot-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.devices-slot-badge-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.devices-slot-pulse {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--lime);
+  box-shadow: 0 0 8px rgba(184, 255, 0, 0.6);
+  animation: pulseGlow 2s infinite ease-in-out;
+}
+
+.devices-slot-eyebrow {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.devices-slot-icon-badge {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--lime);
+}
+
+.devices-slot-counter-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.devices-slot-summary strong,
+#devices-slot-summary {
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.devices-slot-track {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.devices-slot-fill {
+  height: 100%;
+  background: var(--lime);
+  border-radius: 999px;
+  box-shadow: 0 0 8px rgba(184, 255, 0, 0.4);
+  transition: width 0.35s ease;
+}
+
+.devices-slot-footer-row span,
+#devices-slot-free {
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* 2. Hide redundant system status text */
+#devices-list-status,
+.devices-list-status {
+  display: none !important;
+}
+
+/* 3. Device Item Card (Bento Glassmorphism) */
 .device-apple-card {
   position: relative;
-  background: linear-gradient(145deg, rgba(26, 32, 26, 0.75) 0%, rgba(16, 20, 16, 0.88) 100%);
-  border: 1px solid rgba(184, 255, 0, 0.18);
-  border-radius: 22px;
+  background: rgba(24, 27, 24, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
   padding: 16px 18px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  align-items: start;
+  align-items: center;
   gap: 12px;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.32);
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .device-apple-card:hover {
-  border-color: rgba(184, 255, 0, 0.35);
-  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.5), 0 0 16px rgba(184, 255, 0, 0.12);
+  background: rgba(28, 32, 28, 0.85);
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
 }
 
 .device-apple-card.is-current {
-  border-color: rgba(184, 255, 0, 0.42);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), 0 0 20px rgba(184, 255, 0, 0.14);
+  background: rgba(24, 30, 24, 0.82);
+  border-color: rgba(184, 255, 0, 0.28);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.36);
+}
+
+/* Platform Icons: Circular Soft-Background Badge */
+.device-platform-icon,
+.device-badge-emoji {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.device-platform-icon svg,
+.device-badge-emoji svg {
+  display: block;
+}
+
+.device-apple-card:hover .device-platform-icon,
+.device-apple-card:hover .device-badge-emoji {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+/* 4. Action Buttons (Compact Lime Connect + Square Soft Red Trash) */
+.device-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  grid-column: 1 / -1;
+  margin-top: 6px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.device-card-action--connect {
+  flex: 1;
+  min-height: 38px;
+  padding: 8px 16px;
+  border-radius: 12px;
+  background: rgba(184, 255, 0, 0.08);
+  border: 1px solid rgba(184, 255, 0, 0.22);
+  color: var(--lime);
+  font-size: 13px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.device-card-action--connect:hover:not(:disabled) {
+  background: rgba(184, 255, 0, 0.16);
+  border-color: rgba(184, 255, 0, 0.4);
+  transform: translateY(-1px);
+}
+
+.device-card-action--connect:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.device-card-action--remove {
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+  min-height: 38px;
+  padding: 0;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.45);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.device-card-action--remove:hover:not(:disabled) {
+  background: rgba(255, 77, 79, 0.12);
+  border-color: rgba(255, 77, 79, 0.35);
+  color: #ff5c5c;
+  transform: translateY(-1px);
+}
+
+.device-card-action--remove:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 /* Modal Overlays: Placed right on top of Devices Screen */

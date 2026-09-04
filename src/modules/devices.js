@@ -47,7 +47,43 @@ let setupFlowMode = 'this-device';
 let pendingNewDevice = null;
 
 function getDeviceEmoji(platform) {
-  return { phone: '📱', laptop: '💻', tv: '📺' }[platform] || '🔑';
+  return { phone: '📱', laptop: '💻', tv: '📺' }[platform] || '📱';
+}
+
+function getDevicePlatformSvg(device) {
+  const p = (device?.platform || '').toLowerCase();
+  const n = (device?.name || '').toLowerCase();
+
+  // Apple / iOS
+  if (p.includes('ios') || p.includes('apple') || p.includes('iphone') || p.includes('ipad') || n.includes('iphone') || n.includes('ipad') || n.includes('apple')) {
+    return '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>';
+  }
+  // macOS / Mac
+  if (p.includes('macos') || p.includes('mac') || n.includes('mac') || n.includes('macbook')) {
+    return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>';
+  }
+  // Windows
+  if (p.includes('win') || n.includes('win') || n.includes('windows') || n.includes('пк')) {
+    return '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M3 5.5L10.5 4v8H3V5.5zM11.5 4L21 2.5V12H11.5V4zM3 13h7.5v8L3 19.5V13zM11.5 13H21v9.5L11.5 21V13z"/></svg>';
+  }
+  // Android
+  if (p.includes('android') || n.includes('android') || n.includes('samsung') || n.includes('xiaomi') || n.includes('pixel') || n.includes('redmi')) {
+    return '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18c0 .55.45 1 1 1h1v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h2v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h1c.55 0 1-.45 1-1V8H6v10zM3.5 8C2.67 8 2 8.67 2 9.5v7c0 .83.67 1.5 1.5 1.5S5 17.33 5 16.5v-7C5 8.67 4.33 8 3.5 8zm17 0c-.83 0-1.5.67-1.5 1.5v7c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-7c0-.83-.67-1.5-1.5-1.5zm-4.97-4.84l1.3-1.3c.2-.2.2-.51 0-.71-.2-.2-.51-.2-.71 0l-1.48 1.48C13.85 2.23 12.95 2 12 2c-.96 0-1.86.23-2.66.63L7.85 1.15c-.2-.2-.51-.2-.71 0-.2.2-.2.51 0 .71l1.31 1.31C6.97 4.26 6 5.92 6 7.8h12c0-1.88-.97-3.54-2.47-4.64zM9 5.5c-.41 0-.75-.34-.75-.75s.34-.75.75-.75.75.34.75.75-.34.75-.75.75zm6 0c-.41 0-.75-.34-.75-.75s.34-.75.75-.75.75.34.75.75-.34.75-.75.75z"/></svg>';
+  }
+  // TV
+  if (p.includes('tv') || n.includes('tv')) {
+    return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="15" rx="2"/><polyline points="17 2 12 7 7 2"/></svg>';
+  }
+  // Linux
+  if (p.includes('linux') || n.includes('linux') || n.includes('ubuntu')) {
+    return '<img src="./assets/icons/Linux.svg" style="width: 20px; height: 20px; filter: brightness(0) invert(1);" alt="Linux" />';
+  }
+  // Laptop fallback
+  if (p === 'laptop' || n.includes('laptop') || n.includes('ноутбук')) {
+    return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>';
+  }
+  // Phone / Default device
+  return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>';
 }
 
 function setDevicesListStatus(message, tone = 'neutral') {
@@ -68,8 +104,8 @@ function renderDeviceCards(devices) {
     const left = document.createElement('div');
     left.className = 'device-apple-left';
     const emoji = document.createElement('div');
-    emoji.className = 'device-badge-emoji';
-    emoji.textContent = getDeviceEmoji(device.platform);
+    emoji.className = 'device-platform-icon device-badge-emoji';
+    emoji.innerHTML = getDevicePlatformSvg(device);
     const info = document.createElement('div');
     info.className = 'device-apple-info';
     const name = document.createElement('span');
@@ -124,13 +160,16 @@ function renderDeviceCards(devices) {
     btnConnect.disabled = isBusy;
     btnConnect.addEventListener('click', () => selectDeviceForSetup(device));
     
-    // Освободить слот
+    // Удалить
     const btnRemove = document.createElement('button');
     btnRemove.type = 'button';
     btnRemove.className = 'device-card-action device-card-action--remove';
-    btnRemove.textContent = isBusy ? '...' : '🗑️ Освободить слот';
+    btnRemove.setAttribute('aria-label', 'Удалить устройство');
+    btnRemove.setAttribute('title', 'Удалить устройство');
+    btnRemove.innerHTML = isBusy
+      ? '...'
+      : '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>';
     btnRemove.disabled = isBusy;
-    btnRemove.style.color = '#ff4d4f'; // Красная подсветка
     btnRemove.addEventListener('click', () => confirmDeviceDeletion(device));
     
     actions.append(btnConnect, btnRemove);
@@ -145,7 +184,7 @@ function renderDeviceList(snapshot) {
   const isAtLimit = snapshot.status === 'limit';
   renderDeviceCards(snapshot.devices);
 
-  if (devicesSlotSummary) devicesSlotSummary.textContent = `📱 ${snapshot.usedSlots} из ${snapshot.deviceLimit} занято`;
+  if (devicesSlotSummary) devicesSlotSummary.textContent = `${snapshot.usedSlots} из ${snapshot.deviceLimit} занято`;
   if (devicesSlotFree) devicesSlotFree.textContent = snapshot.freeSlots > 0
     ? `Свободно мест: ${snapshot.freeSlots}`
     : 'Все места по тарифу заняты';
@@ -827,7 +866,7 @@ function renderOtherDevicePicker(devices) {
 
     const icon = document.createElement('span');
     icon.className = 'other-device-picker-icon';
-    icon.textContent = getDeviceEmoji(device.platform);
+    icon.innerHTML = getDevicePlatformSvg(device);
     const copy = document.createElement('span');
     copy.className = 'other-device-picker-copy';
     const name = document.createElement('strong');

@@ -13,3 +13,36 @@ test('device list header reserves the fixed help area without inline positioning
   assert.match(css, /\.devices-list-header\s*\{[\s\S]*?justify-content:\s*flex-start/);
   assert.match(css, /@media \(min-width: 600px\)[\s\S]*?\.devices-list-header\s*\{[\s\S]*?padding-right:\s*110px/);
 });
+
+const devicesCss = readFileSync(join(root, 'src/css/page-devices.css'), 'utf8');
+const devicesJs = readFileSync(join(root, 'src/modules/devices.js'), 'utf8');
+
+test('device-apple-card uses Bento glassmorphism styling without neon borders', () => {
+  assert.match(devicesCss, /\.device-apple-card\s*\{[\s\S]*?background:\s*rgba\(24,\s*27,\s*24,\s*0\.75\);/);
+  assert.match(devicesCss, /\.device-apple-card\s*\{[\s\S]*?border:\s*1px\s*solid\s*rgba\(255,\s*255,\s*255,\s*0\.08\);/);
+  assert.match(devicesCss, /\.device-apple-card\s*\{[\s\S]*?border-radius:\s*18px;/);
+  assert.match(devicesCss, /\.device-apple-card\s*\{[\s\S]*?backdrop-filter:\s*blur\(20px\);/);
+});
+
+test('platform icons use circular soft-background badges and vector SVGs', () => {
+  assert.match(devicesCss, /\.device-platform-icon[\s\S]*?border-radius:\s*50%;/);
+  assert.match(devicesCss, /\.device-platform-icon[\s\S]*?background:\s*rgba\(255,\s*255,\s*255,\s*0\.05\);/);
+  assert.match(devicesJs, /function getDevicePlatformSvg/);
+  // Verify that yellow key emoji is not used in card rendering
+  assert.doesNotMatch(devicesJs, /emoji\.textContent\s*=\s*getDeviceEmoji/);
+  assert.match(devicesJs, /emoji\.innerHTML\s*=\s*getDevicePlatformSvg/);
+});
+
+test('action buttons feature compact lime connect and compact trash icon button', () => {
+  assert.match(devicesCss, /\.device-card-action--connect\s*\{[\s\S]*?color:\s*var\(--lime\);/);
+  assert.match(devicesCss, /\.device-card-action--remove\s*\{[\s\S]*?width:\s*38px;/);
+  assert.match(devicesCss, /\.device-card-action--remove:hover[\s\S]*?color:\s*#ff5c5c;/);
+  assert.match(devicesJs, /btnRemove\.innerHTML\s*=[\s\S]*?<svg/);
+});
+
+test('redundant status text is hidden and slot summary banner is modernized', () => {
+  assert.match(devicesCss, /#devices-list-status[\s\S]*?display:\s*none\s*!important;/);
+  assert.match(devicesCss, /\.devices-slot-summary\s*\{[\s\S]*?background:\s*rgba\(20,\s*22,\s*20,\s*0\.65\);/);
+  assert.match(devicesCss, /\.devices-slot-summary\s*\{[\s\S]*?backdrop-filter:\s*blur\(16px\);/);
+  assert.match(devicesCss, /\.devices-slot-summary\s*\{[\s\S]*?border-radius:\s*18px;/);
+});
