@@ -1632,11 +1632,24 @@ if (btnDeviceDownload) {
     }
   }
 
+  function syncSettingsDevicesSubtitleFromSnapshot(source) {
+    if (!source) return;
+    const u = source?.subscription?.usedDevices
+      ?? source?.usedDevices
+      ?? source?.connected_devices
+      ?? source?.user?.connected_devices
+      ?? source?.user?.usedDevices;
+    const l = source?.subscription?.deviceLimit
+      ?? source?.deviceLimit
+      ?? source?.device_limit
+      ?? source?.user?.device_limit
+      ?? source?.user?.deviceLimit;
+    updateSettingsDevicesSubtitle(u, l);
+  }
+
   if (settingsDevicesSubtitle) {
     const cached = profileSubscription?.getCachedProfile?.() || profileSubscription?.getSnapshot?.();
-    const used = cached?.user?.connected_devices ?? cached?.connected_devices ?? cached?.usedDevices;
-    const limit = cached?.user?.device_limit ?? cached?.device_limit ?? cached?.deviceLimit;
-    updateSettingsDevicesSubtitle(used, limit);
+    syncSettingsDevicesSubtitleFromSnapshot(cached);
 
     if (deviceList?.fetchList) {
       loadDeviceList().then((snapshot) => {
@@ -1655,9 +1668,7 @@ if (btnDeviceDownload) {
     try {
       profileSubscription.subscribe((snap) => {
         updateDisplayedSubscriptionUrls(currentSelectedApp);
-        const u = snap?.user?.connected_devices ?? snap?.connected_devices ?? snap?.usedDevices;
-        const l = snap?.user?.device_limit ?? snap?.device_limit ?? snap?.deviceLimit;
-        updateSettingsDevicesSubtitle(u, l);
+        syncSettingsDevicesSubtitleFromSnapshot(snap);
       });
     } catch (_) {}
   }

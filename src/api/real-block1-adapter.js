@@ -219,6 +219,10 @@
       subscription_url: subscriptionUrl,
       url: subscriptionUrl,
       url_incy: urlIncy,
+      connected_devices: toInteger(userResponse.connected_devices),
+      device_limit: toInteger(userResponse.device_limit),
+      usedDevices: toInteger(userResponse.connected_devices),
+      deviceLimit: toInteger(userResponse.device_limit),
       payment_status: paymentStatus,
       payment_request_id: paymentRequestId,
       payment: {

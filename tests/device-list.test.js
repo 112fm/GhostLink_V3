@@ -107,3 +107,83 @@ test('settings never shows a made-up device count before the list loads', () => 
   assert.ok(subtitle);
   assert.equal(subtitle[1].trim(), 'Проверяем устройства…');
 });
+
+test('settings devices subtitle immediately updates from cached profile or subscribe snapshot', () => {
+  const elements = new Map();
+  function createMockElement(id = '', tagName = 'div') {
+    let textContent = '';
+    return {
+      id,
+      tagName: tagName.toUpperCase(),
+      get textContent() { return textContent; },
+      set textContent(v) { textContent = String(v); },
+      classList: { add: () => {}, remove: () => {}, contains: () => false },
+      addEventListener: () => {},
+      setAttribute: () => {},
+      getAttribute: () => null,
+      querySelector: () => null,
+      querySelectorAll: () => [],
+      style: {},
+    };
+  }
+
+  const mockDoc = {
+    readyState: 'complete',
+    getElementById: (id) => {
+      if (!elements.has(id)) elements.set(id, createMockElement(id));
+      return elements.get(id);
+    },
+    createElement: (tag) => createMockElement('', tag),
+    createTextNode: (text) => ({ textContent: String(text) }),
+    querySelector: () => null,
+    querySelectorAll: () => [],
+    addEventListener: () => {},
+  };
+
+  const subtitleEl = mockDoc.getElementById('settings-devices-subtitle');
+  subtitleEl.textContent = 'Проверяем устройства…';
+
+  global.window = {
+    document: mockDoc,
+    GhostLinkV3: {},
+    Telegram: { WebApp: { platform: 'ios', openLink: () => {} } },
+  };
+  global.document = mockDoc;
+  global.navigator = { userAgent: 'iPhone' };
+
+  let subscriber = null;
+  const mockProfileSubscription = {
+    getCachedProfile: () => ({
+      subscription: {
+        usedDevices: 2,
+        deviceLimit: 5,
+      },
+    }),
+    getSnapshot: () => null,
+    subscribe: (cb) => { subscriber = cb; return () => {}; },
+  };
+
+  delete require.cache[require.resolve(path.join(root, 'src/modules/devices.js'))];
+  require(path.join(root, 'src/modules/devices.js'));
+  global.window.GhostLinkV3.initDevicesModule({
+    showToast: () => {},
+    copyText: () => true,
+    openOverlay: () => {},
+    closeOverlay: () => {},
+    returnToHome: () => {},
+    profileSubscription: mockProfileSubscription,
+  });
+
+  // Verify it immediately replaced 'Проверяем устройства…' with 'Подключено: 2 из 5'
+  assert.equal(subtitleEl.textContent, 'Подключено: 2 из 5');
+
+  // Verify subscriber update changes it
+  subscriber({
+    subscription: {
+      usedDevices: 3,
+      deviceLimit: 5,
+    },
+  });
+  assert.equal(subtitleEl.textContent, 'Подключено: 3 из 5');
+});
+

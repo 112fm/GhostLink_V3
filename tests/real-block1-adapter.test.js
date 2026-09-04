@@ -51,6 +51,10 @@ test('real Block 1 opens an ephemeral session then reads profile and tariffs', a
   assert.equal(snapshot.subscription.deviceLimit, 3);
   assert.equal(snapshot.subscription.usedDevices, 1);
   assert.equal(snapshot.subscription.totalDays, null);
+  assert.equal(snapshot.connected_devices, 1);
+  assert.equal(snapshot.device_limit, 3);
+  assert.equal(snapshot.usedDevices, 1);
+  assert.equal(snapshot.deviceLimit, 3);
   assert.equal(adapter.getSession().token, undefined);
   assert.deepEqual(adapter.getDiagnostics().initData_present, true);
   assert.equal(adapter.getDiagnostics().session_status, 200);
