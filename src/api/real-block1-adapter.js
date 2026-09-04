@@ -183,6 +183,8 @@
     const paymentLabel = userResponse.payment_label || subscription.payment_label || '';
     const paymentTimeMsk = userResponse.payment_time_msk || subscription.payment_time_msk || '';
     const paymentTs = userResponse.payment_ts || subscription.payment_ts || 0;
+    const rawReferralLink = userResponse.referral_link || subscription.referral_link || '';
+    const referralLink = typeof rawReferralLink === 'string' ? rawReferralLink.trim() : '';
 
     return {
       isMock: false,
@@ -195,6 +197,7 @@
         subscription_url: subscriptionUrl,
         url: subscriptionUrl,
         url_incy: urlIncy,
+        referral_link: referralLink,
       },
       profile: {
         id: String(user.id || ''),
@@ -207,6 +210,7 @@
         subscription_url: subscriptionUrl,
         url: subscriptionUrl,
         url_incy: urlIncy,
+        referral_link: referralLink,
         payment_status: paymentStatus,
         payment_request_id: paymentRequestId,
         payment_amount: paymentAmount,
@@ -219,6 +223,7 @@
       subscription_url: subscriptionUrl,
       url: subscriptionUrl,
       url_incy: urlIncy,
+      referral_link: referralLink,
       connected_devices: toInteger(userResponse.connected_devices),
       device_limit: toInteger(userResponse.device_limit),
       usedDevices: toInteger(userResponse.connected_devices),

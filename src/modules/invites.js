@@ -2,7 +2,7 @@
   const GhostLinkV3 = window.GhostLinkV3 = window.GhostLinkV3 || {};
 
   GhostLinkV3.initInvitesModule = function initInvitesModule(dependencies = {}) {
-    const { copyText, invites } = dependencies;
+    const { copyText, invites, showToast, profileSubscription } = dependencies;
     if (!invites) return;
 
     const refs = {
@@ -64,11 +64,27 @@
     let toastTimer;
 
     function notify(message) {
-      if (!refs.toast) return;
-      refs.toast.textContent = message;
-      refs.toast.classList.add('show');
-      window.clearTimeout(toastTimer);
-      toastTimer = window.setTimeout(() => refs.toast.classList.remove('show'), 2600);
+      if (typeof showToast === 'function') {
+        showToast(message);
+      }
+      if (refs.toast) {
+        refs.toast.textContent = message;
+        refs.toast.classList.add('show');
+        window.clearTimeout(toastTimer);
+        toastTimer = window.setTimeout(() => refs.toast.classList.remove('show'), 2600);
+      }
+    }
+
+    function getReferralLink() {
+      const profile = profileSubscription?.getSnapshot?.() || profileSubscription?.getCachedProfile?.();
+      const profileLink = profile?.referral_link || profile?.user?.referral_link || profile?.profile?.referral_link;
+      if (profileLink && typeof profileLink === 'string' && profileLink.trim()) {
+        return profileLink.trim();
+      }
+      if (state.snapshot?.standardInvitation?.url) {
+        return state.snapshot.standardInvitation.url;
+      }
+      return '';
     }
 
     function bridgeRequestId() {
@@ -140,7 +156,7 @@
     }
 
     function showQr() {
-      const value = state.mode === 'bridge' ? getBridgeQrValue() : state.snapshot?.standardInvitation?.url;
+      const value = state.mode === 'bridge' ? getBridgeQrValue() : (getReferralLink() || state.snapshot?.standardInvitation?.url);
       if (!value) return;
       renderLocalMockQr(value);
       setHidden(refs.qrBox, false);
@@ -148,7 +164,7 @@
       if (refs.qrLabel) {
         refs.qrLabel.textContent = state.mode === 'bridge'
           ? 'Демонстрационный QR: показывает mock-ссылку и не создаёт ключ.'
-          : 'Демонстрационный QR: показывает mock-приглашение и не открывает Telegram.';
+          : 'Демонстрационный QR: показывает приглашение.';
       }
     }
 
@@ -180,22 +196,24 @@
     function renderSnapshot(snapshot) {
       state.snapshot = snapshot;
       const { stats } = snapshot;
-      const hasLiveData = !snapshot.isMock;
-      if (refs.rewardDays) refs.rewardDays.textContent = hasLiveData ? `+${stats.rewardDays}` : '—';
-      if (refs.subscribed) refs.subscribed.textContent = hasLiveData ? String(stats.subscribed) : '—';
-      if (refs.pending) refs.pending.textContent = hasLiveData ? String(stats.pending) : '—';
-      if (refs.expired) refs.expired.textContent = hasLiveData ? String(stats.expired) : '—';
+      if (refs.rewardDays) refs.rewardDays.textContent = stats.rewardDays > 0 ? `+${stats.rewardDays}` : '0';
+      if (refs.subscribed) refs.subscribed.textContent = String(stats.subscribed ?? 0);
+      if (refs.pending) refs.pending.textContent = String(stats.pending ?? 0);
+      if (refs.expired) refs.expired.textContent = String(stats.expired ?? 0);
       if (refs.count) {
-        refs.count.textContent = hasLiveData && stats.invited ? `${stats.invited} приглашения` : '';
-        setHidden(refs.count, !hasLiveData || !stats.invited);
+        refs.count.textContent = stats.invited ? `${stats.invited} приглашения` : '';
+        setHidden(refs.count, !stats.invited);
       }
       renderChain(stats.rewardDays);
       if (refs.list) {
         refs.list.innerHTML = snapshot.invitations.length
           ? snapshot.invitations.map(invitationView).join('')
-          : '<div class="referral-empty-card"><strong class="empty-title">Приглашений пока нет</strong><span class="empty-subtitle">Реальные приглашения появятся здесь после подключения данных.</span></div>';
+          : '<div class="referral-empty-card"><strong class="empty-title">Приглашений пока нет</strong><span class="empty-subtitle">Отправьте ссылку первому другу!</span></div>';
       }
-      if (state.mode === 'standard' && refs.linkText) refs.linkText.textContent = snapshot.standardInvitation.url;
+      if (state.mode === 'standard' && refs.linkText) {
+        const link = getReferralLink() || snapshot.standardInvitation?.url;
+        if (link) refs.linkText.textContent = link;
+      }
     }
 
     async function loadSnapshot() {
@@ -219,7 +237,8 @@
       refs.keyIcon?.classList.toggle('hidden', mode !== 'bridge');
       if (mode === 'standard') {
         setHidden(refs.linkBox, false);
-        if (refs.linkText) refs.linkText.textContent = state.snapshot?.standardInvitation?.url || '';
+        const link = getReferralLink() || state.snapshot?.standardInvitation?.url || '';
+        if (refs.linkText && link) refs.linkText.textContent = link;
       } else {
         setHidden(refs.linkBox, true);
         restoreLatestBridge();
@@ -309,27 +328,38 @@
     }
 
     async function copyCurrentLink() {
-      const value = refs.linkText?.textContent?.trim();
+      const value = refs.linkText?.textContent?.trim() || getReferralLink();
       if (!value) return;
       const copied = await copyText(value);
-      notify(copied ? 'Ссылка скопирована. Статус Bridge не изменён.' : 'Не удалось скопировать. Нажмите и удерживайте ссылку.');
+      notify(copied ? 'Ссылка скопирована!' : 'Не удалось скопировать. Нажмите и удерживайте ссылку.');
     }
 
     async function shareStandard() {
-      const value = state.snapshot?.standardInvitation?.url;
+      const value = getReferralLink() || refs.linkText?.textContent?.trim();
       if (!value) return;
-      const data = { title: 'GhostLink', text: 'Подключайся к GhostLink по моей ссылке:', url: value };
+      const text = 'Подключайся к GhostLink по моей ссылке:';
+      const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(value)}&text=${encodeURIComponent(text)}`;
+
+      if (window.Telegram?.WebApp?.openTelegramLink) {
+        try {
+          window.Telegram.WebApp.openTelegramLink(shareUrl);
+          return;
+        } catch (_) {}
+      }
       if (navigator.share) {
         try {
-          await navigator.share(data);
-          notify('Окно отправки открыто.');
-        } catch {
-          // Closing a native share sheet is neutral, not an error.
-        }
-        return;
+          await navigator.share({ title: 'GhostLink', text, url: value });
+          return;
+        } catch (_) {}
+      }
+      if (typeof window !== 'undefined' && window.open) {
+        try {
+          window.open(shareUrl, '_blank');
+          return;
+        } catch (_) {}
       }
       const copied = await copyText(value);
-      notify(copied ? 'Ссылка скопирована для отправки.' : 'Не удалось скопировать. Нажмите и удерживайте ссылку.');
+      notify(copied ? 'Ссылка скопирована!' : 'Не удалось скопировать. Нажмите и удерживайте ссылку.');
     }
 
     async function advanceBridge() {
@@ -358,7 +388,10 @@
       refs.statsToggle.setAttribute('aria-expanded', String(Boolean(hidden)));
     });
     refs.modeStandard?.addEventListener('click', () => renderMode('standard'));
-    refs.modeBridge?.addEventListener('click', () => renderMode('bridge'));
+    refs.modeBridge?.addEventListener('click', (e) => {
+      e?.preventDefault?.();
+      notify('Режим Bridge находится в разработке 🚧');
+    });
     refs.linkBox?.addEventListener('click', copyCurrentLink);
     refs.share?.addEventListener('click', () => (state.mode === 'bridge' ? startBridge() : shareStandard()));
     refs.toggleQr?.addEventListener('click', async () => {
@@ -366,6 +399,15 @@
       if (state.mode === 'standard' || state.bridge.operation) showQr();
     });
     refs.wizardNext?.addEventListener('click', advanceBridge);
+
+    if (profileSubscription?.subscribe) {
+      profileSubscription.subscribe(() => {
+        if (state.mode === 'standard' && refs.linkText) {
+          const link = getReferralLink();
+          if (link) refs.linkText.textContent = link;
+        }
+      });
+    }
 
     loadSnapshot();
     renderMode('standard');

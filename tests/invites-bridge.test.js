@@ -219,3 +219,31 @@ test('invite UI does not call an external QR service or present a real VLESS key
   assert.match(moduleSource, /bindMockUser/);
   assert.doesNotMatch(moduleSource, /vless:\/\//i);
 });
+
+test('referral template contains hero card, bonus counter, medallion chain, and empty state', () => {
+  const templateSource = readFileSync(join(__dirname, '..', 'src', 'templates', 'pages', 'invites.html'), 'utf8');
+
+  assert.match(templateSource, /class="referral-hero-card"/);
+  assert.match(templateSource, /id="refRewardDaysNum"/);
+  assert.match(templateSource, /id="refChainContainer"/);
+  assert.match(templateSource, /id="refStatsToggle"/);
+  assert.match(templateSource, /id="refStatsDrawer"/);
+  assert.match(templateSource, /id="btnModeStandard"/);
+  assert.match(templateSource, /id="btnModeBridge"/);
+  assert.match(templateSource, /Мост 2\.0 \(В разработке 🚧\)/);
+  assert.match(templateSource, /id="refLinkBox"/);
+  assert.match(templateSource, /id="refLinkText"/);
+  assert.match(templateSource, /id="btnShareReferral"/);
+  assert.match(templateSource, /id="refFriendsList"/);
+  assert.match(templateSource, /Приглашений пока нет/);
+  assert.match(templateSource, /Отправьте ссылку первому другу!/);
+});
+
+test('Bridge tab click shows toast notification and does not trigger bridge workflow', () => {
+  const moduleSource = readFileSync(join(__dirname, '..', 'src', 'modules', 'invites.js'), 'utf8');
+
+  assert.match(moduleSource, /btnModeBridge/);
+  assert.match(moduleSource, /Режим Bridge находится в разработке 🚧/);
+  assert.match(moduleSource, /Ссылка скопирована!/);
+  assert.match(moduleSource, /t\.me\/share\/url\?url=/);
+});

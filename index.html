@@ -18,7 +18,7 @@
     <link rel="stylesheet" href="./src/css/page-key-view.css?v=22" />
     <link rel="stylesheet" href="./src/css/page-other-device.css?v=22" />
     <link rel="stylesheet" href="./src/css/page-device-detail.css" />
-    <link rel="stylesheet" href="./src/css/page-referral.css" />
+    <link rel="stylesheet" href="./src/css/page-referral.css?v=23" />
     <link rel="stylesheet" href="./src/css/page-chat.css" />
     <link rel="stylesheet" href="./src/css/page-settings.css" />
     <link rel="stylesheet" href="./src/css/page-devices.css?v=22" />
@@ -86,13 +86,190 @@
            ВКЛАДКА НИЖНЕЙ НАВИГАЦИИ: рефералы и приглашения.
            ================================================================ -->
       <section id="tab-referral" class="tab-content">
-        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; height: 100%; padding: 0 20px;">
-          <div style="background: rgba(184, 255, 0, 0.05); border: 1px solid rgba(184, 255, 0, 0.1); border-radius: 20px; padding: 40px 20px; max-width: 400px; width: 100%;">
-            <div style="font-size: 48px; margin-bottom: 20px; filter: drop-shadow(0 0 10px rgba(184, 255, 0, 0.5));">🎟️</div>
-            <h2 style="color: var(--text-primary); font-size: 20px; margin-bottom: 12px; font-weight: 700;">Система инвайтов в разработке</h2>
-            <p style="color: var(--text-secondary); font-size: 14px; line-height: 1.5;">Закрытая реферальная программа клуба обновляется. Скоро здесь появится генерация персональных гостевых инвайтов.</p>
+        <div class="referral-container">
+          <!-- Single Master Referral Card -->
+          <div class="referral-hero-card">
+            <!-- Top Row: Left Explanation & Right Big Metric -->
+            <div class="ref-hero-top-row">
+              <div class="referral-hero-info">
+                <h2 class="referral-hero-title">Приглашай друзей</h2>
+                <p class="referral-hero-subtitle">+14 дней за каждого оплатившего друга</p>
+              </div>
+              <div class="ref-counter-block">
+                <span class="ref-big-num" id="refRewardDaysNum">0</span>
+                <span class="ref-big-label">бонусных дней</span>
+              </div>
+            </div>
+
+            <!-- Milestone Medallion Chain (Apple Fitness / Linear Style) -->
+            <div class="ref-chain-container" id="refChainContainer">
+              <div class="chain-nodes-row">
+                <div class="chain-node-item">
+                  <div class="node-medallion"></div>
+                  <span class="node-label">+14</span>
+                </div>
+                <div class="chain-line"></div>
+                <div class="chain-node-item">
+                  <div class="node-medallion"></div>
+                  <span class="node-label">+28</span>
+                </div>
+                <div class="chain-line"></div>
+                <div class="chain-node-item">
+                  <div class="node-medallion"></div>
+                  <span class="node-label">+42</span>
+                </div>
+                <div class="chain-line"></div>
+                <div class="chain-node-item">
+                  <div class="node-medallion"></div>
+                  <span class="node-label">+56</span>
+                </div>
+                <div class="chain-line"></div>
+                <div class="chain-node-item">
+                  <div class="node-medallion infinity">∞</div>
+                  <span class="node-label">+∞</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Subtle Thin Toggle Link with Vector SVG Chevron -->
+            <button class="ref-stats-toggle-link" id="refStatsToggle" aria-expanded="false" type="button">
+              <span>Статистика</span>
+              <svg class="ref-toggle-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+
+            <!-- Collapsible Stats Content Drawer -->
+            <div class="ref-stats-drawer hidden" id="refStatsDrawer">
+              <div class="drawer-stat-row">
+                <span class="drawer-stat-label">Оплатили</span>
+                <span class="drawer-stat-val" id="drawerSubscribed">0</span>
+              </div>
+              <div class="drawer-stat-row">
+                <span class="drawer-stat-label">Бесплатный период</span>
+                <span class="drawer-stat-val" id="drawerPending">0</span>
+              </div>
+              <div class="drawer-stat-row">
+                <span class="drawer-stat-label">Пробный закончился</span>
+                <span class="drawer-stat-val" id="drawerExpired">0</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Block 4: Referral Link Section & Mode Switch -->
+          <div class="referral-link-section" id="referral-link-section">
+            <!-- Mode Switch Tabs -->
+            <div class="referral-mode-tabs" role="tablist">
+              <button class="referral-mode-tab active" id="btnModeStandard" data-mode="standard" role="tab" type="button">
+                <img src="./assets/icons/tg.svg" alt="" style="width: 24px; height: 24px; object-fit: contain;" />
+                <span>Вход в закрытый клуб</span>
+              </button>
+              <button class="referral-mode-tab" id="btnModeBridge" data-mode="bridge" role="tab" type="button">
+                <img src="./assets/icons/bridge.svg" alt="" style="width: 24px; height: 24px; object-fit: contain; filter: brightness(0) invert(1);" />
+                <span>Мост 2.0 (В разработке 🚧)</span>
+              </button>
+            </div>
+
+            <div class="referral-link-header">
+              <h3 class="referral-link-title" id="refLinkTitle">Пригласи друга</h3>
+              <p class="referral-link-subtitle" id="refLinkSubtitle">Отправь ссылку и получи бонусные дни после первой оплаты друга</p>
+            </div>
+
+            <div class="referral-link-box" id="refLinkBox" role="button" tabindex="0" aria-label="Скопировать ссылку">
+              <span class="referral-link-text" id="refLinkText">ghostlink-mock://invite/ref_8fa492b</span>
+              <svg class="referral-copy-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+            </div>
+
+            <div class="referral-action-grid">
+              <button class="btn-action-share" id="btnShareReferral" type="button">
+                <svg id="btnShareIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="18" cy="5" r="3"></circle>
+                  <circle cx="6" cy="12" r="3"></circle>
+                  <circle cx="18" cy="19" r="3"></circle>
+                  <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                  <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                </svg>
+                <svg id="btnKeyIcon" class="hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="7.5" cy="15.5" r="4.5"></circle>
+                  <path d="m10.7 12.3 8.3-8.3"></path>
+                  <path d="m15.5 7.5 2.5 2.5"></path>
+                  <path d="m18 5 2 2"></path>
+                </svg>
+                <span id="btnShareText">Поделиться ссылкой</span>
+              </button>
+
+              <button class="btn-action-qr" id="btnToggleQr" type="button">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+                  <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+                  <rect x="14" y="14" width="7" height="7" rx="1"></rect>
+                  <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+                </svg>
+                <span>Создать QR-код</span>
+              </button>
+            </div>
+
+            <!-- QR Code Container (visible in Bridge 2.0 mode or toggleable) -->
+            <div class="bridge-qr-container hidden" id="bridgeQrContainer">
+              <div class="bridge-qr-stub" id="refQrStub" aria-live="polite"></div>
+              <span class="bridge-qr-label" id="refQrLabel">Демонстрационный QR: показывает приглашение</span>
+            </div>
+
+            <!-- Bridge Wizard Steps Banner & Hint Container -->
+            <div class="bridge-wizard-box hidden" id="bridgeWizardBox">
+              <div class="wizard-hint-card" id="wizardHintCard">
+                <span class="wizard-hint-text" id="wizardHintText">Временная ссылка ниже создана только для локальной проверки. Настоящий ключ не выдаётся.</span>
+              </div>
+              <div class="wizard-btn-row">
+                <button class="btn-wizard-next" id="btnWizardNext" type="button">
+                  <span id="btnWizardNextText">Подготовить приглашение в клуб</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Bridge 2.0 Timeline Steps -->
+            <div class="bridge-timeline hidden" id="bridgeTimeline">
+              <div class="timeline-step" id="bStep1">
+                <span class="step-dot"></span>
+                <span class="step-text" id="bStep1Text">1. Временная mock-ссылка подготовлена</span>
+              </div>
+              <div class="timeline-step-err-msg hidden" id="bStep1ErrMsg"></div>
+              <div class="timeline-step" id="bStep2">
+                <span class="step-dot"></span>
+                <span class="step-text" id="bStep2Text">2. Передайте ссылку приглашённому</span>
+              </div>
+              <div class="timeline-step" id="bStep3">
+                <span class="step-dot"></span>
+                <span class="step-text" id="bStep3Text">3. Приглашение в клуб подготовлено</span>
+              </div>
+              <div class="timeline-step" id="bStep4">
+                <span class="step-dot"></span>
+                <span class="step-text" id="bStep4Text">4. Ожидаем вступление в клуб</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Block 5: Activity Feed ("Мои приглашения") -->
+          <div class="referral-list-section">
+            <div class="referral-list-title">
+              <span>Мои приглашения</span>
+              <span class="invited-count-badge"></span>
+            </div>
+
+            <div class="referral-activity-feed" id="refFriendsList">
+              <div class="referral-empty-card">
+                <strong class="empty-title">Приглашений пока нет</strong>
+                <span class="empty-subtitle">Отправьте ссылку первому другу!</span>
+              </div>
+            </div>
           </div>
         </div>
+
+        <!-- Toast Notification -->
+        <div class="referral-toast" id="refToast">Ссылка скопирована</div>
       </section>
 
       <!-- Вкладка: Поддержка (Клиентский чат) -->
@@ -3097,7 +3274,7 @@
     <script src="./src/modules/diagnostics.js?v=2"></script>
     <script src="./src/modules/subscription.js?v=7"></script>
     <script src="./src/modules/devices.js?v=22"></script>
-    <script src="./src/modules/invites.js?v=3"></script>
+    <script src="./src/modules/invites.js?v=22"></script>
     <script src="./src/modules/support.js?v=3"></script>
     <script src="./src/modules/context-help.js?v=3"></script>
     <script src="./src/modules/admin-payment-settings.js?v=22"></script>
