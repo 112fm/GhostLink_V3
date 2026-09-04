@@ -46,3 +46,42 @@ test('redundant status text is hidden and slot summary banner is modernized', ()
   assert.match(devicesCss, /\.devices-slot-summary\s*\{[\s\S]*?backdrop-filter:\s*blur\(16px\);/);
   assert.match(devicesCss, /\.devices-slot-summary\s*\{[\s\S]*?border-radius:\s*18px;/);
 });
+
+test('mobile scroll is unblocked on devices list with ample bottom padding', () => {
+  assert.match(devicesCss, /#page-devices-list\s*\{[\s\S]*?overflow-y:\s*auto\s*!important;/);
+  assert.match(devicesCss, /#page-devices-list\s*\{[\s\S]*?-webkit-overflow-scrolling:\s*touch;/);
+  assert.match(devicesCss, /#page-devices-list\s*\{[\s\S]*?height:\s*100%;/);
+  assert.match(devicesCss, /\.devices-page-content\s*\{[\s\S]*?padding-bottom:\s*calc\(180px\s*\+\s*env\(safe-area-inset-bottom,\s*24px\)\)\s*!important;/);
+});
+
+test('delete and add-device modals feature centered hero icons, modern actions and no blue outline', () => {
+  // Confirm Delete Modal
+  assert.match(template, /id="modalConfirmDeleteDevice"[\s\S]*?class="modal-content modal-content--center"/);
+  assert.match(template, /class="modal-hero-icon modal-hero-icon--danger"/);
+  assert.match(template, /<h3 class="modal-center-title">Освободить слот\?<\/h3>/);
+  assert.match(template, /id="btnConfirmDeleteSubmit"/);
+  assert.match(template, /id="btnConfirmDeleteCancel"/);
+
+  // Add Device Modal
+  assert.match(template, /id="modalAddDeviceName"[\s\S]*?class="modal-content modal-content--center"/);
+  assert.match(template, /class="modal-hero-icon modal-hero-icon--lime"/);
+  assert.match(template, /<h3 class="modal-center-title">Новое устройство<\/h3>/);
+  assert.match(template, /id="addDeviceNameInput"/);
+  assert.match(template, /id="btnAddDeviceSubmit"/);
+
+  // CSS rules
+  assert.match(devicesCss, /\.modal-hero-icon--danger\s*\{[\s\S]*?background:\s*rgba\(255,\s*69,\s*58,\s*0\.15\);/);
+  assert.match(devicesCss, /\.modal-hero-icon--lime\s*\{[\s\S]*?background:\s*rgba\(184,\s*255,\s*0,\s*0\.12\);/);
+  assert.match(devicesCss, /#btnConfirmDeleteSubmit[\s\S]*?background:\s*rgba\(255,\s*69,\s*58,\s*0\.16\);/);
+  assert.match(devicesCss, /#addDeviceNameInput[\s\S]*?outline:\s*none;/);
+  assert.match(devicesCss, /#addDeviceNameInput:focus[\s\S]*?border-color:\s*var\(--lime\);/);
+  assert.match(devicesCss, /#btnAddDeviceSubmit[\s\S]*?background:\s*var\(--lime\);/);
+});
+
+test('confirmDeviceDeletion formats device name safely in strong tag and deletes single device', () => {
+  assert.match(devicesJs, /function escapeHtml/);
+  assert.match(devicesJs, /function confirmDeviceDeletion\(device\)/);
+  assert.match(devicesJs, /modalText\.innerHTML\s*=\s*`Доступ для устройства <strong style="color: #fff;">\$\{devName\}<\/strong> будет отключен, а слот станет доступен для нового подключения\.`;/);
+  assert.match(devicesJs, /startDeviceMutation\(device,\s*'remove'\)/);
+});
+

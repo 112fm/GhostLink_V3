@@ -5,6 +5,13 @@
     radial-gradient(circle at 80% 8%, rgba(184, 255, 0, 0.05), transparent 50%),
     radial-gradient(circle at 20% 92%, rgba(0, 240, 255, 0.04), transparent 50%),
     #0d0f0d;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  height: 100%;
+}
+
+.devices-page-content {
+  padding-bottom: calc(180px + env(safe-area-inset-bottom, 24px)) !important;
 }
 
 /* 1. Modernized Slot Summary Banner (Harmonized with Home Status Island) */
@@ -256,11 +263,11 @@
 .modal-content {
   position: relative;
   background: linear-gradient(145deg, rgba(24, 28, 24, 0.98) 0%, rgba(14, 18, 14, 0.98) 100%);
-  border: 1px solid rgba(184, 255, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 24px;
   max-width: 360px;
   width: 100%;
-  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.7), 0 0 24px rgba(184, 255, 0, 0.1);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.7), 0 0 24px rgba(0, 0, 0, 0.3);
   overflow: hidden;
   animation: modalScaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -270,20 +277,15 @@
   to { transform: scale(1); opacity: 1; }
 }
 
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 18px 20px 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+.modal-content--center {
+  padding: 28px 24px 24px;
+  text-align: center;
 }
 
-.modal-header h3 {
-  margin: 0;
-  font-size: 17px;
-  font-weight: 700;
-  color: #ffffff;
-  letter-spacing: -0.01em;
+.modal-content--center .btn-close-modal {
+  position: absolute;
+  top: 16px;
+  right: 16px;
 }
 
 .btn-close-modal {
@@ -291,15 +293,166 @@
   border: none;
   color: rgba(255, 255, 255, 0.5);
   cursor: pointer;
-  padding: 4px;
+  padding: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
+  border-radius: 10px;
   transition: all 0.15s ease;
 }
 
 .btn-close-modal:hover {
   color: #ffffff;
   background: rgba(255, 255, 255, 0.08);
+}
+
+.modal-hero-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+}
+
+.modal-hero-icon--danger {
+  background: rgba(255, 69, 58, 0.15);
+  border: 1px solid rgba(255, 69, 58, 0.3);
+  box-shadow: 0 0 24px rgba(255, 69, 58, 0.2);
+  color: #ff5c5c;
+}
+
+.modal-hero-icon--lime {
+  background: rgba(184, 255, 0, 0.12);
+  border: 1px solid rgba(184, 255, 0, 0.3);
+  box-shadow: 0 0 24px rgba(184, 255, 0, 0.2);
+  color: var(--lime);
+}
+
+.modal-center-title {
+  margin: 0 0 10px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.01em;
+}
+
+.modal-center-text {
+  margin: 0 0 22px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.modal-actions-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Submit & Cancel Buttons */
+#btnConfirmDeleteSubmit,
+.btn-modal-action--danger {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(255, 69, 58, 0.16);
+  border: 1px solid rgba(255, 69, 58, 0.4);
+  color: #ff5c5c;
+  font-weight: 600;
+  border-radius: 14px;
+  padding: 14px;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+#btnConfirmDeleteSubmit:hover,
+.btn-modal-action--danger:hover {
+  background: rgba(255, 69, 58, 0.26);
+  border-color: rgba(255, 69, 58, 0.6);
+  box-shadow: 0 0 20px rgba(255, 69, 58, 0.3);
+  transform: translateY(-1px);
+}
+
+#btnConfirmDeleteSubmit:active,
+.btn-modal-action--danger:active {
+  transform: translateY(0);
+}
+
+#btnConfirmDeleteCancel,
+.btn-modal-action--cancel {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  color: #fff;
+  padding: 14px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+#btnConfirmDeleteCancel:hover,
+.btn-modal-action--cancel:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+/* Add Device Name Input & Button */
+#addDeviceNameInput,
+.device-modal-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  color: #fff;
+  font-size: 15px;
+  padding: 14px 16px;
+  margin-bottom: 18px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+#addDeviceNameInput:focus,
+.device-modal-input:focus {
+  border-color: var(--lime);
+  box-shadow: 0 0 16px rgba(184, 255, 0, 0.2);
+  outline: none;
+}
+
+#addDeviceNameInput::placeholder,
+.device-modal-input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+#btnAddDeviceSubmit,
+.btn-modal-action--lime {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--lime);
+  color: #000;
+  font-weight: 700;
+  font-size: 15px;
+  border: none;
+  border-radius: 14px;
+  padding: 14px;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(184, 255, 0, 0.35);
+  transition: all 0.2s ease;
+}
+
+#btnAddDeviceSubmit:hover,
+.btn-modal-action--lime:hover {
+  background: #cbfb40;
+  box-shadow: 0 6px 24px rgba(184, 255, 0, 0.45);
+  transform: translateY(-1px);
+}
+
+#btnAddDeviceSubmit:active,
+.btn-modal-action--lime:active {
+  transform: translateY(0);
 }

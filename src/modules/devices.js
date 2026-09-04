@@ -363,6 +363,16 @@ function handleDeviceMutationResult(deviceId, result) {
   setDevicesListStatus(result?.message || 'Операция не выполнена. Список не изменён.', 'error');
 }
 
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>'"]/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    "'": '&#39;',
+    '"': '&quot;'
+  }[char]));
+}
+
 function confirmDeviceDeletion(device) {
   const modal = document.getElementById('modalConfirmDeleteDevice');
   const modalText = document.getElementById('deleteDeviceModalText');
@@ -372,26 +382,29 @@ function confirmDeviceDeletion(device) {
   
   if (!modal || !modalText) return;
   
-  modalText.textContent = `Удалить устройство ${device.name}? Доступ на этом девайсе будет остановлен, слот освободится.`;
+  const devName = escapeHtml(device?.name || 'Устройство');
+  modalText.innerHTML = `Доступ для устройства <strong style="color: #fff;">${devName}</strong> будет отключен, а слот станет доступен для нового подключения.`;
   modal.classList.remove('hidden');
   
   const cleanup = () => {
     modal.classList.add('hidden');
-    btnSubmit.onclick = null;
-    btnCancel.onclick = null;
-    btnClose.onclick = null;
+    if (btnSubmit) btnSubmit.onclick = null;
+    if (btnCancel) btnCancel.onclick = null;
+    if (btnClose) btnClose.onclick = null;
   };
   
-  btnCancel.onclick = cleanup;
-  btnClose.onclick = cleanup;
+  if (btnCancel) btnCancel.onclick = cleanup;
+  if (btnClose) btnClose.onclick = cleanup;
   
-  btnSubmit.onclick = async () => {
-    cleanup();
-    
-    if (deviceMutations) {
-      startDeviceMutation(device, 'remove');
-    }
-  };
+  if (btnSubmit) {
+    btnSubmit.onclick = async () => {
+      cleanup();
+      
+      if (deviceMutations && device?.id) {
+        startDeviceMutation(device, 'remove');
+      }
+    };
+  }
 }
 
 async function startDeviceMutation(device, type) {

@@ -25,12 +25,13 @@ test('checkout has a dedicated mobile action bar and releases it on desktop', ()
   assert.match(css, /@media \(min-width: 600px\)[\s\S]*?\.checkout-action-bar\s*\{[\s\S]*?position:\s*static/);
 });
 
-test('checkout help stays fixed above the payment overlay', () => {
+test('checkout help is placed in topbar flow and hidden when overlay is active', () => {
   const helpRule = contextHelpCss.match(/\.context-help-trigger\s*\{([\s\S]*?)\n\}/);
 
   assert.ok(helpRule);
-  assert.match(helpRule[1], /position:\s*(?:fixed|absolute)/);
-  assert.match(helpRule[1], /z-index:\s*1[0-9]{2,}/);
+  assert.match(helpRule[1], /position:\s*relative/);
+  assert.match(contextHelpCss, /body:has\(\.page-overlay:not\(\.hidden\)\)\s*#helpButton/);
+  assert.match(contextHelpCss, /display:\s*none\s*!important/);
 });
 
 test('receipt states lock checkout scrolling and keep the return button at the bottom', () => {

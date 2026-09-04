@@ -34,18 +34,26 @@ function createRouter({ initialRoute = "home" } = {}) {
 function createOverlayNavigator({ selector = ".page-overlay" } = {}) {
   const stack = [];
 
+  function syncOverlayBodyState() {
+    if (typeof document !== 'undefined' && document.body) {
+      document.body.classList.toggle('has-overlay-open', stack.length > 0);
+    }
+  }
+
   return {
     open(page) {
       if (!page || stack.at(-1) === page) return;
       stack.at(-1)?.classList.add("hidden");
       stack.push(page);
       page.classList.remove("hidden");
+      syncOverlayBodyState();
     },
     close(page) {
       if (!page) return;
       const index = stack.lastIndexOf(page);
       if (index === -1) {
         page.classList.add("hidden");
+        syncOverlayBodyState();
         return;
       }
 
@@ -53,10 +61,12 @@ function createOverlayNavigator({ selector = ".page-overlay" } = {}) {
       stack.splice(index, 1);
       page.classList.add("hidden");
       if (wasCurrent) stack.at(-1)?.classList.remove("hidden");
+      syncOverlayBodyState();
     },
     home() {
       stack.splice(0).forEach((page) => page.classList.add("hidden"));
       document.querySelectorAll(selector).forEach((page) => page.classList.add("hidden"));
+      syncOverlayBodyState();
     },
   };
 }
