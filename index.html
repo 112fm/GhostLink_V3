@@ -15,13 +15,13 @@
     <link rel="stylesheet" href="./src/css/page-checkout.css?v=2" />
     <link rel="stylesheet" href="./src/css/page-setup.css" />
     <link rel="stylesheet" href="./src/css/page-app-select.css" />
-    <link rel="stylesheet" href="./src/css/page-key-view.css?v=21" />
-    <link rel="stylesheet" href="./src/css/page-other-device.css?v=21" />
+    <link rel="stylesheet" href="./src/css/page-key-view.css?v=22" />
+    <link rel="stylesheet" href="./src/css/page-other-device.css?v=22" />
     <link rel="stylesheet" href="./src/css/page-device-detail.css" />
     <link rel="stylesheet" href="./src/css/page-referral.css" />
     <link rel="stylesheet" href="./src/css/page-chat.css" />
     <link rel="stylesheet" href="./src/css/page-settings.css" />
-    <link rel="stylesheet" href="./src/css/page-devices.css?v=21" />
+    <link rel="stylesheet" href="./src/css/page-devices.css?v=22" />
     <link rel="stylesheet" href="./src/css/page-admin.css" />
     <link rel="stylesheet" href="./src/css/context-help.css" />
     <link rel="stylesheet" href="./src/css/page-diagnostics.css?v=1" />
@@ -763,6 +763,16 @@
             <p class="key-box-subnote">Или нажмите на поле, чтобы скопировать ключ</p>
           </div>
 
+          <!-- Key Rotate Action -->
+          <div class="key-actions-row">
+            <button type="button" class="btn-rotate-key" id="btn-key-rotate" aria-label="Перевыпустить ключ">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3L21.5 8M22 12.5a10 10 0 0 1-18.8 4.2L2.5 16"/>
+              </svg>
+              <span>🔄 Перевыпустить ключ</span>
+            </button>
+          </div>
+
           <!-- Smart Routing Banner (INCY) -->
           <div class="smart-routing-banner hidden" id="smart-routing-banner">
             <div class="smart-routing-header">
@@ -808,6 +818,29 @@
           <div class="modal-actions-col">
             <button class="btn-modal-action btn-modal-action--danger" id="btnConfirmDeleteSubmit" type="button">Освободить слот</button>
             <button class="btn-modal-action btn-modal-action--cancel" id="btnConfirmDeleteCancel" type="button">Отмена</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal: Confirm Rotate Key -->
+      <div id="modalConfirmRotateKey" class="modal-overlay hidden" aria-modal="true" role="dialog">
+        <div class="modal-content modal-content--center">
+          <button class="btn-close-modal" id="btnConfirmRotateClose" aria-label="Закрыть">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+          
+          <div class="modal-hero-icon modal-hero-icon--lime">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="var(--lime)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3L21.5 8M22 12.5a10 10 0 0 1-18.8 4.2L2.5 16"/>
+            </svg>
+          </div>
+
+          <h3 class="modal-center-title">Перевыпустить ключ?</h3>
+          <p id="rotateKeyModalText" class="modal-center-text">Старый ключ перестанет действовать на этом устройстве. Потребуется заново настроить приложение.</p>
+
+          <div class="modal-actions-col">
+            <button class="btn-modal-action btn-modal-action--lime" id="btnConfirmRotateSubmit" type="button">Перевыпустить</button>
+            <button class="btn-modal-action btn-modal-action--cancel" id="btnConfirmRotateCancel" type="button">Отмена</button>
           </div>
         </div>
       </div>
@@ -861,9 +894,9 @@
             <p class="other-device-subtitle">Выберите систему устройства, которое хотите подключить</p>
           </div>
 
-          <!-- Devices Selection List -->
-          <div class="devices-section">
-            <h4 class="devices-section-title">Система устройства</h4>
+          <!-- Other Platforms Selection List -->
+          <div class="other-platforms-section">
+            <h4 class="other-platforms-title">Система устройства</h4>
             <div class="devices-grid" id="other-devices-grid">
               <!-- iOS -->
               <div class="platform-card" data-platform="ios">
@@ -3055,20 +3088,20 @@
     <script src="./src/ui/router.js?v=3"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="./src/ui/telegram-webapp.js?v=1"></script>
-    <script src="./src/api/real-block1-adapter.js?v=21"></script>
-    <script src="./src/api/real-device-adapter.js?v=21"></script>
+    <script src="./src/api/real-block1-adapter.js?v=22"></script>
+    <script src="./src/api/real-device-adapter.js?v=22"></script>
     <script src="./src/mocks/invites.js?v=3"></script>
     <script src="./src/mocks/support.js?v=3"></script>
     <script src="./src/mocks/admin-security.js?v=3"></script>
-    <script src="./src/modules/home.js?v=21"></script>
+    <script src="./src/modules/home.js?v=22"></script>
     <script src="./src/modules/diagnostics.js?v=2"></script>
     <script src="./src/modules/subscription.js?v=7"></script>
-    <script src="./src/modules/devices.js?v=21"></script>
+    <script src="./src/modules/devices.js?v=22"></script>
     <script src="./src/modules/invites.js?v=3"></script>
     <script src="./src/modules/support.js?v=3"></script>
     <script src="./src/modules/context-help.js?v=3"></script>
-    <script src="./src/modules/admin-payment-settings.js?v=21"></script>
-    <script src="./src/modules/admin.js?v=21"></script>
-    <script src="./src/main.js?v=21"></script>
+    <script src="./src/modules/admin-payment-settings.js?v=22"></script>
+    <script src="./src/modules/admin.js?v=22"></script>
+    <script src="./src/main.js?v=22"></script>
   </body>
 </html>

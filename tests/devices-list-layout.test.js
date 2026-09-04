@@ -320,5 +320,33 @@ test('cross-platform isCurrent fallback is completely removed: Mac client with i
   assert.equal(renderedBadges.length, 0, 'Badge "Это устройство" must NOT be shown for iPhone when on Mac');
 });
 
+const keyViewCss = readFileSync(join(root, 'src/css/page-key-view.css'), 'utf8');
+
+test('key view page has rotate button, modal confirmation and synced state', () => {
+  // Key rotate button in page-key-view
+  assert.match(template, /id="btn-key-rotate"/);
+  assert.match(template, /class="btn-rotate-key"/);
+  assert.match(template, /🔄 Перевыпустить ключ/);
+
+  // Modal confirm rotate
+  assert.match(template, /id="modalConfirmRotateKey"/);
+  assert.match(template, /id="btnConfirmRotateSubmit"/);
+  assert.match(template, /id="btnConfirmRotateCancel"/);
+  assert.match(template, /id="btnConfirmRotateClose"/);
+  assert.match(template, /id="rotateKeyModalText"/);
+  assert.match(template, /Перевыпустить ключ\?/);
+
+  // CSS styles for rotate button
+  assert.match(keyViewCss, /\.btn-rotate-key\s*\{/);
+  assert.match(keyViewCss, /\.btn-rotate-key:disabled\s*\{/);
+
+  // Devices module exports and logic
+  assert.match(devicesJs, /function confirmKeyRotation/);
+  assert.match(devicesJs, /function syncKeyRotateButtonState/);
+  assert.match(devicesJs, /confirmKeyRotation,/);
+  assert.match(devicesJs, /syncKeyRotateButtonState,/);
+});
+
+
 
 

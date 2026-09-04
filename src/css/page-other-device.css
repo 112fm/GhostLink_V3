@@ -59,14 +59,20 @@
   text-align: center;
 }
 
-/* Devices Section */
-.devices-section {
+/* Other Platforms Section */
+.other-platforms-section {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: none;
+  box-sizing: border-box;
 }
 
-.devices-section-title {
+.other-platforms-title {
   font-size: 14px;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.5);
@@ -78,6 +84,8 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .platform-card {

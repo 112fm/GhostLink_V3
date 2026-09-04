@@ -125,6 +125,56 @@
   margin: 0;
 }
 
+/* Rotate Key Action Button */
+.key-actions-row {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-top: -6px;
+}
+
+.btn-rotate-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 20px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.88);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+  transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.btn-rotate-key:hover,
+.btn-rotate-key:active {
+  transform: scale(0.98);
+  border-color: rgba(184, 255, 0, 0.45);
+  color: var(--lime);
+  background: rgba(184, 255, 0, 0.07);
+}
+
+.btn-rotate-key svg {
+  color: currentColor;
+  transition: transform 0.3s ease;
+}
+
+.btn-rotate-key:active svg {
+  transform: rotate(180deg);
+}
+
+.btn-rotate-key:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 /* Fixed Bottom Actions */
 .key-view-bottom-bar {
   position: absolute;

@@ -20,6 +20,8 @@ test('other-device page has clean platform picker and no key field or legacy lis
   assert.match(picker[0], /data-platform="linux"/);
   assert.match(picker[0], /Выберите платформу/);
   assert.match(picker[0], /Выберите систему устройства, которое хотите подключить/);
+  assert.match(picker[0], /class="other-platforms-section"/);
+  assert.doesNotMatch(picker[0], /class="devices-section"/);
   assert.doesNotMatch(picker[0], /id="other-device-picker-list"/);
   assert.doesNotMatch(picker[0], /id="other-device-picker-status"/);
   assert.doesNotMatch(picker[0], /id="other-device-key-field"/);

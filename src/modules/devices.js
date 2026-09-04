@@ -387,11 +387,16 @@ function finishDeviceMutation(deviceId, result) {
   saveDeviceMutations();
 
   if (mutationType === 'rotate' && result?.device?.id) {
-    if (selectedSetupDeviceId === deviceId) {
+    if (selectedSetupDeviceId === deviceId || (!selectedSetupDeviceId && resolveCurrentDevice(getDevicePlatform())?.id === deviceId)) {
       selectedSetupDeviceId = result.device.id;
       selectedSetupDevice = { ...result.device };
-      updateDisplayedSubscriptionUrls(currentSelectedApp);
     }
+    const currentTarget = resolveTargetDevice(getDevicePlatform());
+    if (currentTarget && currentTarget.id === deviceId) {
+      selectedSetupDeviceId = result.device.id;
+      selectedSetupDevice = { ...result.device };
+    }
+    updateDisplayedSubscriptionUrls(currentSelectedApp);
   } else if (mutationType === 'remove') {
     if (selectedSetupDeviceId === deviceId) {
       selectedSetupDeviceId = null;
@@ -425,6 +430,7 @@ function handleDeviceMutationResult(deviceId, result) {
     operation.phase = result.status;
     saveDeviceMutations();
     renderDeviceCards(lastConfirmedDeviceList?.devices || []);
+    syncKeyRotateButtonState();
     if (result.status === 'conflict') {
       setDevicesListStatus('Операция уже есть. Проверяем её статус…', 'warning');
     }
@@ -440,6 +446,7 @@ function handleDeviceMutationResult(deviceId, result) {
   pendingDeviceMutations.delete(deviceId);
   saveDeviceMutations();
   renderDeviceCards(lastConfirmedDeviceList?.devices || []);
+  syncKeyRotateButtonState();
   setDevicesListStatus(result?.message || 'Операция не выполнена. Список не изменён.', 'error');
 }
 
@@ -496,6 +503,49 @@ function confirmDeviceDeletion(device) {
   }
 }
 
+function confirmKeyRotation(device) {
+  const modal = document.getElementById('modalConfirmRotateKey');
+  const modalText = document.getElementById('rotateKeyModalText');
+  const btnSubmit = document.getElementById('btnConfirmRotateSubmit');
+  const btnCancel = document.getElementById('btnConfirmRotateCancel');
+  const btnClose = document.getElementById('btnConfirmRotateClose');
+  
+  if (!modal || !modalText) {
+    if (typeof window.confirm === 'function') {
+      const devName = device?.name || 'Устройство';
+      if (window.confirm(`Перевыпустить ключ для «${devName}»? Старый ключ перестанет работать на этом устройстве.`)) {
+        startDeviceMutation(device, 'rotate');
+      }
+    }
+    return;
+  }
+  
+  const devName = escapeHtml(device?.name || 'Устройство');
+  modalText.innerHTML = `Старый ключ для устройства <strong style="color: #fff;">${devName}</strong> перестанет действовать. Потребуется заново настроить приложение.`;
+  modal.classList.remove('hidden');
+  syncModalBodyState();
+  
+  const cleanup = () => {
+    modal.classList.add('hidden');
+    syncModalBodyState();
+    if (btnSubmit) btnSubmit.onclick = null;
+    if (btnCancel) btnCancel.onclick = null;
+    if (btnClose) btnClose.onclick = null;
+  };
+  
+  if (btnCancel) btnCancel.onclick = cleanup;
+  if (btnClose) btnClose.onclick = cleanup;
+  
+  if (btnSubmit) {
+    btnSubmit.onclick = async () => {
+      cleanup();
+      if (deviceMutations && device?.id) {
+        startDeviceMutation(device, 'rotate');
+      }
+    };
+  }
+}
+
 async function startDeviceMutation(device, type) {
   if (!deviceMutations || !device?.id) {
     setDevicesListStatus('Сервис операций с устройствами недоступен.', 'error');
@@ -506,15 +556,11 @@ async function startDeviceMutation(device, type) {
     checkDeviceMutationStatus(device.id, operation.requestId);
     return;
   }
-  // Let the new confirm modal handle remove
-  if (type !== 'remove' && typeof window.confirm === 'function') {
+  // Let the confirm modals handle remove and rotate
+  if (type !== 'remove' && type !== 'rotate' && typeof window.confirm === 'function') {
     let confirmMsg = '';
-    if (type === 'remove') {
-      confirmMsg = `Удалить устройство «${device.name}»? Ключ перестанет работать, слот будет освобождён.`;
-    } else if (type === 'reset') {
+    if (type === 'reset') {
       confirmMsg = `Сбросить устройство «${device.name}»? Настройки будут сброшены, потребуется повторная настройка.`;
-    } else if (type === 'rotate') {
-      confirmMsg = `Обновить ключ для «${device.name}»? Старый ключ перестанет работать на всех устройствах.`;
     }
     if (confirmMsg && !window.confirm(confirmMsg)) {
       return;
@@ -525,6 +571,7 @@ async function startDeviceMutation(device, type) {
   pendingDeviceMutations.set(device.id, operation);
   saveDeviceMutations();
   renderDeviceCards(lastConfirmedDeviceList?.devices || []);
+  syncKeyRotateButtonState();
   setDevicesListStatus(getMutationCopy(type).pending);
 
   try {
@@ -534,6 +581,7 @@ async function startDeviceMutation(device, type) {
     operation.phase = 'unknown';
     saveDeviceMutations();
     renderDeviceCards(lastConfirmedDeviceList?.devices || []);
+    syncKeyRotateButtonState();
     setDevicesListStatus(error?.type === 'timeout'
       ? 'Нет ответа по операции. Повторно не запускаем: проверяем сохранённый статус.'
       : 'Нет связи. Операция сохранена, повторный запуск заблокирован.', 'warning');
@@ -1195,6 +1243,17 @@ function setBtnAddToAppText(btn, text) {
   }
 }
 
+function syncKeyRotateButtonState() {
+  const rotateBtn = document.getElementById('btn-key-rotate');
+  if (!rotateBtn) return;
+  const targetDevice = resolveTargetDevice(getDevicePlatform());
+  if (targetDevice?.id && pendingDeviceMutations.has(targetDevice.id)) {
+    rotateBtn.disabled = true;
+  } else {
+    rotateBtn.disabled = false;
+  }
+}
+
 function updateDisplayedSubscriptionUrls(app = currentSelectedApp || 'karing') {
   currentSelectedApp = app;
   const incyUrl = getSubscriptionUrl('incy');
@@ -1233,6 +1292,8 @@ function updateDisplayedSubscriptionUrls(app = currentSelectedApp || 'karing') {
       smartRoutingBanner.classList.add('hidden');
     }
   }
+
+  syncKeyRotateButtonState();
 }
 
 const keyTabIncy = document.getElementById('key-tab-incy');
@@ -1495,6 +1556,7 @@ const userKeyUrl = document.getElementById('user-key-url');
 const btnAddToApp = document.getElementById('btn-add-to-app');
 const btnKeyViewFinish = document.getElementById('btn-key-view-finish');
 const btnOpenBotGuide = document.getElementById('btn-open-bot-guide');
+const btnKeyRotate = document.getElementById('btn-key-rotate');
 
 if (btnKeyViewBack && pageKeyView) {
   btnKeyViewBack.addEventListener('click', () => {
@@ -1576,6 +1638,17 @@ if (btnKeyViewFinish) {
   btnKeyViewFinish.addEventListener('click', () => {
     returnToHome();
     showToast('Настройка ключа успешно завершена! 🚀');
+  });
+}
+
+if (btnKeyRotate) {
+  btnKeyRotate.addEventListener('click', () => {
+    const targetDevice = resolveTargetDevice(getDevicePlatform());
+    if (!targetDevice?.id) {
+      showToast('Устройство не найдено для перевыпуска ключа.');
+      return;
+    }
+    confirmKeyRotation(targetDevice);
   });
 }
 
@@ -1863,6 +1936,8 @@ if (btnDeviceDownload) {
     isValidSubToken,
     isSubscriptionReady,
     updateDisplayedSubscriptionUrls,
+    confirmKeyRotation,
+    syncKeyRotateButtonState,
   });
 
 };
