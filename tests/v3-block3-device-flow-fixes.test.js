@@ -140,6 +140,9 @@ test('2. Scenario 2 (Other device): new device deferred until app choice and add
     };
   }
 
+  const platformCard = createElement('', 'platform-card');
+  platformCard.dataset.platform = 'windows';
+
   const documentMock = {
     readyState: 'complete',
     getElementById: (id) => {
@@ -149,7 +152,10 @@ test('2. Scenario 2 (Other device): new device deferred until app choice and add
     createElement: () => createElement(),
     createTextNode: (text) => ({ textContent: String(text) }),
     querySelector: () => null,
-    querySelectorAll: () => [],
+    querySelectorAll: (selector) => {
+      if (selector === '.platform-card') return [platformCard];
+      return [];
+    },
     addEventListener: () => {},
   };
 
@@ -206,19 +212,12 @@ test('2. Scenario 2 (Other device): new device deferred until app choice and add
   await devices.openOtherDevicePicker();
   assert.equal(createdDevices.length, 0);
 
-  // Click add new device on other device screen
-  const btnAddNew = documentMock.getElementById('btnOtherDeviceAddNew');
-  assert.ok(btnAddNew);
-  btnAddNew.click();
-
-  const input = documentMock.getElementById('addDeviceNameInput');
-  input.value = 'Рабочий Ноутбук';
-  const btnSubmit = documentMock.getElementById('btnAddDeviceSubmit');
-  btnSubmit.click();
+  // Click platform card on other device screen
+  platformCard.click();
 
   // Mode is now new-other-device, pending device set, but backend create NOT called yet
   assert.equal(devices.getSetupFlowMode(), 'new-other-device');
-  assert.equal(devices.getPendingNewDevice()?.name, 'Рабочий Ноутбук');
+  assert.equal(devices.getPendingNewDevice()?.name, 'Мой Windows');
   assert.equal(createdDevices.length, 0, 'Must not create key before app selection');
 
   // Choose Karing and proceed to key view

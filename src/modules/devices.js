@@ -1004,46 +1004,6 @@ function selectDeviceForSetup(device) {
 async function openOtherDevicePicker() {
   if (!pageOtherDevice) return;
   openOverlay(pageOtherDevice);
-
-  const btnOtherDeviceAddNew = document.getElementById('btnOtherDeviceAddNew');
-  if (btnOtherDeviceAddNew && !btnOtherDeviceAddNew._hasAddNewListener) {
-    btnOtherDeviceAddNew._hasAddNewListener = true;
-    btnOtherDeviceAddNew.addEventListener('click', () => {
-      if (lastConfirmedDeviceList && lastConfirmedDeviceList.freeSlots <= 0) {
-        showToast('Все слоты по тарифу заняты. Освободите слот или увеличьте тариф.');
-        return;
-      }
-      const modal = document.getElementById('modalAddDeviceName');
-      const input = document.getElementById('addDeviceNameInput');
-      const btnSubmit = document.getElementById('btnAddDeviceSubmit');
-      const btnClose = document.getElementById('btnAddDeviceClose');
-      if (!modal) return;
-
-      input.value = '';
-      modal.classList.remove('hidden');
-      syncModalBodyState();
-      input.focus?.();
-
-      const cleanup = () => {
-        modal.classList.add('hidden');
-        syncModalBodyState();
-        btnSubmit.onclick = null;
-        btnClose.onclick = null;
-      };
-
-      btnClose.onclick = cleanup;
-      btnSubmit.onclick = () => {
-        const name = input.value.trim() || 'Новое устройство';
-        cleanup();
-        pendingNewDevice = { name, platform: 'unknown', target: 'other-device' };
-        selectedSetupDeviceId = null;
-        selectedSetupDevice = null;
-        setupFlowMode = 'new-other-device';
-        autoSelectDefaultAppForCurrentPlatform('windows');
-        openOverlay(pageAppSelect);
-      };
-    });
-  }
 }
 
 function isValidSubToken(token) {

@@ -6,6 +6,7 @@ const { join } = require('node:path');
 const root = join(__dirname, '..');
 const html = readFileSync(join(root, 'src/templates/pages/devices.html'), 'utf8');
 const source = readFileSync(join(root, 'src/modules/devices.js'), 'utf8');
+const devicesJs = source;
 
 test('other-device page has clean platform picker and no key field or legacy list', () => {
   const picker = html.match(/<section id="page-other-device"[\s\S]*?<\/section>/);
@@ -33,6 +34,7 @@ test('platform card selection configures new-other-device and opens app choice',
   assert.match(source, /setupFlowMode = 'new-other-device'/);
   assert.match(source, /autoSelectDefaultAppForCurrentPlatform\(platform\)/);
   assert.match(source, /openOverlay\(pageAppSelect\)/);
+  assert.doesNotMatch(devicesJs, /btnOtherDeviceAddNew/);
 });
 
 test('setup routes another device to the picker and app choice cannot create a device or consume a slot', () => {
