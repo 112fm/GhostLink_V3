@@ -5,6 +5,7 @@ const { join } = require('node:path');
 
 const root = join(__dirname, '..');
 const { createRealInvitesAdapter, normalizeInvitation } = require(join(root, 'src', 'api', 'real-invites-adapter.js'));
+const { escapeHtml, invitationView } = require(join(root, 'src', 'modules', 'invites.js'));
 
 test('production build graph and main.js completely exclude mock invites', () => {
   const mainSource = readFileSync(join(root, 'src', 'main.js'), 'utf8');
@@ -259,4 +260,36 @@ test('normalizeInvitation cleanly formats arbitrary objects or missing fields', 
   assert.equal(fallback.status, 'pending');
   assert.equal(fallback.name, 'Приглашение 1');
   assert.equal(fallback.createdAt, 'Недавно');
+});
+
+test('invitationView neutralizes hostile XSS payloads (<script>, onerror=, attribute breakout, quotes) across all dynamic fields', () => {
+  const hostileInvitation = {
+    id: 'friend-1" onmouseover="alert(\'xss-attr\')" data-injected="',
+    name: '<script>alert("xss-name")</script>',
+    handle: '<img src=x onerror="alert(\'xss-handle\')">',
+    createdAt: '"><svg onload="alert(\'xss-date\')"><"',
+    status: 'subscribed',
+  };
+
+  const rendered = invitationView(hostileInvitation);
+
+  // Assert no executable HTML tags can be injected into the markup
+  assert.doesNotMatch(rendered, /<script[\s>]/i);
+  assert.doesNotMatch(rendered, /<\/script>/i);
+  assert.doesNotMatch(rendered, /<img[\s>]/i);
+  assert.doesNotMatch(rendered, /<svg[\s>]/i);
+
+  // Assert characters are strictly entity-escaped
+  assert.match(rendered, /&lt;script&gt;alert\(&quot;xss-name&quot;\)&lt;\/script&gt;/);
+  assert.match(rendered, /&lt;img src=x onerror=&quot;alert\(&#39;xss-handle&#39;\)&quot;&gt;/);
+  assert.match(rendered, /data-user="friend-1&quot; onmouseover=&quot;alert\(&#39;xss-attr&#39;\)&quot; data-injected=&quot;"/);
+  assert.match(rendered, /&quot;&gt;&lt;svg onload=&quot;alert\(&#39;xss-date&#39;\)&quot;&gt;&lt;&quot;/);
+});
+
+test('escapeHtml helper strictly escapes all special HTML entities and handles empty/null values', () => {
+  assert.equal(escapeHtml('<script>alert("test")</script>'), '&lt;script&gt;alert(&quot;test&quot;)&lt;/script&gt;');
+  assert.equal(escapeHtml(`"'&<>`), '&quot;&#39;&amp;&lt;&gt;');
+  assert.equal(escapeHtml('Hello world'), 'Hello world');
+  assert.equal(escapeHtml(null), '');
+  assert.equal(escapeHtml(undefined), '');
 });

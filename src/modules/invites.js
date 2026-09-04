@@ -1,5 +1,32 @@
 (() => {
-  const GhostLinkV3 = window.GhostLinkV3 = window.GhostLinkV3 || {};
+  const globalScope = typeof window !== 'undefined' ? window : globalThis;
+  const GhostLinkV3 = globalScope.GhostLinkV3 = globalScope.GhostLinkV3 || {};
+
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>'"]/g, (char) => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      "'": '&#39;',
+      '"': '&quot;'
+    }[char]));
+  }
+
+  function invitationView(invitation) {
+    const status = {
+      subscribed: ['Подписка оформлена', '+14 дней', 'granted'],
+      pending: ['Пробный период', 'Ожидаем оплату', 'pending'],
+      expired: ['Не пользуется', '', ''],
+    }[invitation?.status] || ['Статус неизвестен', '', ''];
+    const safeId = escapeHtml(invitation?.id);
+    const safeName = escapeHtml(invitation?.name);
+    const safeHandle = escapeHtml(invitation?.handle || '');
+    const safeCreatedAt = escapeHtml(invitation?.createdAt);
+    return `<div class="feed-item" data-user="${safeId}">
+      <div class="feed-item-top"><div class="feed-user-info"><span class="user-name">${safeName}</span><span class="user-handle">${safeHandle}</span></div><div class="feed-right-group"><span class="feed-time">${safeCreatedAt}</span></div></div>
+      <div class="feed-item-bottom"><span class="feed-status-text">${status[0]}</span>${status[1] ? `<span class="feed-note ${status[2]}">${status[1]}</span>` : ''}</div>
+    </div>`;
+  }
 
   GhostLinkV3.initInvitesModule = function initInvitesModule(dependencies = {}) {
     const { copyText, invites, showToast, profileSubscription } = dependencies;
@@ -181,17 +208,6 @@
       }).join('')}</div>`;
     }
 
-    function invitationView(invitation) {
-      const status = {
-        subscribed: ['Подписка оформлена', '+14 дней', 'granted'],
-        pending: ['Пробный период', 'Ожидаем оплату', 'pending'],
-        expired: ['Не пользуется', '', ''],
-      }[invitation.status] || ['Статус неизвестен', '', ''];
-      return `<div class="feed-item" data-user="${invitation.id}">
-        <div class="feed-item-top"><div class="feed-user-info"><span class="user-name">${invitation.name}</span><span class="user-handle">${invitation.handle || ''}</span></div><div class="feed-right-group"><span class="feed-time">${invitation.createdAt}</span></div></div>
-        <div class="feed-item-bottom"><span class="feed-status-text">${status[0]}</span>${status[1] ? `<span class="feed-note ${status[2]}">${status[1]}</span>` : ''}</div>
-      </div>`;
-    }
 
     function renderSnapshot(snapshot) {
       state.snapshot = snapshot;
@@ -416,4 +432,11 @@
     loadSnapshot();
     renderMode('standard');
   };
+
+  GhostLinkV3.escapeHtml = GhostLinkV3.escapeHtml || escapeHtml;
+  GhostLinkV3.invitationView = invitationView;
+
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { escapeHtml, invitationView };
+  }
 })();
