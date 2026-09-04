@@ -120,6 +120,7 @@
         // Gracefully fall back to profile link without failing the interface
         return {
           isMock: false,
+          isUnavailable: true,
           standardInvitation: {
             type: 'standard',
             url: referralLink,
@@ -151,6 +152,7 @@
 
       return {
         isMock: false,
+        isUnavailable: false,
         standardInvitation: {
           type: 'standard',
           url: referralLink || data?.standardInvitation?.url || '',

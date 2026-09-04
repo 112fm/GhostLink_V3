@@ -206,9 +206,13 @@
       }
       renderChain(stats.rewardDays);
       if (refs.list) {
-        refs.list.innerHTML = snapshot.invitations.length
-          ? snapshot.invitations.map(invitationView).join('')
-          : '<div class="referral-empty-card"><strong class="empty-title">Приглашений пока нет</strong><span class="empty-subtitle">Отправьте ссылку первому другу!</span></div>';
+        if (snapshot.isUnavailable) {
+          refs.list.innerHTML = '<div class="referral-empty-card"><strong class="empty-title">Не удалось обновить список друзей</strong><span class="empty-subtitle">Проверьте подключение к сети</span></div>';
+        } else if (snapshot.invitations.length) {
+          refs.list.innerHTML = snapshot.invitations.map(invitationView).join('');
+        } else {
+          refs.list.innerHTML = '<div class="referral-empty-card"><strong class="empty-title">Приглашений пока нет</strong><span class="empty-subtitle">Отправьте ссылку первому другу!</span></div>';
+        }
       }
       if (state.mode === 'standard' && refs.linkText) {
         const link = getReferralLink() || snapshot.standardInvitation?.url;

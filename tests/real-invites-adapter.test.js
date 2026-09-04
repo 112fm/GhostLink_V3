@@ -111,7 +111,7 @@ test('createRealInvitesAdapter maps /api/invite/list items and calculates reward
   assert.equal(snapshot.invitations[3].status, 'expired');
 });
 
-test('createRealInvitesAdapter gracefully falls back to profile link on network failure without throwing', async () => {
+test('createRealInvitesAdapter gracefully falls back to profile link on network failure without throwing and sets isUnavailable: true', async () => {
   const fakeProfile = {
     referral_link: 'https://t.me/GhostLink_VPN_bot?start=ref_safe_fallback',
   };
@@ -128,11 +128,126 @@ test('createRealInvitesAdapter gracefully falls back to profile link on network 
   // Must not throw:
   const snapshot = await adapter.getSnapshot();
   assert.equal(snapshot.isMock, false);
+  assert.equal(snapshot.isUnavailable, true);
   assert.equal(snapshot.standardInvitation.url, 'https://t.me/GhostLink_VPN_bot?start=ref_safe_fallback');
   assert.equal(snapshot.stats.rewardDays, 0);
   assert.equal(snapshot.stats.invited, 0);
   assert.equal(snapshot.stats.subscribed, 0);
   assert.deepEqual(snapshot.invitations, []);
+});
+
+test('createRealInvitesAdapter processes production FastAPI /api/invite/list schema (items, total, active, used, expired) and calculates rewardDays = used * 14', async () => {
+  const fastApiResponse = {
+    items: [
+      {
+        token: 'alpha123',
+        type: 'bridge',
+        status: 'used',
+        inviter_tg_id: '12345678',
+        invited_tg_id: '87654321',
+        created_ts: 1725400000,
+        expires_ts: 1725486400,
+        expires_in_sec: 0,
+        max_activations: 1,
+        activations_used: 1,
+        direct_link: 'https://t.me/GhostLink_VPN_bot?start=alpha123',
+        bridge_link: 'https://api.112prd.ru/join/alpha123',
+        telegram_start_link: 'https://t.me/GhostLink_VPN_bot?start=alpha123',
+      },
+      {
+        token: 'beta456',
+        type: 'bridge',
+        status: 'used',
+        inviter_tg_id: '12345678',
+        invited_tg_id: '11223344',
+        created_ts: 1725410000,
+        expires_ts: 1725496400,
+        expires_in_sec: 0,
+        max_activations: 1,
+        activations_used: 1,
+        direct_link: 'https://t.me/GhostLink_VPN_bot?start=beta456',
+        bridge_link: 'https://api.112prd.ru/join/beta456',
+        telegram_start_link: 'https://t.me/GhostLink_VPN_bot?start=beta456',
+      },
+      {
+        token: 'gamma789',
+        type: 'bridge',
+        status: 'active',
+        inviter_tg_id: '12345678',
+        invited_tg_id: '',
+        created_ts: 1725420000,
+        expires_ts: 1725506400,
+        expires_in_sec: 86400,
+        max_activations: 1,
+        activations_used: 0,
+        direct_link: 'https://t.me/GhostLink_VPN_bot?start=gamma789',
+        bridge_link: 'https://api.112prd.ru/join/gamma789',
+        telegram_start_link: 'https://t.me/GhostLink_VPN_bot?start=gamma789',
+      },
+      {
+        token: 'delta000',
+        type: 'bridge',
+        status: 'expired',
+        inviter_tg_id: '12345678',
+        invited_tg_id: '',
+        created_ts: 1725000000,
+        expires_ts: 1725086400,
+        expires_in_sec: 0,
+        max_activations: 1,
+        activations_used: 0,
+        direct_link: 'https://t.me/GhostLink_VPN_bot?start=delta000',
+        bridge_link: 'https://api.112prd.ru/join/delta000',
+        telegram_start_link: 'https://t.me/GhostLink_VPN_bot?start=delta000',
+      },
+    ],
+    total: 4,
+    active: 1,
+    used: 2,
+    revoked: 0,
+    expired: 1,
+  };
+
+  const adapter = createRealInvitesAdapter({
+    profileSubscription: {
+      getSnapshot: () => ({ referral_link: 'https://t.me/GhostLink_VPN_bot?start=ref_prod_user' }),
+    },
+    fetch: async (url) => {
+      assert.match(url, /\/api\/invite\/list$/);
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify(fastApiResponse),
+      };
+    },
+  });
+
+  const snapshot = await adapter.getSnapshot();
+  assert.equal(snapshot.isMock, false);
+  assert.equal(snapshot.isUnavailable, false);
+  assert.equal(snapshot.standardInvitation.url, 'https://t.me/GhostLink_VPN_bot?start=ref_prod_user');
+  assert.equal(snapshot.stats.invited, 4);
+  assert.equal(snapshot.stats.subscribed, 2);
+  assert.equal(snapshot.stats.pending, 1);
+  assert.equal(snapshot.stats.expired, 1);
+  assert.equal(snapshot.stats.rewardDays, 28); // used (2) * 14 = 28
+  assert.equal(snapshot.invitations.length, 4);
+  assert.equal(snapshot.invitations[0].status, 'subscribed');
+  assert.equal(snapshot.invitations[1].status, 'subscribed');
+  assert.equal(snapshot.invitations[2].status, 'pending');
+  assert.equal(snapshot.invitations[3].status, 'expired');
+});
+
+test('invites UI renders informative network error state card when snapshot.isUnavailable is true', () => {
+  const invitesJs = readFileSync(join(root, 'src', 'modules', 'invites.js'), 'utf8');
+  assert.match(invitesJs, /snapshot\.isUnavailable/);
+  assert.match(invitesJs, /Не удалось обновить список друзей/);
+  assert.match(invitesJs, /Проверьте подключение к сети/);
+});
+
+test('page-other-device.css has no obsolete .other-device-picker-status or .other-device-picker-list selectors', () => {
+  const css = readFileSync(join(root, 'src', 'css', 'page-other-device.css'), 'utf8');
+  assert.doesNotMatch(css, /\.other-device-picker-status/);
+  assert.doesNotMatch(css, /\.other-device-picker-list/);
 });
 
 test('normalizeInvitation cleanly formats arbitrary objects or missing fields', () => {
