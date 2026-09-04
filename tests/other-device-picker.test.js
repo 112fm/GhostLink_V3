@@ -7,21 +7,30 @@ const root = join(__dirname, '..');
 const html = readFileSync(join(root, 'src/templates/pages/devices.html'), 'utf8');
 const source = readFileSync(join(root, 'src/modules/devices.js'), 'utf8');
 
-test('other-device page has a dynamic device picker and hides the legacy static cards', () => {
+test('other-device page has clean platform picker and no key field or legacy list', () => {
   const picker = html.match(/<section id="page-other-device"[\s\S]*?<\/section>/);
 
   assert.ok(picker, 'other-device page must exist');
-  assert.match(picker[0], /id="other-device-picker-list"/);
-  assert.match(picker[0], /id="other-device-picker-status"/);
-  assert.match(picker[0], /class="devices-grid"/);
-  assert.match(picker[0], /key-box-container"[^>]*hidden aria-hidden="true"[\s\S]*?id="other-device-key-field"/);
+  assert.match(picker[0], /class="devices-grid" id="other-devices-grid"/);
+  assert.match(picker[0], /data-platform="ios"/);
+  assert.match(picker[0], /data-platform="android"/);
+  assert.match(picker[0], /data-platform="macos"/);
+  assert.match(picker[0], /data-platform="windows"/);
+  assert.match(picker[0], /data-platform="tv"/);
+  assert.match(picker[0], /data-platform="linux"/);
+  assert.match(picker[0], /Выберите платформу/);
+  assert.match(picker[0], /Выберите систему устройства, которое хотите подключить/);
+  assert.doesNotMatch(picker[0], /id="other-device-picker-list"/);
+  assert.doesNotMatch(picker[0], /id="other-device-picker-status"/);
+  assert.doesNotMatch(picker[0], /id="other-device-key-field"/);
+  assert.doesNotMatch(picker[0], /other-device-picker-section/);
 });
 
-test('picker takes only the current device-list entries and passes their UUID to app choice', () => {
-  assert.match(source, /async function openOtherDevicePicker\(\)[\s\S]*?deviceList\?\.fetchList\?\.\(\)/);
-  assert.match(source, /function renderOtherDevicePicker\(devices\)[\s\S]*?card\.dataset\.deviceUuid = device\.id/);
-  assert.match(source, /card\.addEventListener\('click', \(\) => selectDeviceForSetup\(device\)\)/);
-  assert.match(source, /function selectDeviceForSetup\(device\)[\s\S]*?selectedSetupDeviceId = device\.id[\s\S]*?openOverlay\(pageAppSelect\)/);
+test('platform card selection configures new-other-device and opens app choice', () => {
+  assert.match(source, /document\.querySelectorAll\('\.platform-card'\)\.forEach/);
+  assert.match(source, /setupFlowMode = 'new-other-device'/);
+  assert.match(source, /autoSelectDefaultAppForCurrentPlatform\(platform\)/);
+  assert.match(source, /openOverlay\(pageAppSelect\)/);
 });
 
 test('setup routes another device to the picker and app choice cannot create a device or consume a slot', () => {
@@ -37,16 +46,17 @@ test('setup routes another device to the picker and app choice cannot create a d
   assert.doesNotMatch(appChoice, /startDeviceOperation|createDevice|addOperationDevice/);
 });
 
-test('picker renders the adapter device UUID and app choice does not start a device operation', async () => {
+test('openOtherDevicePicker opens page-other-device and selecting a platform routes to app choice without premature creation', async () => {
   const elements = new Map();
   const overlays = [];
   let createCalls = 0;
 
-  function createElement(id = '') {
+  function createElement(id = '', className = '') {
     const listeners = new Map();
     const children = [];
     return {
       id,
+      className,
       children,
       dataset: {},
       style: {},
@@ -64,6 +74,11 @@ test('picker renders the adapter device UUID and app choice does not start a dev
     };
   }
 
+  const platformCards = [
+    createElement('', 'platform-card'),
+  ];
+  platformCards[0].dataset.platform = 'windows';
+
   const documentMock = {
     readyState: 'complete',
     getElementById: (id) => {
@@ -73,7 +88,10 @@ test('picker renders the adapter device UUID and app choice does not start a dev
     createElement: () => createElement(),
     createTextNode: (text) => ({ textContent: String(text) }),
     querySelector: () => null,
-    querySelectorAll: () => [],
+    querySelectorAll: (selector) => {
+      if (selector === '.platform-card') return platformCards;
+      return [];
+    },
     addEventListener: () => {},
   };
 
@@ -86,27 +104,24 @@ test('picker renders the adapter device UUID and app choice does not start a dev
   global.window.GhostLinkV3.initDevicesModule({
     showToast: () => {},
     copyText: async () => true,
-    openOverlay: (page) => overlays.push(page.id),
+    openOverlay: (page) => overlays.push(page?.id || page),
     closeOverlay: () => {},
     returnToHome: () => {},
     deviceList: {
-      fetchList: async () => ({ devices: [{ id: 'uuid-from-adapter', name: 'MacBook', app: 'Не выбрано', platform: 'laptop', url: 'https://api.112prd.ru:2053/sub/mac', url_incy: 'https://api.112prd.ru:2053/sub/mac?compat=incy' }] }),
+      fetchList: async () => ({ devices: [] }),
     },
     deviceOperations: { createDevice: async () => { createCalls += 1; return {}; } },
   });
 
   const devices = global.window.GhostLinkV3.devices;
   await devices.openOtherDevicePicker();
-  const picker = documentMock.getElementById('other-device-picker-list');
-  assert.equal(picker.children.length, 1);
-  assert.equal(picker.children[0].dataset.deviceUuid, 'uuid-from-adapter');
+  assert.deepEqual(overlays, ['page-other-device']);
 
-  picker.children[0].click();
-  assert.equal(devices.getSelectedSetupDeviceId(), 'uuid-from-adapter');
-  assert.equal(devices.getSubscriptionUrl('karing'), 'https://api.112prd.ru:2053/sub/mac');
-  assert.equal(devices.getSubscriptionUrl('incy'), 'https://api.112prd.ru:2053/sub/mac?compat=incy');
+  platformCards[0].click();
   assert.deepEqual(overlays, ['page-other-device', 'page-app-select']);
   assert.equal(createCalls, 0);
+  assert.equal(devices.getSetupFlowMode(), 'new-other-device');
+  assert.equal(devices.getPendingNewDevice()?.platform, 'windows');
 });
 
 test('device runtime has no mock-success path and creates canonical UUIDv4 request ids', () => {
