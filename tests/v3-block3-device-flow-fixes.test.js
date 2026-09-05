@@ -275,3 +275,122 @@ test('5. Toast is viewport-fixed above overlays and device actions are 2 columns
   assert.match(baseCss, /\.toast\s*\{[\s\S]*z-index:\s*10000;/);
   assert.match(settingsCss, /\.device-card-actions\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/);
 });
+
+test('6. proceedToKeyView opens existing device key when slots are exhausted without calling createDevice', async () => {
+  const elements = new Map();
+  function createElement(id = '') {
+    const listeners = new Map();
+    const children = [];
+    return {
+      id,
+      children,
+      dataset: {},
+      style: {},
+      classList: { add: () => {}, remove: () => {}, toggle: () => {}, contains: () => false },
+      append: (...items) => children.push(...items),
+      replaceChildren: (...items) => { children.splice(0, children.length, ...items); },
+      addEventListener: (name, handler) => listeners.set(name, handler),
+      click: function() { listeners.get('click')?.(); this.onclick?.(); },
+      querySelector: () => null,
+      querySelectorAll: () => [],
+      setAttribute: () => {},
+      getAttribute: () => null,
+      textContent: '',
+    };
+  }
+
+  const documentMock = {
+    readyState: 'complete',
+    getElementById: (id) => {
+      if (!elements.has(id)) elements.set(id, createElement(id));
+      return elements.get(id);
+    },
+    createElement: () => createElement(),
+    createTextNode: (text) => ({ textContent: String(text) }),
+    querySelector: () => null,
+    querySelectorAll: () => [],
+    addEventListener: () => {},
+  };
+
+  global.document = documentMock;
+  global.navigator = { userAgent: 'iPhone' };
+  global.window = {
+    document: documentMock,
+    crypto: { randomUUID: () => 'test-req-exhausted-789' },
+    GhostLinkV3: { apiBase: 'https://api.112prd.ru' },
+    Telegram: { WebApp: { platform: 'ios' } },
+  };
+
+  delete require.cache[require.resolve(join(root, 'src', 'modules', 'devices.js'))];
+  require(join(root, 'src', 'modules', 'devices.js'));
+
+  let createCalls = 0;
+  let openedOverlayId = null;
+  let toastMsg = null;
+
+  const existingDevices = [
+    {
+      id: 'dev-mypgone-1',
+      name: 'MyPgone',
+      platform: 'ios',
+      url: 'https://api.112prd.ru:2053/s/tok-mypgone#GhostLink',
+      url_incy: 'https://api.112prd.ru:2053/s/tok-mypgone?compat=incy#GhostLink',
+      isCurrent: false,
+    },
+    {
+      id: 'dev-katyusha-2',
+      name: 'Катюша',
+      platform: 'ios',
+      url: 'https://api.112prd.ru:2053/s/tok-katyusha#GhostLink',
+      url_incy: 'https://api.112prd.ru:2053/s/tok-katyusha?compat=incy#GhostLink',
+      isCurrent: false,
+    },
+  ];
+
+  global.window.GhostLinkV3.initDevicesModule({
+    showToast: (msg) => { toastMsg = msg; },
+    copyText: async () => true,
+    openOverlay: (page) => { openedOverlayId = page?.id; },
+    closeOverlay: () => {},
+    returnToHome: () => {},
+    profileSubscription: {
+      getApiBase: () => 'https://api.112prd.ru',
+      getToken: () => 'auth-token-user-yuri',
+      getSubToken: () => 'sub-token-yuri',
+    },
+    deviceList: {
+      fetchList: async () => ({
+        devices: existingDevices,
+        usedSlots: 2,
+        deviceLimit: 2,
+        freeSlots: 0,
+      }),
+    },
+    deviceOperations: {
+      createDevice: async () => {
+        createCalls += 1;
+        return { status: 'failed', message: 'limit reached' };
+      },
+    },
+  });
+
+  const devices = global.window.GhostLinkV3.devices;
+  devices.selectAppChoice('incy');
+
+  // Proceed to key view with 2/2 slots used
+  await devices.proceedToKeyView();
+
+  // Must NOT attempt to create new device
+  assert.equal(createCalls, 0, 'Must not call createDevice when slots are exhausted');
+  // Must open existing device (dev-mypgone-1)
+  assert.equal(devices.getSelectedSetupDeviceId(), 'dev-mypgone-1');
+  assert.equal(openedOverlayId, 'page-key-view');
+  assert.equal(devices.getSubscriptionUrl('incy'), 'https://api.112prd.ru:2053/s/tok-mypgone?compat=incy#GhostLink');
+  assert.match(toastMsg, /Лимит устройств/);
+});
+
+test('7. real Block 1 adapter defaults DEFAULT_INIT_DATA_WAIT_MS to 6000ms', () => {
+  const adapterJs = readFileSync(join(root, 'src', 'api', 'real-block1-adapter.js'), 'utf8');
+  assert.match(adapterJs, /const DEFAULT_INIT_DATA_WAIT_MS = 6000;/);
+});
+

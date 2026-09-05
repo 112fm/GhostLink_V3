@@ -1360,14 +1360,42 @@ async function proceedToKeyView() {
   const pageKeyView = document.getElementById('page-key-view');
   if (!pageKeyView) return;
 
-  const token = getCurrentUserToken();
+  let token = getCurrentUserToken();
   if (!token) {
-    showToast('Сессия Telegram ещё загружается. Попробуйте через секунду.');
+    // If profile is still loading or cached token is missing, attempt refresh before giving up
+    if (typeof profileSubscription?.fetchProfileSubscription === 'function') {
+      try {
+        await profileSubscription.fetchProfileSubscription();
+        token = getCurrentUserToken();
+      } catch (_) {}
+    }
+  }
+
+  if (!token) {
+    showToast('Не удалось получить данные подписки. Потяните вниз для обновления.');
     return;
   }
 
+  // Ensure device list is loaded to accurately check existing devices and free slots
+  if (!lastConfirmedDeviceList && typeof loadDeviceList === 'function') {
+    try {
+      await loadDeviceList();
+    } catch (_) {}
+  }
+
+  const existingDevices = lastConfirmedDeviceList?.devices || [];
+  const hasExistingDevices = existingDevices.length > 0;
+  const isLimitReached = lastConfirmedDeviceList?.freeSlots === 0
+    || (lastConfirmedDeviceList?.deviceLimit > 0 && lastConfirmedDeviceList?.usedSlots >= lastConfirmedDeviceList?.deviceLimit);
+
   // Scenario 2: New device creation confirmed after choosing app
   if (setupFlowMode === 'new-other-device' && pendingNewDevice) {
+    if (isLimitReached) {
+      showToast('Лимит устройств исчерпан. Выберите существующее устройство.');
+      const devicesPage = document.getElementById('page-devices-list');
+      if (devicesPage) openOverlay(devicesPage);
+      return;
+    }
     if (!deviceOperations?.createDevice) {
       showToast('Сервис создания устройств недоступен.');
       return;
@@ -1404,12 +1432,31 @@ async function proceedToKeyView() {
   if (setupFlowMode === 'this-device' && !selectedSetupDevice) {
     const curPlatform = getDevicePlatform();
     // Check if this device is already in confirmed list for current platform
-    const existingCurrent = lastConfirmedDeviceList?.devices?.find((d) => isDeviceCurrentForPlatform(d, curPlatform));
+    const existingCurrent = existingDevices.find((d) => isDeviceCurrentForPlatform(d, curPlatform));
     if (existingCurrent) {
       selectedSetupDeviceId = existingCurrent.id;
       selectedSetupDevice = { ...existingCurrent };
       updateDisplayedSubscriptionUrls(currentSelectedApp);
       openOverlay(pageKeyView);
+      return;
+    }
+
+    // If slots are exhausted, do not attempt to create a new device
+    if (isLimitReached) {
+      if (hasExistingDevices) {
+        // Automatically open the first existing device or current match, and notify user
+        const targetDev = existingDevices[0];
+        selectedSetupDeviceId = targetDev.id;
+        selectedSetupDevice = { ...targetDev };
+        setupFlowMode = 'existing-device';
+        updateDisplayedSubscriptionUrls(currentSelectedApp);
+        openOverlay(pageKeyView);
+        showToast(`Лимит устройств (все слоты заняты). Открыт ключ для «${targetDev.name}».`);
+        return;
+      }
+      showToast('Лимит устройств исчерпан. Освободите слот в списке устройств.');
+      const devicesPage = document.getElementById('page-devices-list');
+      if (devicesPage) openOverlay(devicesPage);
       return;
     }
 
@@ -1441,6 +1488,15 @@ async function proceedToKeyView() {
         return;
       }
     }
+  }
+
+  // Fallback / existing device flow: If selectedSetupDevice is not set but existing devices exist, use the first one
+  if (!selectedSetupDevice && hasExistingDevices) {
+    const curPlatform = getDevicePlatform();
+    const matched = existingDevices.find((d) => isDeviceCurrentForPlatform(d, curPlatform)) || existingDevices[0];
+    selectedSetupDeviceId = matched.id;
+    selectedSetupDevice = { ...matched };
+    setupFlowMode = 'existing-device';
   }
 
   updateDisplayedSubscriptionUrls(currentSelectedApp);

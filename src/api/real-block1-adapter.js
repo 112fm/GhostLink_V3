@@ -1,7 +1,7 @@
 (function registerRealBlock1Adapter(globalScope) {
   const DEFAULT_API_BASE = 'https://api.112prd.ru';
   const DEFAULT_TOTAL_TIMEOUT_MS = 10000;
-  const DEFAULT_INIT_DATA_WAIT_MS = 3000;
+  const DEFAULT_INIT_DATA_WAIT_MS = 6000;
   const INIT_DATA_RETRY_MS = 150;
 
   function createError(type, message, status, data) {
