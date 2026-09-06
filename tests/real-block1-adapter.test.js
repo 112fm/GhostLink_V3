@@ -306,6 +306,23 @@ test('real Block 1 rejects empty and malformed JSON without silently using mock 
   }
 });
 
+test('real Block 1 keeps an incomplete profile in the explicit profile_not_ready state', async () => {
+  const adapter = createRealBlock1Adapter({
+    apiBase: 'https://api.example.test',
+    getInitData: () => 'telegram-init-data',
+    fetch: async (url) => {
+      if (url.endsWith('/api/miniapp/session')) return response(200, { session_token: 'secret-token' });
+      if (url.endsWith('/api/user')) return response(200, { user: { id: '1', name: 'Pending User' } });
+      return response(200, { period_prices: {} });
+    },
+  });
+
+  await assert.rejects(
+    adapter.fetchProfileSubscription(),
+    (error) => error.type === 'profile_not_ready' && /Профиль ещё не готов/.test(error.message),
+  );
+});
+
 test('real Block 1 normalizes trial tariffs to ПРОБНЫЙ ПЕРИОД with gift emoji', async () => {
   for (const rawName of ['trial_7d', 'trial', 'TRIAL_7D', 'пробный']) {
     const adapter = createRealBlock1Adapter({

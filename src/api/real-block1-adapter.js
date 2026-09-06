@@ -97,7 +97,12 @@
         throw createError('auth', data?.detail || 'Требуется открыть Mini App через Telegram.', response.status, data);
       }
       if (response.status === 403) {
-        throw createError('access_denied', data?.detail || 'Доступ к профилю закрыт.', response.status, data);
+        const detail = String(data?.detail || '').trim();
+        const type = detail === 'profile_not_ready' ? 'profile_not_ready' : 'access_denied';
+        const message = type === 'profile_not_ready'
+          ? 'Профиль ещё готовится. Вернитесь в бота и откройте Mini App после подтверждения заявки.'
+          : (detail || 'Доступ к профилю закрыт.');
+        throw createError(type, message, response.status, data);
       }
       if (!response.ok) {
         throw createError('api', data?.detail || `api_error_${response.status}`, response.status, data);
@@ -142,7 +147,7 @@
     const user = userResponse?.user;
     const subscription = userResponse?.subscription;
     if (!user || !subscription || typeof subscription !== 'object') {
-      throw createError('invalid_json', 'Профиль получен в неполном формате.');
+      throw createError('profile_not_ready', 'Профиль ещё не готов. Попробуйте обновить через несколько секунд.');
     }
 
     const subscriptionStatus = String(subscription.status || '').trim().toLowerCase();

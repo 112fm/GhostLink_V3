@@ -55,6 +55,13 @@
         actionLabel: 'Повторить', isDemo: false,
       };
     }
+    if (error?.type === 'profile_not_ready') {
+      return {
+        state: 'profile_not_ready', planTitle: 'ПРОФИЛЬ ЗАГРУЖАЕТСЯ', emoji: '…', remainingDays: null,
+        daysLabel: '', deviceLabel: 'Профиль ещё не готов. Попробуйте обновить через несколько секунд.', progress: 0,
+        actionLabel: 'Повторить', isDemo: false,
+      };
+    }
     if (error) {
       return {
         state: 'unavailable',
@@ -235,6 +242,10 @@
       if (titleEl) titleEl.textContent = 'Требуется авторизация';
       if (descEl) descEl.textContent = error?.message || 'Сессия Telegram не подтверждена. Закройте Mini App и откройте снова через бота.';
       if (emojiEl) emojiEl.textContent = '🔐';
+    } else if (error?.type === 'profile_not_ready') {
+      if (titleEl) titleEl.textContent = 'Профиль ещё не готов';
+      if (descEl) descEl.textContent = error?.message || 'Вернитесь в бота и откройте Mini App после подтверждения заявки.';
+      if (emojiEl) emojiEl.textContent = '⏳';
     } else if (error?.status === 403) {
       if (titleEl) titleEl.textContent = 'Доступ ограничен';
       if (descEl) descEl.textContent = error?.message || 'Для доступа к клубу GhostLink требуется приглашение.';
