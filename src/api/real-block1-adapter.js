@@ -4,6 +4,48 @@
   const DEFAULT_INIT_DATA_WAIT_MS = 6000;
   const INIT_DATA_RETRY_MS = 150;
 
+  const DEFAULT_FALLBACK_TARIFFS = Object.freeze({
+    tier: 'regular',
+    pricing_group: 'regular',
+    prices: Object.freeze({
+      1: Object.freeze({ price: 150, min_pay: 100, max_discount: 50 }),
+      2: Object.freeze({ price: 150, min_pay: 100, max_discount: 50 }),
+      3: Object.freeze({ price: 350, min_pay: 200, max_discount: 150 }),
+      4: Object.freeze({ price: 450, min_pay: 250, max_discount: 200 }),
+      5: Object.freeze({ price: 500, min_pay: 300, max_discount: 200 }),
+    }),
+    period_prices: Object.freeze({
+      1: Object.freeze({
+        1: Object.freeze({ price: 150, min_pay: 100, max_discount: 50 }),
+        2: Object.freeze({ price: 150, min_pay: 100, max_discount: 50 }),
+        3: Object.freeze({ price: 350, min_pay: 200, max_discount: 150 }),
+        4: Object.freeze({ price: 450, min_pay: 250, max_discount: 200 }),
+        5: Object.freeze({ price: 500, min_pay: 300, max_discount: 200 }),
+      }),
+      2: Object.freeze({
+        1: Object.freeze({ price: 290, min_pay: 180, max_discount: 110 }),
+        2: Object.freeze({ price: 290, min_pay: 180, max_discount: 110 }),
+        3: Object.freeze({ price: 630, min_pay: 360, max_discount: 270 }),
+        4: Object.freeze({ price: 810, min_pay: 450, max_discount: 360 }),
+        5: Object.freeze({ price: 900, min_pay: 540, max_discount: 360 }),
+      }),
+      3: Object.freeze({
+        1: Object.freeze({ price: 430, min_pay: 240, max_discount: 190 }),
+        2: Object.freeze({ price: 430, min_pay: 240, max_discount: 190 }),
+        3: Object.freeze({ price: 840, min_pay: 480, max_discount: 360 }),
+        4: Object.freeze({ price: 1080, min_pay: 600, max_discount: 480 }),
+        5: Object.freeze({ price: 1200, min_pay: 720, max_discount: 480 }),
+      }),
+    }),
+    solo: Object.freeze({ price: 150, min_pay: 100, max_discount: 50 }),
+    flex: Object.freeze({
+      2: Object.freeze({ price: 150, min_pay: 100, max_discount: 50 }),
+      3: Object.freeze({ price: 350, min_pay: 200, max_discount: 150 }),
+      4: Object.freeze({ price: 450, min_pay: 250, max_discount: 200 }),
+      5: Object.freeze({ price: 500, min_pay: 300, max_discount: 200 }),
+    }),
+  });
+
   function createError(type, message, status, data) {
     const error = new Error(message || type);
     error.type = type;
@@ -262,7 +304,7 @@
         deviceLimit: toInteger(userResponse.device_limit),
         usedDevices: toInteger(userResponse.connected_devices),
       },
-      tariffs: tariffsResponse,
+      tariffs: tariffsResponse || DEFAULT_FALLBACK_TARIFFS,
     };
   }
 
@@ -365,8 +407,14 @@
       return session;
     }
 
+    const defaultTariffs = options.defaultTariffs || options.fallbackTariffs || DEFAULT_FALLBACK_TARIFFS;
     const listeners = new Set();
-    let currentSnapshot = null;
+    let currentSnapshot = {
+      user: null,
+      profile: null,
+      subscription: null,
+      tariffs: defaultTariffs,
+    };
     let latestTariffsResponse = null;
     let latestUserResponse = null;
     let activeGeneration = 0;
@@ -430,7 +478,7 @@
 
           latestUserResponse = user;
           const profileResult = mapProfile(user, null, now());
-          profileResult.tariffs = latestTariffsResponse || currentSnapshot?.tariffs || null;
+          profileResult.tariffs = latestTariffsResponse || currentSnapshot?.tariffs || defaultTariffs;
           currentSnapshot = profileResult;
           notifyListeners(profileResult);
           return profileResult;
@@ -459,7 +507,7 @@
     });
   }
 
-  const exported = { createRealBlock1Adapter, mapProfile };
+  const exported = { createRealBlock1Adapter, mapProfile, DEFAULT_FALLBACK_TARIFFS };
   if (typeof module !== 'undefined' && module.exports) module.exports = exported;
   if (globalScope) {
     globalScope.GhostLinkV3 = globalScope.GhostLinkV3 || {};

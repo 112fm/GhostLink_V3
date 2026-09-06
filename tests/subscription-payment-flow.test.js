@@ -624,9 +624,9 @@ test('bidirectional integration Test A (user -> tariffs): user resolves first, t
         await new Promise((r) => setTimeout(r, 50));
         return mockResponse(200, {
           period_prices: {
-            1: { 2: { price: 150 }, 3: { price: 350 }, 4: { price: 450 }, 5: { price: 500 } },
-            2: { 2: { price: 290 }, 3: { price: 630 }, 4: { price: 810 }, 5: { price: 900 } },
-            3: { 2: { price: 430 }, 3: { price: 840 }, 4: { price: 1080 }, 5: { price: 1200 } },
+            1: { 2: { price: 200 }, 3: { price: 350 }, 4: { price: 450 }, 5: { price: 500 } },
+            2: { 2: { price: 390 }, 3: { price: 630 }, 4: { price: 810 }, 5: { price: 900 } },
+            3: { 2: { price: 530 }, 3: { price: 840 }, 4: { price: 1080 }, 5: { price: 1200 } },
           },
         });
       }
@@ -644,20 +644,20 @@ test('bidirectional integration Test A (user -> tariffs): user resolves first, t
   // Initial load of profile (user resolves at ~10ms, tariffs still pending)
   await adapter.fetchProfileSubscription();
 
-  // Button must be disabled and loading text shown while tariffs are pending
-  assert.equal(btnPay.disabled, true);
-  assert.equal(doc.getElementById('pay-total').textContent, 'Загрузка тарифов…');
-  assert.equal(doc.getElementById('price-card-1').textContent, '— ₽');
+  // Cold Start Fallback: tariffs are active from fallback while server response is pending
+  assert.equal(btnPay.disabled, false);
+  assert.equal(doc.getElementById('pay-total').textContent, '150 ₽');
+  assert.equal(doc.getElementById('price-card-1').textContent, '150 ₽');
 
   // Wait for tariffs to arrive at ~50ms
   await new Promise((r) => setTimeout(r, 60));
 
-  // Reactive subscription must have automatically updated UI and unlocked btnPay
+  // Reactive subscription must have automatically updated UI with fresh server data
   assert.equal(btnPay.disabled, false);
-  assert.equal(doc.getElementById('pay-total').textContent, '150 ₽');
-  assert.equal(doc.getElementById('price-card-1').textContent, '150 ₽');
-  assert.equal(doc.getElementById('price-card-2').textContent, '290 ₽');
-  assert.equal(doc.getElementById('price-card-3').textContent, '430 ₽');
+  assert.equal(doc.getElementById('pay-total').textContent, '200 ₽');
+  assert.equal(doc.getElementById('price-card-1').textContent, '200 ₽');
+  assert.equal(doc.getElementById('price-card-2').textContent, '390 ₽');
+  assert.equal(doc.getElementById('price-card-3').textContent, '530 ₽');
 });
 
 test('bidirectional integration Test B (tariffs -> user): tariffs resolve first, user resolves later', async () => {
@@ -989,9 +989,9 @@ test('regression Scenario 3 (Recovery after Error): retry after failed tariffs r
         }
         return mockResponse(200, {
           period_prices: {
-            1: { 2: { price: 150 }, 3: { price: 350 }, 4: { price: 450 }, 5: { price: 500 } },
-            2: { 2: { price: 290 }, 3: { price: 630 }, 4: { price: 810 }, 5: { price: 900 } },
-            3: { 2: { price: 430 }, 3: { price: 840 }, 4: { price: 1080 }, 5: { price: 1200 } },
+            1: { 2: { price: 250 }, 3: { price: 350 }, 4: { price: 450 }, 5: { price: 500 } },
+            2: { 2: { price: 490 }, 3: { price: 630 }, 4: { price: 810 }, 5: { price: 900 } },
+            3: { 2: { price: 630 }, 3: { price: 840 }, 4: { price: 1080 }, 5: { price: 1200 } },
           },
         });
       }
@@ -1000,24 +1000,93 @@ test('regression Scenario 3 (Recovery after Error): retry after failed tariffs r
   });
 
   initSubscriptionModule({ profileSubscription: adapter });
-  // Initial failed load
+  // Initial failed load: 500 error on cold start preserves default fallback tariffs
   await adapter.fetchProfileSubscription();
 
   const btnPay = doc.getElementById('btn-pay');
-  assert.equal(btnPay.disabled, true);
-  assert.equal(doc.getElementById('pay-total').textContent, 'Загрузка тарифов…');
+  assert.equal(btnPay.disabled, false);
+  assert.equal(doc.getElementById('pay-total').textContent, '150 ₽');
+  assert.equal(doc.getElementById('price-card-1').textContent, '150 ₽');
 
   // Backend recovers, user retries
   shouldFailTariffs = false;
   await adapter.refresh();
   await new Promise((r) => setTimeout(r, 20));
 
-  // Prices restored, btnPay unlocked
+  // Live backend prices applied, replacing fallback
+  assert.equal(btnPay.disabled, false);
+  assert.equal(doc.getElementById('pay-total').textContent, '250 ₽');
+  assert.equal(doc.getElementById('price-card-1').textContent, '250 ₽');
+  assert.equal(doc.getElementById('price-card-2').textContent, '490 ₽');
+  assert.equal(doc.getElementById('price-card-3').textContent, '630 ₽');
+});
+
+test('Cold Start Resilience: cold start displays fallback tariffs immediately before fetchProfileSubscription and updates when server responds', async () => {
+  const doc = createMockDocument();
+  global.document = doc;
+  global.Telegram = { WebApp: { initData: 'telegram-init-data' } };
+  global.window = {
+    document: doc,
+    GhostLinkPaymentConfig: { banks: {}, get: () => ({}), set: () => {}, reset: () => {} },
+    Telegram: { WebApp: { initData: 'telegram-init-data' } },
+    GhostLinkV3: {},
+  };
+
+  const mockResponse = (status, body) => ({
+    ok: status >= 200 && status < 300,
+    status,
+    text: async () => JSON.stringify(body),
+    json: async () => body,
+  });
+
+  const adapter = createRealBlock1Adapter({
+    apiBase: 'https://api.example.test',
+    getInitData: () => 'telegram-init-data',
+    fetch: async (url) => {
+      if (url.endsWith('/api/miniapp/session')) return mockResponse(200, { session_token: 'secret-token' });
+      if (url.endsWith('/api/user')) {
+        return mockResponse(200, {
+          user: { id: '123', name: 'Real User' },
+          subscription: { active: true, status: 'active', days_left: 30 },
+          tariff_name: 'Solo Ghost',
+          device_limit: 2,
+          connected_devices: 1,
+        });
+      }
+      if (url.endsWith('/api/tariffs')) {
+        return mockResponse(200, {
+          period_prices: {
+            1: { 2: { price: 200 }, 3: { price: 400 }, 4: { price: 500 }, 5: { price: 600 } },
+          },
+        });
+      }
+      return mockResponse(200, {});
+    },
+  });
+
+  // 1. Initial state before any fetch: snapshot has fallback tariffs immediately
+  assert.notEqual(adapter.getSnapshot()?.tariffs, null, 'Snapshot must have default fallback tariffs on cold start');
+  assert.equal(adapter.getSnapshot()?.tariffs?.period_prices?.[1]?.[2]?.price, 150);
+
+  // 2. Initialize UI module
+  initSubscriptionModule({ profileSubscription: adapter });
+
+  // 3. UI must immediately show 150 ₽ and btnPay must be enabled
+  const btnPay = doc.getElementById('btn-pay');
   assert.equal(btnPay.disabled, false);
   assert.equal(doc.getElementById('pay-total').textContent, '150 ₽');
   assert.equal(doc.getElementById('price-card-1').textContent, '150 ₽');
   assert.equal(doc.getElementById('price-card-2').textContent, '290 ₽');
   assert.equal(doc.getElementById('price-card-3').textContent, '430 ₽');
+
+  // 4. Now perform fetchProfileSubscription (live server responds with 200 ₽)
+  await adapter.fetchProfileSubscription();
+  await new Promise((r) => setTimeout(r, 20));
+
+  // 5. Fresh server tariffs replace fallback
+  assert.equal(doc.getElementById('pay-total').textContent, '200 ₽');
+  assert.equal(doc.getElementById('price-card-1').textContent, '200 ₽');
+  assert.equal(btnPay.disabled, false);
 });
 
 test('regression Overlapping Requests: slow request #1 (150ms) is discarded by Generation Guard in favor of fast refresh #2 (50ms)', async () => {
