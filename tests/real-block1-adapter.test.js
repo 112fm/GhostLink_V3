@@ -524,3 +524,93 @@ test('Generation Guard prevents slow openSession response from overwriting newer
   assert.equal(adapter.getToken(), 'token-generation-2');
 });
 
+test('real Block 1 auto-retries session request once on network error then succeeds', async () => {
+  let sessionAttempts = 0;
+  const adapter = createRealBlock1Adapter({
+    apiBase: 'https://api.example.test',
+    getInitData: () => 'telegram-init-data',
+    sessionRetryDelayMs: 10,
+    fetch: async (url) => {
+      if (url.endsWith('/api/miniapp/session')) {
+        sessionAttempts++;
+        if (sessionAttempts === 1) {
+          throw new TypeError('Failed to fetch');
+        }
+        return response(200, { ok: true, session_token: 'recovered-session-token' });
+      }
+      if (url.endsWith('/api/user')) {
+        return response(200, {
+          user: { id: '1', name: 'Retry User' },
+          subscription: { active: true, status: 'active', days_left: 15 },
+          tariff_name: 'Solo',
+          device_limit: 2,
+          connected_devices: 1,
+        });
+      }
+      if (url.endsWith('/api/tariffs')) {
+        return response(200, { period_prices: {} });
+      }
+      return response(200, {});
+    },
+  });
+
+  const snapshot = await adapter.fetchProfileSubscription();
+  assert.equal(sessionAttempts, 2, 'Session endpoint should be called exactly twice (1 retry)');
+  assert.equal(snapshot.profile.displayName, 'Retry User');
+  assert.equal(adapter.getToken(), 'recovered-session-token');
+  assert.equal(adapter.getDiagnostics().session_status, 200);
+});
+
+test('real Block 1 does NOT retry session on 401 or 403 hard auth error', async () => {
+  let sessionAttempts = 0;
+  const adapter = createRealBlock1Adapter({
+    apiBase: 'https://api.example.test',
+    getInitData: () => 'telegram-init-data',
+    sessionRetryDelayMs: 10,
+    fetch: async (url) => {
+      if (url.endsWith('/api/miniapp/session')) {
+        sessionAttempts++;
+        return response(401, { detail: 'Unauthorized init_data' });
+      }
+      return response(200, {});
+    },
+  });
+
+  await assert.rejects(
+    async () => { await adapter.fetchProfileSubscription(); },
+    (err) => {
+      assert.equal(err.status, 401);
+      return true;
+    }
+  );
+  assert.equal(sessionAttempts, 1, 'Should NOT retry 401 auth error');
+  assert.equal(adapter.getDiagnostics().session_status, 401);
+});
+
+test('real Block 1 throws error if session fails after 2 consecutive attempts', async () => {
+  let sessionAttempts = 0;
+  const adapter = createRealBlock1Adapter({
+    apiBase: 'https://api.example.test',
+    getInitData: () => 'telegram-init-data',
+    sessionRetryDelayMs: 10,
+    fetch: async (url) => {
+      if (url.endsWith('/api/miniapp/session')) {
+        sessionAttempts++;
+        throw new TypeError('Network down');
+      }
+      return response(200, {});
+    },
+  });
+
+  await assert.rejects(
+    async () => { await adapter.fetchProfileSubscription(); },
+    (err) => {
+      assert.equal(err.type, 'network');
+      return true;
+    }
+  );
+  assert.equal(sessionAttempts, 2, 'Should attempt initial + exactly 1 retry');
+  assert.equal(adapter.getDiagnostics().session_status, 'network');
+});
+
+

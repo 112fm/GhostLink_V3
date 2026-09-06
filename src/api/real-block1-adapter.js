@@ -3,6 +3,7 @@
   const DEFAULT_TOTAL_TIMEOUT_MS = 10000;
   const DEFAULT_INIT_DATA_WAIT_MS = 6000;
   const INIT_DATA_RETRY_MS = 150;
+  const DEFAULT_SESSION_RETRY_DELAY_MS = 500;
 
   const DEFAULT_FALLBACK_TARIFFS = Object.freeze({
     tier: 'regular',
@@ -320,6 +321,9 @@
       toInteger(options.initDataWaitMs, DEFAULT_INIT_DATA_WAIT_MS),
       totalTimeoutMs,
     );
+    const sessionRetryDelayMs = options.sessionRetryDelayMs !== undefined
+      ? toInteger(options.sessionRetryDelayMs, DEFAULT_SESSION_RETRY_DELAY_MS)
+      : DEFAULT_SESSION_RETRY_DELAY_MS;
     let token = '';
     let inFlight = null;
     let sessionState = null;
@@ -388,20 +392,37 @@
     async function openSession(deadlineAt, currentGeneration) {
       const initData = await waitForInitData(deadlineAt);
 
-      const session = await runStage('session', deadlineAt, (timeoutMs) => requestJson(fetchImpl, `${apiBase}/api/miniapp/session`, {
-          method: 'POST',
-          cache: 'no-store',
-          credentials: 'include',
-          headers: { Accept: 'application/json' },
-          body: new URLSearchParams({ init_data: initData }),
-        }, timeoutMs));
+      const doSessionRequest = (timeoutMs) => requestJson(fetchImpl, `${apiBase}/api/miniapp/session`, {
+        method: 'POST',
+        cache: 'no-store',
+        credentials: 'include',
+        headers: { Accept: 'application/json' },
+        body: new URLSearchParams({ init_data: initData }),
+      }, timeoutMs);
+
+      let session;
+      try {
+        session = await runStage('session', deadlineAt, doSessionRequest);
+      } catch (firstError) {
+        if (firstError?.status === 401 || firstError?.status === 403 || firstError?.type === 'auth') {
+          throw firstError;
+        }
+        if (currentGeneration !== undefined && currentGeneration !== activeGeneration) return null;
+        const delay = Math.max(1, Math.min(sessionRetryDelayMs, remainingTime(deadlineAt)));
+        if (delay <= 0 || remainingTime(deadlineAt) <= 0) {
+          throw firstError;
+        }
+        await sleep(delay);
+        if (currentGeneration !== undefined && currentGeneration !== activeGeneration) return null;
+        session = await runStage('session', deadlineAt, doSessionRequest);
+      }
 
       if (currentGeneration !== undefined && currentGeneration !== activeGeneration) {
         // Late response from stale generation - do not touch active token or sessionState
         return null;
       }
 
-      token = String(session.session_token || '');
+      token = String(session?.session_token || '');
       if (!token) throw createError('invalid_json', 'Сервер не подтвердил сессию.');
       sessionState = Object.freeze({ status: 'authenticated', transport: 'memory' });
       return session;

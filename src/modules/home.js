@@ -222,6 +222,45 @@
     island.setAttribute('aria-busy', 'false');
   }
 
+  function showSessionError(error, documentRef = root.document) {
+    if (!documentRef) return;
+    const page = documentRef.getElementById('page-session-error');
+    if (!page) return;
+
+    const titleEl = documentRef.getElementById('sessionErrorTitle');
+    const descEl = documentRef.getElementById('sessionErrorDesc');
+    const emojiEl = documentRef.getElementById('sessionErrorEmoji');
+
+    if (error?.type === 'auth' || error?.status === 401) {
+      if (titleEl) titleEl.textContent = 'Требуется авторизация';
+      if (descEl) descEl.textContent = error?.message || 'Сессия Telegram не подтверждена. Закройте Mini App и откройте снова через бота.';
+      if (emojiEl) emojiEl.textContent = '🔐';
+    } else if (error?.status === 403) {
+      if (titleEl) titleEl.textContent = 'Доступ ограничен';
+      if (descEl) descEl.textContent = error?.message || 'Для доступа к клубу GhostLink требуется приглашение.';
+      if (emojiEl) emojiEl.textContent = '🔒';
+    } else if (error?.type === 'timeout') {
+      if (titleEl) titleEl.textContent = 'Сервер не отвечает';
+      if (descEl) descEl.textContent = 'Время ожидания ответа истекло. Проверьте сеть и нажмите «Перезапустить».';
+      if (emojiEl) emojiEl.textContent = '⏱️';
+    } else {
+      if (titleEl) titleEl.textContent = 'Связь с GhostLink прервана';
+      if (descEl) descEl.textContent = error?.message || 'Не удалось установить защищённую сессию. Проверьте подключение к интернету и нажмите «Перезапустить».';
+      if (emojiEl) emojiEl.textContent = '📡';
+    }
+
+    page.classList?.remove?.('hidden');
+    documentRef.body?.classList?.add?.('has-overlay-open');
+  }
+
+  function hideSessionError(documentRef = root.document) {
+    if (!documentRef) return;
+    const page = documentRef.getElementById('page-session-error');
+    if (!page) return;
+    page.classList?.add?.('hidden');
+    documentRef.body?.classList?.remove?.('has-overlay-open');
+  }
+
   function initHomeModule(dependencies = {}) {
     const documentRef = root.document;
     if (!documentRef) return null;
@@ -247,14 +286,19 @@
       }).catch(() => {});
     }
 
-    function loadProfileSubscription() {
+    function loadProfileSubscription(options = {}) {
       if (!profileSubscription || currentLoad) return currentLoad;
       const currentRequest = ++requestSequence;
       renderLoading();
       currentLoad = Promise.resolve()
-        .then(() => profileSubscription.fetchProfileSubscription())
+        .then(() => (options.force && profileSubscription.refresh ? profileSubscription.refresh() : profileSubscription.fetchProfileSubscription()))
         .then((snapshot) => {
           if (currentRequest === requestSequence) {
+            if (snapshot?.error) {
+              showSessionError(snapshot.error, documentRef);
+            } else {
+              hideSessionError(documentRef);
+            }
             renderSubscriptionStatus(snapshot, documentRef);
             updateAdminSettingsVisibility(snapshot, documentRef);
             syncDeviceCounterFromAdapter();
@@ -268,6 +312,7 @@
         })
         .catch((error) => {
           if (currentRequest === requestSequence) {
+            showSessionError(error, documentRef);
             renderSubscriptionStatus({ error }, documentRef);
             updateAdminSettingsVisibility(null, documentRef);
           }
@@ -280,9 +325,35 @@
       return currentLoad;
     }
 
-    const bottomNav = documentRef.querySelector('.bottom-nav');
-    const navItems = documentRef.querySelectorAll('.nav-item');
-    const tabContents = documentRef.querySelectorAll('.tab-content');
+    const btnSessionRetry = documentRef.getElementById('btnSessionRetry');
+    if (btnSessionRetry && typeof btnSessionRetry.addEventListener === 'function') {
+      btnSessionRetry.addEventListener('click', async () => {
+        btnSessionRetry.disabled = true;
+        const originalText = btnSessionRetry.textContent;
+        btnSessionRetry.textContent = 'Подключение…';
+        try {
+          await loadProfileSubscription({ force: true });
+        } catch (_) {
+        } finally {
+          btnSessionRetry.disabled = false;
+          btnSessionRetry.textContent = originalText;
+        }
+      });
+    }
+
+    const subscriptionStatusIsland = documentRef.getElementById('subscriptionStatus');
+    if (subscriptionStatusIsland && typeof subscriptionStatusIsland.addEventListener === 'function') {
+      subscriptionStatusIsland.addEventListener('click', () => {
+        const state = subscriptionStatusIsland.dataset?.subscriptionState;
+        if (state === 'unavailable' || state === 'auth') {
+          loadProfileSubscription({ force: true });
+        }
+      });
+    }
+
+    const bottomNav = documentRef.querySelector?.('.bottom-nav');
+    const navItems = documentRef.querySelectorAll ? documentRef.querySelectorAll('.nav-item') : [];
+    const tabContents = documentRef.querySelectorAll ? documentRef.querySelectorAll('.tab-content') : [];
 
     navItems.forEach((item, index) => {
       item.addEventListener('click', () => {
@@ -296,17 +367,17 @@
 
         if (targetId === 'tab-home') loadProfileSubscription();
         if (targetId === 'tab-support') {
-          root.document.body.classList.add('hide-header');
+          root.document?.body?.classList?.add('hide-header');
           const history = documentRef.getElementById('supportChatHistory');
           if (history) history.scrollTop = history.scrollHeight;
         } else {
-          root.document.body.classList.remove('hide-header');
+          root.document?.body?.classList?.remove('hide-header');
         }
       });
     });
 
     loadProfileSubscription();
-    return { loadProfileSubscription };
+    return { loadProfileSubscription, showSessionError, hideSessionError };
   }
 
   const exported = {
@@ -315,6 +386,8 @@
     renderSubscriptionStatus,
     updateAdminSettingsVisibility,
     clearSubscriptionLoading,
+    showSessionError,
+    hideSessionError,
     initHomeModule,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = exported;

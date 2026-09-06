@@ -1,0 +1,102 @@
+/* Session Error Screen */
+.session-error-page {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(17, 18, 17, 0.94);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  z-index: 9999;
+}
+
+.session-error-page.hidden {
+  display: none !important;
+}
+
+.session-error-container {
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.session-error-card {
+  width: 100%;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 28px;
+  padding: 32px 24px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+}
+
+.session-error-icon-box {
+  width: 72px;
+  height: 72px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.session-error-emoji {
+  font-size: 36px;
+  line-height: 1;
+}
+
+.session-error-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 10px;
+  letter-spacing: -0.01em;
+}
+
+.session-error-desc {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #9ca3af;
+  margin: 0 0 28px;
+}
+
+.session-error-actions {
+  width: 100%;
+}
+
+.session-error-btn-retry {
+  width: 100%;
+  height: 52px;
+  background: var(--accent-lime, #b8ff00);
+  color: #0b0c0b;
+  border: none;
+  border-radius: 16px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+  box-shadow: 0 4px 16px rgba(184, 255, 0, 0.25);
+}
+
+.session-error-btn-retry:active {
+  transform: scale(0.97);
+  box-shadow: 0 2px 8px rgba(184, 255, 0, 0.15);
+}
+
+.session-error-btn-retry:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
