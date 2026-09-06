@@ -49,15 +49,19 @@ test('secondary failures do not interrupt boot and admin runtime starts only for
   };
 
   assert.doesNotThrow(() => vm.runInNewContext(source, context));
+  assert.deepEqual(calls, ['home', 'diagnostics']);
+
+  notifyProfile({ user: { is_admin: false } });
+  assert.deepEqual(calls, ['home', 'diagnostics']);
+  assert.equal(calls.includes('payment-settings'), false);
+  assert.equal(calls.includes('admin'), false);
+
+  notifyProfile({ profile: {}, subscription: {}, user: { is_admin: false } });
   assert.deepEqual(calls, [
     'home', 'diagnostics', 'subscription', 'devices', 'invites', 'support', 'help',
   ]);
 
-  notifyProfile({ user: { is_admin: false } });
-  assert.equal(calls.includes('payment-settings'), false);
-  assert.equal(calls.includes('admin'), false);
-
-  assert.doesNotThrow(() => notifyProfile({ user: { is_admin: true } }));
+  assert.doesNotThrow(() => notifyProfile({ profile: {}, subscription: {}, user: { is_admin: true } }));
   assert.equal(calls.filter((call) => call === 'payment-settings').length, 1);
   assert.equal(calls.filter((call) => call === 'admin').length, 1);
 });
@@ -65,12 +69,10 @@ test('secondary failures do not interrupt boot and admin runtime starts only for
 test('runtime cache versions load the isolated home lifecycle and gift adapter', () => {
   const template = fs.readFileSync(path.join(root, 'src', 'templates', 'index.template.html'), 'utf8');
 
-  assert.match(template, /real-block1-adapter\.js\?v=22/);
-  assert.match(template, /real-device-adapter\.js\?v=22/);
-  assert.match(template, /modules\/home\.js\?v=22/);
-  assert.match(template, /modules\/devices\.js\?v=22/);
-  assert.match(template, /modules\/admin\.js\?v=22/);
-  assert.match(template, /src\/main\.js\?v=22/);
+  const localAssetVersions = [...template.matchAll(/(?:src|href)="\.\/src\/[^\"]+\?v=([^\"]+)/g)]
+    .map((match) => match[1]);
+  assert.ok(localAssetVersions.length > 0);
+  assert.deepEqual([...new Set(localAssetVersions)], ['23']);
 });
 
 test('admin source never auto-starts the partners tab during page load', () => {

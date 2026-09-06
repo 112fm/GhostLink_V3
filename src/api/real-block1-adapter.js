@@ -2,6 +2,9 @@
   const DEFAULT_API_BASE = 'https://api.112prd.ru';
   const DEFAULT_TOTAL_TIMEOUT_MS = 10000;
   const DEFAULT_INIT_DATA_WAIT_MS = 6000;
+  const DEFAULT_SESSION_TIMEOUT_MS = 5000;
+  const DEFAULT_USER_TIMEOUT_MS = 5000;
+  const DEFAULT_TARIFFS_TIMEOUT_MS = 5000;
   const INIT_DATA_RETRY_MS = 150;
   const DEFAULT_SESSION_RETRY_DELAY_MS = 500;
   const DEFAULT_SESSION_RETRY_TIMEOUT_MS = 5000;
@@ -90,8 +93,11 @@
         throw createError('invalid_json', 'Сервер вернул некорректные данные.', response.status);
       }
 
-      if (response.status === 401 || response.status === 403) {
+      if (response.status === 401) {
         throw createError('auth', data?.detail || 'Требуется открыть Mini App через Telegram.', response.status, data);
+      }
+      if (response.status === 403) {
+        throw createError('access_denied', data?.detail || 'Доступ к профилю закрыт.', response.status, data);
       }
       if (!response.ok) {
         throw createError('api', data?.detail || `api_error_${response.status}`, response.status, data);
@@ -318,10 +324,10 @@
     const nowMs = options.nowMs || (() => Date.now());
     const sleep = options.sleep || ((duration) => new Promise((resolve) => globalScope.setTimeout(resolve, duration)));
     const totalTimeoutMs = toInteger(options.totalTimeoutMs ?? options.timeoutMs, DEFAULT_TOTAL_TIMEOUT_MS) || DEFAULT_TOTAL_TIMEOUT_MS;
-    const initDataWaitMs = Math.min(
-      toInteger(options.initDataWaitMs, DEFAULT_INIT_DATA_WAIT_MS),
-      totalTimeoutMs,
-    );
+    const initDataWaitMs = toInteger(options.initDataWaitMs, DEFAULT_INIT_DATA_WAIT_MS) || DEFAULT_INIT_DATA_WAIT_MS;
+    const sessionTimeoutMs = toInteger(options.sessionTimeoutMs, DEFAULT_SESSION_TIMEOUT_MS) || DEFAULT_SESSION_TIMEOUT_MS;
+    const userTimeoutMs = toInteger(options.userTimeoutMs, DEFAULT_USER_TIMEOUT_MS) || DEFAULT_USER_TIMEOUT_MS;
+    const tariffsTimeoutMs = toInteger(options.tariffsTimeoutMs, DEFAULT_TARIFFS_TIMEOUT_MS) || DEFAULT_TARIFFS_TIMEOUT_MS;
     const sessionRetryDelayMs = options.sessionRetryDelayMs !== undefined
       ? toInteger(options.sessionRetryDelayMs, DEFAULT_SESSION_RETRY_DELAY_MS)
       : DEFAULT_SESSION_RETRY_DELAY_MS;
@@ -347,18 +353,14 @@
       };
     }
 
-    function remainingTime(deadlineAt) {
-      return Math.max(0, deadlineAt - nowMs());
-    }
-
-    async function waitForInitData(deadlineAt) {
+    async function waitForInitData() {
       const tgWebApp = globalScope.Telegram?.WebApp;
       const isOutsideTelegram = !options.getInitData && (!tgWebApp || (tgWebApp.platform === 'unknown' && !globalScope.location?.hash?.includes('tgWebAppData')));
       if (isOutsideTelegram) {
         throw createError('auth', 'Откройте Mini App через Telegram ещё раз.', 401);
       }
 
-      const initDataDeadline = Math.min(deadlineAt, nowMs() + initDataWaitMs);
+      const initDataDeadline = nowMs() + initDataWaitMs;
 
       while (nowMs() < initDataDeadline) {
         const initData = String(getInitData() || '').trim();
@@ -377,12 +379,10 @@
       throw createError('auth', 'Telegram ещё не передал данные входа. Закройте и откройте Mini App ещё раз.', 401);
     }
 
-    async function runStage(name, deadlineAt, request, stageDiagnostics = diagnostics) {
+    async function runStage(name, timeoutMs, request, stageDiagnostics = diagnostics) {
       const startedAt = nowMs();
       try {
-        const remaining = remainingTime(deadlineAt);
-        if (remaining <= 0) throw createError('timeout', 'Загрузка заняла слишком долго. Попробуйте ещё раз.');
-        const result = await request(remaining);
+        const result = await request(timeoutMs);
         stageDiagnostics[`${name}_status`] = 200;
         return result;
       } catch (error) {
@@ -393,8 +393,8 @@
       }
     }
 
-    async function openSession(deadlineAt, currentGeneration) {
-      const initData = await waitForInitData(deadlineAt);
+    async function openSession(currentGeneration) {
+      const initData = await waitForInitData();
 
       const doSessionRequest = (timeoutMs) => requestJson(fetchImpl, `${apiBase}/api/miniapp/session`, {
         method: 'POST',
@@ -406,7 +406,7 @@
 
       let session;
       try {
-        session = await runStage('session', deadlineAt, doSessionRequest);
+        session = await runStage('session', sessionTimeoutMs, doSessionRequest);
       } catch (firstError) {
         if (firstError?.status === 401 || firstError?.status === 403 || firstError?.type === 'auth') {
           throw firstError;
@@ -417,8 +417,7 @@
           await sleep(delay);
         }
         if (currentGeneration !== undefined && currentGeneration !== activeGeneration) return null;
-        const retryDeadlineAt = nowMs() + sessionRetryTimeoutMs;
-        session = await runStage('session', retryDeadlineAt, doSessionRequest);
+        session = await runStage('session', sessionRetryTimeoutMs, doSessionRequest);
       }
 
       if (currentGeneration !== undefined && currentGeneration !== activeGeneration) {
@@ -442,6 +441,7 @@
     };
     let latestTariffsResponse = null;
     let latestUserResponse = null;
+    let tariffsInFlight = null;
     let activeGeneration = 0;
 
     function subscribe(callback) {
@@ -472,32 +472,10 @@
         inFlight = (async () => {
           diagnostics = createDiagnostics();
           const requestDiagnostics = diagnostics;
-          let deadlineAt = nowMs() + totalTimeoutMs;
-          await openSession(deadlineAt, currentGeneration);
+          await openSession(currentGeneration);
           if (currentGeneration !== activeGeneration) return null;
 
-          if (remainingTime(deadlineAt) <= 0) {
-            deadlineAt = nowMs() + totalTimeoutMs;
-          }
-
-          void runStage('tariffs', deadlineAt, (timeoutMs) => requestJson(fetchImpl, `${apiBase}/api/tariffs`, {
-            method: 'GET', cache: 'no-store', credentials: 'include', headers: readHeaders(),
-          }, timeoutMs), requestDiagnostics).then((tariffsData) => {
-            if (currentGeneration !== activeGeneration) {
-              return;
-            }
-            if (tariffsData) {
-              latestTariffsResponse = tariffsData;
-              if (currentSnapshot) {
-                currentSnapshot.tariffs = tariffsData;
-                notifyListeners(currentSnapshot);
-              }
-            }
-          }).catch(() => {
-            // Stale-While-Revalidate: preserve existing tariffs on background error
-          });
-
-          const user = await runStage('user', deadlineAt, (timeoutMs) => requestJson(fetchImpl, `${apiBase}/api/user`, {
+          const user = await runStage('user', userTimeoutMs, (timeoutMs) => requestJson(fetchImpl, `${apiBase}/api/user`, {
             method: 'GET', cache: 'no-store', credentials: 'include', headers: readHeaders(),
           }, timeoutMs), requestDiagnostics);
 
@@ -510,6 +488,22 @@
           profileResult.tariffs = latestTariffsResponse || currentSnapshot?.tariffs || defaultTariffs;
           currentSnapshot = profileResult;
           notifyListeners(profileResult);
+
+          // Fallback tariffs are already present in the profile snapshot. Refresh
+          // them only after the primary session and profile are confirmed.
+          tariffsInFlight = runStage('tariffs', tariffsTimeoutMs, (timeoutMs) => requestJson(fetchImpl, `${apiBase}/api/tariffs`, {
+            method: 'GET', cache: 'no-store', credentials: 'include', headers: readHeaders(),
+          }, timeoutMs), requestDiagnostics).then((tariffsData) => {
+            if (currentGeneration !== activeGeneration) return;
+            if (tariffsData) {
+              latestTariffsResponse = tariffsData;
+              currentSnapshot.tariffs = tariffsData;
+              notifyListeners(currentSnapshot);
+            }
+          }).catch(() => {
+            // Preserve the fallback matrix when the optional refresh fails.
+          });
+
           return profileResult;
         })().finally(() => {
           if (currentGeneration === activeGeneration) {
@@ -518,8 +512,14 @@
         });
         return inFlight;
       },
-      refresh(options = {}) {
-        return this.fetchProfileSubscription({ force: true, ...options });
+      async refresh(options = {}) {
+        const result = await this.fetchProfileSubscription({ force: true, ...options });
+        if (tariffsInFlight) await tariffsInFlight;
+        if (result && latestTariffsResponse && result === currentSnapshot) {
+          currentSnapshot.tariffs = latestTariffsResponse;
+          notifyListeners(currentSnapshot);
+        }
+        return result;
       },
       getSnapshot: () => currentSnapshot,
       getCachedProfile: () => currentSnapshot,

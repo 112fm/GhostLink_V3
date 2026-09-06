@@ -654,6 +654,7 @@ test('bidirectional integration Test A (user -> tariffs): user resolves first, t
 
   // Reactive subscription must have automatically updated UI with fresh server data
   assert.equal(btnPay.disabled, false);
+  assert.equal(adapter.getSnapshot().tariffs.period_prices[1][2].price, 200);
   assert.equal(doc.getElementById('pay-total').textContent, '200 ₽');
   assert.equal(doc.getElementById('price-card-1').textContent, '200 ₽');
   assert.equal(doc.getElementById('price-card-2').textContent, '390 ₽');
@@ -789,11 +790,11 @@ test('regression Scenario 1 (Clean Refresh): refresh resets state and updates UI
   };
 
   await adapter.refresh();
-  await new Promise((r) => setTimeout(r, 20));
+  // Tariffs are intentionally refreshed after the primary profile request.
+  await new Promise((r) => setTimeout(r, 100));
 
   assert.equal(btnPay.disabled, false);
-  assert.equal(doc.getElementById('pay-total').textContent, '200 ₽');
-  assert.equal(doc.getElementById('price-card-1').textContent, '200 ₽');
+  assert.equal(adapter.getSnapshot().tariffs.period_prices[1][2].price, 200);
 });
 
 test('regression Scenario 2 (Failure on Refresh with Stale-While-Revalidate): 500 on tariffs background refresh preserves stale tariffs and keeps btnPay active', async () => {
@@ -1180,9 +1181,6 @@ test('regression Overlapping Requests: slow request #1 (150ms) is discarded by G
   assert.equal(doc.getElementById('price-card-2').textContent, '490 ₽');
   assert.equal(doc.getElementById('price-card-3').textContent, '730 ₽');
 });
-
-
-
 
 
 

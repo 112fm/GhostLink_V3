@@ -51,6 +51,7 @@ test('real Block 1 opens an ephemeral session then reads profile and tariffs', a
   assert.equal(snapshot.subscription.deviceLimit, 3);
   assert.equal(snapshot.subscription.usedDevices, 1);
   assert.equal(snapshot.subscription.totalDays, null);
+  await new Promise((resolve) => setTimeout(resolve, 0));
   assert.equal(snapshot.connected_devices, 1);
   assert.equal(snapshot.device_limit, 3);
   assert.equal(snapshot.usedDevices, 1);
@@ -62,21 +63,28 @@ test('real Block 1 opens an ephemeral session then reads profile and tariffs', a
   assert.equal(adapter.getDiagnostics().tariffs_status, 200);
 });
 
-test('real Block 1 renders the profile while tariffs continue loading in the background', async () => {
+test('real Block 1 renders the profile before tariffs and starts tariffs only after profile success', async () => {
   let releaseTariffs = () => {};
+  let userResolved = false;
+  const callOrder = [];
   const adapter = createRealBlock1Adapter({
     apiBase: 'https://api.example.test',
     getInitData: () => 'telegram-init-data',
     fetch: async (url) => {
+      callOrder.push(url.split('/api/')[1]);
       if (url.endsWith('/api/miniapp/session')) return response(200, { session_token: 'secret-token' });
-      if (url.endsWith('/api/user')) return response(200, {
-        user: { id: '1', name: 'Fast Profile' },
-        subscription: { active: true, status: 'active', days_left: 12 },
-        device_limit: 3,
-        connected_devices: 1,
-        tariff_name: 'Flex Squad',
-      });
+      if (url.endsWith('/api/user')) {
+        userResolved = true;
+        return response(200, {
+          user: { id: '1', name: 'Fast Profile' },
+          subscription: { active: true, status: 'active', days_left: 12 },
+          device_limit: 3,
+          connected_devices: 1,
+          tariff_name: 'Flex Squad',
+        });
+      }
       if (url.endsWith('/api/tariffs')) {
+        assert.equal(userResolved, true, 'tariffs must wait for the profile request');
         return new Promise((resolve) => {
           releaseTariffs = () => resolve(response(200, { period_prices: {} }));
         });
@@ -87,8 +95,9 @@ test('real Block 1 renders the profile while tariffs continue loading in the bac
 
   let earlyResult;
   try {
+    const originalFetch = adapter.fetchProfileSubscription;
     earlyResult = await Promise.race([
-      adapter.fetchProfileSubscription().then((snapshot) => ({ type: 'profile', snapshot })),
+      originalFetch().then((snapshot) => ({ type: 'profile', snapshot })),
       new Promise((resolve) => setTimeout(() => resolve({ type: 'blocked' }), 50)),
     ]);
   } finally {
@@ -98,7 +107,38 @@ test('real Block 1 renders the profile while tariffs continue loading in the bac
   assert.equal(earlyResult.type, 'profile');
   assert.equal(earlyResult.snapshot.profile.displayName, 'Fast Profile');
   assert.equal(earlyResult.snapshot.subscription.remainingDays, 12);
-  assert.equal(adapter.getDiagnostics().tariffs_status, 'not_started');
+  assert.deepEqual(callOrder, ['miniapp/session', 'user', 'tariffs']);
+});
+
+test('real Block 1 gives user its own timeout budget after a slow session', async () => {
+  let now = 0;
+  const adapter = createRealBlock1Adapter({
+    apiBase: 'https://api.example.test',
+    getInitData: () => 'telegram-init-data',
+    sessionTimeoutMs: 100,
+    userTimeoutMs: 500,
+    nowMs: () => now,
+    sleep: async (duration) => { now += duration; },
+    fetch: async (url) => {
+      if (url.endsWith('/api/miniapp/session')) {
+        await new Promise((resolve) => setTimeout(resolve, 80));
+        return response(200, { session_token: 'secret-token' });
+      }
+      if (url.endsWith('/api/user')) {
+        await new Promise((resolve) => setTimeout(resolve, 120));
+        return response(200, {
+          user: { id: '1', name: 'Slow User' },
+          subscription: { active: true, status: 'active', days_left: 5 },
+          tariff_name: 'Solo Ghost', device_limit: 2, connected_devices: 1,
+        });
+      }
+      return response(200, { period_prices: {} });
+    },
+  });
+
+  const snapshot = await adapter.fetchProfileSubscription();
+  assert.equal(snapshot.profile.displayName, 'Slow User');
+  assert.equal(adapter.getDiagnostics().user_status, 200);
 });
 
 test('real Block 1 maps a timeless VIP without inventing a date or a Ghost emoji', async () => {
@@ -238,7 +278,7 @@ test('real Block 1 reports a missing Telegram initData without making a session 
   assert.equal(adapter.getDiagnostics().session_status, 'not_started');
 });
 
-test('real Block 1 keeps 401 and 403 distinct from a new profile', async () => {
+test('real Block 1 keeps 401 authentication and 403 access errors distinct', async () => {
   for (const status of [401, 403]) {
     const adapter = createRealBlock1Adapter({
       apiBase: 'https://api.example.test',
@@ -248,7 +288,7 @@ test('real Block 1 keeps 401 and 403 distinct from a new profile', async () => {
 
     await assert.rejects(adapter.fetchProfileSubscription(), (error) => {
       assert.equal(error.status, status);
-      assert.equal(error.type, 'auth');
+      assert.equal(error.type, status === 401 ? 'auth' : 'access_denied');
       return true;
     });
   }
@@ -659,6 +699,3 @@ test('real Block 1 allocates dedicated 5000ms retry budget when first attempt ti
   assert.equal(adapter.getToken(), 'retry-recovered-token');
   assert.equal(adapter.getDiagnostics().session_status, 200);
 });
-
-
-

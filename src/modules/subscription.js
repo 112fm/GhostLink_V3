@@ -136,6 +136,9 @@ GhostLinkV3.initSubscriptionModule = function initSubscriptionModule(dependencie
   let liveRequisitesLoaded = false;
   let settingsPromise = null;
   let pendingPollTimer = null;
+  const hasProfileLifecycle = typeof profileSubscription?.subscribe === 'function';
+  let primaryProfileReady = !hasProfileLifecycle
+    || Boolean(profileSubscription?.getSnapshot?.()?.profile || profileSubscription?.getCachedProfile?.()?.profile);
 
   function startPendingPolling() {
     if (pendingPollTimer) return;
@@ -355,6 +358,7 @@ GhostLinkV3.initSubscriptionModule = function initSubscriptionModule(dependencie
   }
 
 async function loadPaymentSettings() {
+  if (!primaryProfileReady) return null;
   if (typeof fetchImpl !== 'function') return null;
   if (settingsPromise) return settingsPromise;
 
@@ -447,7 +451,17 @@ renderPaymentDetails(paymentConfig?.get() || {
   recipient: 'Тестовый получатель',
 });
 updatePayerCheck();
-void loadPaymentSettings();
+if (typeof profileSubscription?.subscribe === 'function') {
+  profileSubscription.subscribe((snapshot) => {
+    if (!snapshot?.profile || !snapshot?.subscription) return;
+    primaryProfileReady = true;
+    void loadPaymentSettings();
+  });
+} else {
+  // Adapters without a profile lifecycle are isolated test/local integrations;
+  // the real adapter always exposes subscribe and is gated above.
+  void loadPaymentSettings();
+}
 
 if (payerNameInput) {
   payerNameInput.addEventListener('input', () => {

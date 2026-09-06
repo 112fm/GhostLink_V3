@@ -43,9 +43,24 @@
     returnToHome: () => overlayNavigator.home(),
   };
   let adminRuntimeInitialized = false;
+  let secondaryRuntimeInitialized = false;
 
-  function initVerifiedAdminRuntime(snapshot) {
-    if (adminRuntimeInitialized || snapshot?.user?.is_admin !== true) return;
+  function initAfterPrimaryProfile(snapshot) {
+    if (!snapshot?.profile || !snapshot?.subscription) return;
+    if (!secondaryRuntimeInitialized) {
+      secondaryRuntimeInitialized = true;
+      GhostLinkV3.initSubscriptionModule?.(dependencies);
+      GhostLinkV3.initDevicesModule?.(dependencies);
+      try {
+        GhostLinkV3.initInvitesModule?.(dependencies);
+      } catch (_) {
+        // Secondary invite loading cannot interrupt the confirmed profile.
+      }
+      GhostLinkV3.initSupportModule?.(dependencies);
+      GhostLinkV3.initContextHelpModule?.(dependencies);
+    }
+
+    if (adminRuntimeInitialized || snapshot.user?.is_admin !== true) return;
     adminRuntimeInitialized = true;
     const adminDependencies = { ...dependencies, isAdmin: true };
     try {
@@ -60,17 +75,8 @@
     }
   }
 
-  profileSubscription.subscribe?.(initVerifiedAdminRuntime);
+  profileSubscription.subscribe?.(initAfterPrimaryProfile);
 
   GhostLinkV3.initHomeModule?.(dependencies);
   GhostLinkV3.initDiagnosticsModule?.({ profileSubscription });
-  GhostLinkV3.initSubscriptionModule?.(dependencies);
-  GhostLinkV3.initDevicesModule?.(dependencies);
-  try {
-    GhostLinkV3.initInvitesModule?.(dependencies);
-  } catch (_) {
-    // Invites are secondary and must not interrupt the profile lifecycle.
-  }
-  GhostLinkV3.initSupportModule?.(dependencies);
-  GhostLinkV3.initContextHelpModule?.(dependencies);
 })();
