@@ -796,7 +796,7 @@ test('regression Scenario 1 (Clean Refresh): refresh resets state and updates UI
   assert.equal(doc.getElementById('price-card-1').textContent, '200 ₽');
 });
 
-test('regression Scenario 2 (Failure on Refresh): 500 on tariffs clears cached prices and disables btnPay', async () => {
+test('regression Scenario 2 (Failure on Refresh with Stale-While-Revalidate): 500 on tariffs background refresh preserves stale tariffs and keeps btnPay active', async () => {
   const doc = createMockDocument();
   global.document = doc;
   global.Telegram = { WebApp: { initData: 'telegram-init-data' } };
@@ -857,11 +857,96 @@ test('regression Scenario 2 (Failure on Refresh): 500 on tariffs clears cached p
   await adapter.refresh();
   await new Promise((r) => setTimeout(r, 20));
 
-  // Must not preserve stale tariffs: tariffs are null, btnPay disabled
-  assert.equal(adapter.getSnapshot()?.tariffs, null);
-  assert.equal(btnPay.disabled, true);
-  assert.equal(doc.getElementById('pay-total').textContent, 'Загрузка тарифов…');
-  assert.equal(doc.getElementById('price-card-1').textContent, '— ₽');
+  // Stale-While-Revalidate: preserve stale tariffs, do not strand user on loading placeholder
+  assert.notEqual(adapter.getSnapshot()?.tariffs, null);
+  assert.equal(btnPay.disabled, false);
+  assert.equal(doc.getElementById('pay-total').textContent, '150 ₽');
+  assert.equal(doc.getElementById('price-card-1').textContent, '150 ₽');
+});
+
+test('Stale-While-Revalidate: fetchProfileSubscription does not reset tariffs to null while background request is pending', async () => {
+  const doc = createMockDocument();
+  global.document = doc;
+  global.Telegram = { WebApp: { initData: 'telegram-init-data' } };
+  global.window = {
+    document: doc,
+    GhostLinkPaymentConfig: { banks: {}, get: () => ({}), set: () => {}, reset: () => {} },
+    Telegram: { WebApp: { initData: 'telegram-init-data' } },
+    GhostLinkV3: {},
+  };
+
+  const mockResponse = (status, body) => ({
+    ok: status >= 200 && status < 300,
+    status,
+    text: async () => JSON.stringify(body),
+    json: async () => body,
+  });
+
+  let resolveTariffs;
+  let delayTariffs = false;
+
+  const adapter = createRealBlock1Adapter({
+    apiBase: 'https://api.example.test',
+    getInitData: () => 'telegram-init-data',
+    fetch: async (url) => {
+      if (url.endsWith('/api/miniapp/session')) return mockResponse(200, { session_token: 'secret-token' });
+      if (url.endsWith('/api/user')) {
+        return mockResponse(200, {
+          user: { id: '123', name: 'Real User' },
+          subscription: { active: true, status: 'active', days_left: 30 },
+          tariff_name: 'Solo Ghost',
+          device_limit: 2,
+          connected_devices: 1,
+        });
+      }
+      if (url.endsWith('/api/tariffs')) {
+        if (delayTariffs) {
+          return new Promise((resolve) => {
+            resolveTariffs = () => resolve(mockResponse(200, {
+              period_prices: {
+                1: { 2: { price: 250 }, 3: { price: 500 }, 4: { price: 600 }, 5: { price: 700 } },
+              },
+            }));
+          });
+        }
+        return mockResponse(200, {
+          period_prices: {
+            1: { 2: { price: 150 }, 3: { price: 350 }, 4: { price: 450 }, 5: { price: 500 } },
+          },
+        });
+      }
+      return mockResponse(200, {});
+    },
+  });
+
+  initSubscriptionModule({ profileSubscription: adapter });
+  // Initial load
+  await adapter.fetchProfileSubscription();
+
+  const btnPay = doc.getElementById('btn-pay');
+  assert.equal(btnPay.disabled, false);
+  assert.equal(doc.getElementById('pay-total').textContent, '150 ₽');
+
+  // Trigger background refresh where tariffs takes time to resolve
+  delayTariffs = true;
+  const refreshPromise = adapter.refresh();
+
+  // Immediately check: tariffs must NOT be reset to null during flight
+  assert.notEqual(adapter.getSnapshot()?.tariffs, null, 'Tariffs must not be wiped to null during background refresh');
+  assert.equal(btnPay.disabled, false, 'btnPay must remain enabled with stale prices');
+  assert.equal(doc.getElementById('pay-total').textContent, '150 ₽', 'UI must show stale price while revalidating');
+
+  // Wait until tariffs fetch starts and assigns resolveTariffs
+  while (typeof resolveTariffs !== 'function') {
+    await new Promise((r) => setTimeout(r, 5));
+  }
+  resolveTariffs();
+  await refreshPromise;
+  await new Promise((r) => setTimeout(r, 20));
+
+  // Fresh tariffs applied
+  assert.equal(doc.getElementById('pay-total').textContent, '250 ₽');
+  assert.equal(btnPay.disabled, false);
 });
 
 test('regression Scenario 3 (Recovery after Error): retry after failed tariffs restores prices and unlocks btnPay', async () => {

@@ -400,11 +400,6 @@
           diagnostics = createDiagnostics();
           const requestDiagnostics = diagnostics;
           const deadlineAt = nowMs() + totalTimeoutMs;
-          latestTariffsResponse = null;
-          if (currentSnapshot) {
-            currentSnapshot.tariffs = null;
-            notifyListeners(currentSnapshot);
-          }
           await openSession(deadlineAt, currentGeneration);
           if (currentGeneration !== activeGeneration) return null;
 
@@ -420,22 +415,9 @@
                 currentSnapshot.tariffs = tariffsData;
                 notifyListeners(currentSnapshot);
               }
-            } else {
-              latestTariffsResponse = null;
-              if (currentSnapshot) {
-                currentSnapshot.tariffs = null;
-                notifyListeners(currentSnapshot);
-              }
             }
           }).catch(() => {
-            if (currentGeneration !== activeGeneration) {
-              return;
-            }
-            latestTariffsResponse = null;
-            if (currentSnapshot) {
-              currentSnapshot.tariffs = null;
-              notifyListeners(currentSnapshot);
-            }
+            // Stale-While-Revalidate: preserve existing tariffs on background error
           });
 
           const user = await runStage('user', deadlineAt, (timeoutMs) => requestJson(fetchImpl, `${apiBase}/api/user`, {
@@ -448,7 +430,7 @@
 
           latestUserResponse = user;
           const profileResult = mapProfile(user, null, now());
-          profileResult.tariffs = latestTariffsResponse || null;
+          profileResult.tariffs = latestTariffsResponse || currentSnapshot?.tariffs || null;
           currentSnapshot = profileResult;
           notifyListeners(profileResult);
           return profileResult;
