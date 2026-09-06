@@ -4,6 +4,7 @@
   const DEFAULT_INIT_DATA_WAIT_MS = 6000;
   const INIT_DATA_RETRY_MS = 150;
   const DEFAULT_SESSION_RETRY_DELAY_MS = 500;
+  const DEFAULT_SESSION_RETRY_TIMEOUT_MS = 5000;
 
   const DEFAULT_FALLBACK_TARIFFS = Object.freeze({
     tier: 'regular',
@@ -324,6 +325,9 @@
     const sessionRetryDelayMs = options.sessionRetryDelayMs !== undefined
       ? toInteger(options.sessionRetryDelayMs, DEFAULT_SESSION_RETRY_DELAY_MS)
       : DEFAULT_SESSION_RETRY_DELAY_MS;
+    const sessionRetryTimeoutMs = options.sessionRetryTimeoutMs !== undefined
+      ? toInteger(options.sessionRetryTimeoutMs, DEFAULT_SESSION_RETRY_TIMEOUT_MS)
+      : DEFAULT_SESSION_RETRY_TIMEOUT_MS;
     let token = '';
     let inFlight = null;
     let sessionState = null;
@@ -408,13 +412,13 @@
           throw firstError;
         }
         if (currentGeneration !== undefined && currentGeneration !== activeGeneration) return null;
-        const delay = Math.max(1, Math.min(sessionRetryDelayMs, remainingTime(deadlineAt)));
-        if (delay <= 0 || remainingTime(deadlineAt) <= 0) {
-          throw firstError;
+        const delay = sessionRetryDelayMs;
+        if (delay > 0) {
+          await sleep(delay);
         }
-        await sleep(delay);
         if (currentGeneration !== undefined && currentGeneration !== activeGeneration) return null;
-        session = await runStage('session', deadlineAt, doSessionRequest);
+        const retryDeadlineAt = nowMs() + sessionRetryTimeoutMs;
+        session = await runStage('session', retryDeadlineAt, doSessionRequest);
       }
 
       if (currentGeneration !== undefined && currentGeneration !== activeGeneration) {
@@ -468,9 +472,13 @@
         inFlight = (async () => {
           diagnostics = createDiagnostics();
           const requestDiagnostics = diagnostics;
-          const deadlineAt = nowMs() + totalTimeoutMs;
+          let deadlineAt = nowMs() + totalTimeoutMs;
           await openSession(deadlineAt, currentGeneration);
           if (currentGeneration !== activeGeneration) return null;
+
+          if (remainingTime(deadlineAt) <= 0) {
+            deadlineAt = nowMs() + totalTimeoutMs;
+          }
 
           void runStage('tariffs', deadlineAt, (timeoutMs) => requestJson(fetchImpl, `${apiBase}/api/tariffs`, {
             method: 'GET', cache: 'no-store', credentials: 'include', headers: readHeaders(),

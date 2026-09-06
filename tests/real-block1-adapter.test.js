@@ -613,4 +613,52 @@ test('real Block 1 throws error if session fails after 2 consecutive attempts', 
   assert.equal(adapter.getDiagnostics().session_status, 'network');
 });
 
+test('real Block 1 allocates dedicated 5000ms retry budget when first attempt times out and succeeds on retry', async () => {
+  let sessionAttempts = 0;
+  let currentTime = 1000;
+
+  const adapter = createRealBlock1Adapter({
+    apiBase: 'https://api.example.test',
+    getInitData: () => 'telegram-init-data',
+    totalTimeoutMs: 100,
+    sessionRetryDelayMs: 0,
+    sessionRetryTimeoutMs: 5000,
+    nowMs: () => currentTime,
+    sleep: async (ms) => { currentTime += ms; },
+    fetch: async (url) => {
+      if (url.endsWith('/api/miniapp/session')) {
+        sessionAttempts++;
+        if (sessionAttempts === 1) {
+          // Simulate first attempt timing out and exhausting initial deadline
+          currentTime += 150;
+          const err = new Error('Сервер отвечает слишком долго. Попробуйте ещё раз.');
+          err.type = 'timeout';
+          throw err;
+        }
+        return response(200, { ok: true, session_token: 'retry-recovered-token' });
+      }
+      if (url.endsWith('/api/user')) {
+        return response(200, {
+          user: { id: '42', name: 'Timeout Recovery User' },
+          subscription: { active: true, status: 'active', days_left: 20 },
+          tariff_name: 'Solo Ghost',
+          device_limit: 2,
+          connected_devices: 1,
+        });
+      }
+      if (url.endsWith('/api/tariffs')) {
+        return response(200, { period_prices: {} });
+      }
+      return response(200, {});
+    },
+  });
+
+  const snapshot = await adapter.fetchProfileSubscription();
+  assert.equal(sessionAttempts, 2, 'Should execute second attempt even when initial deadline is exhausted');
+  assert.equal(snapshot.profile.displayName, 'Timeout Recovery User');
+  assert.equal(adapter.getToken(), 'retry-recovered-token');
+  assert.equal(adapter.getDiagnostics().session_status, 200);
+});
+
+
 
