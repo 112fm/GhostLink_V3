@@ -8,25 +8,19 @@ const html = readFileSync(join(root, 'src/templates/pages/devices.html'), 'utf8'
 const source = readFileSync(join(root, 'src/modules/devices.js'), 'utf8');
 const devicesJs = source;
 
-test('other-device page has clean platform picker and no key field or legacy list', () => {
-  const picker = html.match(/<section id="page-other-device"[\s\S]*?<\/section>/);
-
-  assert.ok(picker, 'other-device page must exist');
-  assert.match(picker[0], /class="devices-grid" id="other-devices-grid"/);
-  assert.match(picker[0], /data-platform="ios"/);
-  assert.match(picker[0], /data-platform="android"/);
-  assert.match(picker[0], /data-platform="macos"/);
-  assert.match(picker[0], /data-platform="windows"/);
-  assert.match(picker[0], /data-platform="tv"/);
-  assert.match(picker[0], /data-platform="linux"/);
-  assert.match(picker[0], /Выберите платформу/);
-  assert.match(picker[0], /Выберите систему устройства, которое хотите подключить/);
-  assert.match(picker[0], /class="other-platforms-section"/);
-  assert.doesNotMatch(picker[0], /class="devices-section"/);
-  assert.doesNotMatch(picker[0], /id="other-device-picker-list"/);
-  assert.doesNotMatch(picker[0], /id="other-device-picker-status"/);
-  assert.doesNotMatch(picker[0], /id="other-device-key-field"/);
-  assert.doesNotMatch(picker[0], /other-device-picker-section/);
+test('other-device page selects a concrete device before revealing the new-device platform picker', () => {
+  assert.match(html, /id="other-device-picker-list"/);
+  assert.match(html, /id="other-device-picker-status"/);
+  assert.match(html, /id="other-device-add-new"/);
+  assert.match(html, /id="other-platforms-section"/);
+  assert.match(html, /class="other-platforms-section hidden"/);
+  assert.match(html, /data-platform="ios"/);
+  assert.match(html, /data-platform="android"/);
+  assert.match(html, /data-platform="macos"/);
+  assert.match(html, /data-platform="windows"/);
+  assert.match(html, /data-platform="tv"/);
+  assert.match(html, /data-platform="linux"/);
+  assert.doesNotMatch(html, /id="other-device-key-field"/);
 });
 
 test('platform card selection configures new-other-device and opens app choice', () => {
@@ -34,7 +28,7 @@ test('platform card selection configures new-other-device and opens app choice',
   assert.match(source, /setupFlowMode = 'new-other-device'/);
   assert.match(source, /autoSelectDefaultAppForCurrentPlatform\(platform\)/);
   assert.match(source, /openOverlay\(pageAppSelect\)/);
-  assert.doesNotMatch(devicesJs, /btnOtherDeviceAddNew/);
+  assert.match(devicesJs, /otherDeviceAddNew/);
 });
 
 test('setup routes another device to the picker and app choice cannot create a device or consume a slot', () => {

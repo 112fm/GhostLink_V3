@@ -303,12 +303,21 @@
                 <polyline points="13 7 15.5 9.5 13 12"/>
               </svg>
             </div>
-            <h3 class="other-device-title">Выберите платформу</h3>
-            <p class="other-device-subtitle">Выберите систему устройства, которое хотите подключить</p>
+            <h3 class="other-device-title">Выберите устройство</h3>
+            <p class="other-device-subtitle">Сначала выберите конкретное устройство, затем приложение</p>
           </div>
 
-          <!-- Other Platforms Selection List -->
-          <div class="other-platforms-section">
+          <section class="other-device-picker-section" aria-live="polite">
+            <h4 class="other-platforms-title">Мои устройства</h4>
+            <p class="other-device-picker-status" id="other-device-picker-status">Загружаем устройства…</p>
+            <div class="other-device-picker-list" id="other-device-picker-list"></div>
+            <button type="button" class="other-device-add-new" id="other-device-add-new">
+              Добавить новое устройство
+            </button>
+          </section>
+
+          <!-- A new device needs an explicit platform after the user requests it. -->
+          <div class="other-platforms-section hidden" id="other-platforms-section">
             <h4 class="other-platforms-title">Система устройства</h4>
             <div class="devices-grid" id="other-devices-grid">
               <!-- iOS -->

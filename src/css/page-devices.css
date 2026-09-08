@@ -14,6 +14,52 @@
   padding-bottom: calc(180px + env(safe-area-inset-bottom, 24px)) !important;
 }
 
+.other-device-picker-section {
+  display: grid;
+  gap: 10px;
+  margin: 22px 0 16px;
+}
+
+.other-device-picker-status {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.other-device-picker-list {
+  display: grid;
+  gap: 9px;
+}
+
+.other-device-picker-card,
+.other-device-add-new {
+  width: 100%;
+  min-height: 52px;
+  padding: 13px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  background: rgba(24, 27, 24, 0.78);
+  color: var(--text);
+  font: inherit;
+  font-weight: 650;
+  text-align: left;
+}
+
+.other-device-picker-card:focus-visible,
+.other-device-picker-card:hover,
+.other-device-add-new:focus-visible,
+.other-device-add-new:hover {
+  border-color: rgba(184, 255, 0, 0.62);
+  background: rgba(184, 255, 0, 0.08);
+  outline: none;
+}
+
+.other-device-add-new {
+  color: var(--lime);
+  cursor: pointer;
+}
+
 /* 1. Modernized Slot Summary Banner (Harmonized with Home Status Island) */
 .devices-slot-summary {
   position: relative;
@@ -111,7 +157,20 @@
 /* 2. Hide redundant system status text */
 #devices-list-status,
 .devices-list-status {
-  display: none !important;
+  display: block;
+  min-height: 18px;
+  margin: 10px 0 0;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+#devices-list-status[data-tone="error"] {
+  color: #ff8e8e;
+}
+
+#devices-list-status[data-tone="warning"] {
+  color: #ffd86e;
 }
 
 /* 3. Device Item Card (Bento Glassmorphism) */
@@ -544,4 +603,3 @@
   color: rgba(255, 255, 255, 0.72);
   margin: 0;
 }
-

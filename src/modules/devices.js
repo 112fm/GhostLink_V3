@@ -45,6 +45,7 @@ let selectedSetupDeviceId = null;
 let selectedSetupDevice = null;
 let setupFlowMode = 'this-device';
 let pendingNewDevice = null;
+let setupCreatePromise = null;
 
 function getDeviceEmoji(platform) {
   return { phone: '📱', laptop: '💻', tv: '📺' }[platform] || '📱';
@@ -111,6 +112,20 @@ function getDeviceNormalizedPlatform(device) {
   return 'other';
 }
 
+function isLegacyDeviceName(device) {
+  const name = String(device?.name || '').trim().toLowerCase();
+  return /^tg_\d+(?:_|$)/.test(name) || /(?:^|_)key\d+$/i.test(name);
+}
+
+function hasDeviceScopedUrl(device) {
+  return Boolean(getProvidedSubscriptionUrl(
+    device?.url,
+    device?.subscription_url,
+    device?.url_incy,
+    device?.subscription_url_incy,
+  ));
+}
+
 function isDeviceCurrentForPlatform(device, currentPlatform = getDevicePlatform()) {
   if (!device) return false;
   if (!device.isCurrent) return false;
@@ -136,6 +151,20 @@ function isDeviceCurrentForPlatform(device, currentPlatform = getDevicePlatform(
   return false;
 }
 
+function resolveSafeCurrentDevice(devices, platform = getDevicePlatform()) {
+  const currentMatches = devices.filter((device) => isDeviceCurrentForPlatform(device, platform));
+  if (currentMatches.length === 1) return currentMatches[0];
+
+  // Legacy names do not encode a platform. We only use a single backend-current
+  // record with a backend-provided URL; multiple records always require a choice.
+  const legacyCurrent = devices.filter((device) => (
+    device?.isCurrent
+    && isLegacyDeviceName(device)
+    && hasDeviceScopedUrl(device)
+  ));
+  return legacyCurrent.length === 1 ? legacyCurrent[0] : null;
+}
+
 function openDeviceManageView(device) {
   if (!device?.id) return;
   const matched = lastConfirmedDeviceList?.devices?.find((d) => d.id === device.id);
@@ -157,7 +186,7 @@ function openDeviceManageView(device) {
   }
 
   selectAppChoice(chosenApp);
-  openOverlay(pageKeyView);
+  openOverlay(pageAppSelect);
 }
 
 function setDevicesListStatus(message, tone = 'neutral') {
@@ -341,6 +370,40 @@ function getMutationCopy(type) {
   }[type] || { pending: 'Выполняем операцию…', success: 'Операция завершена.' };
 }
 
+function applyMutationToSnapshot(snapshot, result) {
+  if (!snapshot || !result) return null;
+  const mutationType = result.type || 'remove';
+  const devices = Array.isArray(snapshot.devices) ? snapshot.devices : [];
+
+  if (mutationType === 'remove') {
+    const deletedId = String(result.deletedId || result.device?.id || '').trim();
+    if (!deletedId) return null;
+    const nextDevices = devices.filter((device) => String(device.id) !== deletedId);
+    if (nextDevices.length === devices.length) return null;
+    const usedSlots = Math.max(0, Number(snapshot.usedSlots || 0) - 1);
+    const deviceLimit = Math.max(0, Number(snapshot.deviceLimit || 0));
+    const freeSlots = Math.max(0, deviceLimit - usedSlots);
+    return {
+      ...snapshot,
+      devices: nextDevices,
+      usedSlots,
+      freeSlots,
+      status: nextDevices.length === 0 ? 'empty' : freeSlots === 0 ? 'limit' : 'loaded',
+    };
+  }
+
+  if (mutationType === 'rotate' && result.device?.id) {
+    return {
+      ...snapshot,
+      devices: devices.map((device) => String(device.id) === String(result.device.id)
+        ? { ...device, ...result.device }
+        : device),
+    };
+  }
+
+  return null;
+}
+
 function scheduleDeviceMutationCheck(deviceId, requestId) {
   window.setTimeout(() => checkDeviceMutationStatus(deviceId, requestId), DEVICE_POLL_DELAY_MS);
 }
@@ -405,15 +468,11 @@ function finishDeviceMutation(deviceId, result) {
     }
   }
 
-  showToast(copy.success);
+  const optimisticSnapshot = applyMutationToSnapshot(lastConfirmedDeviceList, result);
+  if (optimisticSnapshot) renderDeviceList(optimisticSnapshot);
+  setDevicesListStatus(copy.success);
 
-  const applied = deviceList?.applyMutation?.(result);
-  if (applied) {
-    const optimisticSnapshot = applyMutationToSnapshot(lastConfirmedDeviceList, result);
-    if (optimisticSnapshot) renderDeviceList(optimisticSnapshot);
-  }
-
-  loadDeviceList().then((snapshot) => {
+  loadDeviceList(true).then((snapshot) => {
     if (snapshot) {
       setDevicesListStatus(`${copy.success} Список обновлён.`);
     } else {
@@ -588,8 +647,11 @@ async function startDeviceMutation(device, type) {
   }
 }
 
-function loadDeviceList() {
-  if (!deviceList || deviceListLoadPromise) return deviceListLoadPromise;
+function loadDeviceList(force = false) {
+  if (!deviceList) return null;
+  if (deviceListLoadPromise) {
+    return force ? deviceListLoadPromise.then(() => loadDeviceList(false)) : deviceListLoadPromise;
+  }
   const requestSequence = ++deviceListRequestSequence;
   setDevicesListStatus(lastConfirmedDeviceList ? 'Обновляем список устройств…' : 'Получаем список устройств…');
   if (btnDevicesRefresh) btnDevicesRefresh.disabled = true;
@@ -630,36 +692,11 @@ if (btnDevicesAdd && pageSetup) {
       return;
     }
     
-    // Открываем окно ввода имени
-    const modal = document.getElementById('modalAddDeviceName');
-    const input = document.getElementById('addDeviceNameInput');
-    const btnSubmit = document.getElementById('btnAddDeviceSubmit');
-    const btnClose = document.getElementById('btnAddDeviceClose');
-    if (!modal) return;
-    
-    input.value = '';
-    modal.classList.remove('hidden');
-    syncModalBodyState();
-    input.focus?.();
-    
-    const cleanup = () => {
-      modal.classList.add('hidden');
-      syncModalBodyState();
-      btnSubmit.onclick = null;
-      btnClose.onclick = null;
-    };
-    
-    btnClose.onclick = cleanup;
-    btnSubmit.onclick = () => {
-      const name = input.value.trim() || 'Новое устройство';
-      cleanup();
-      pendingNewDevice = { name, platform: 'unknown', target: 'other-device' };
-      selectedSetupDeviceId = null;
-      selectedSetupDevice = null;
-      setupFlowMode = 'new-other-device';
-      autoSelectDefaultAppForCurrentPlatform('windows');
-      openOverlay(pageAppSelect);
-    };
+    pendingNewDevice = null;
+    selectedSetupDeviceId = null;
+    selectedSetupDevice = null;
+    setupFlowMode = 'new-other-device';
+    openOtherDevicePicker().then(() => otherDeviceAddNew?.click());
   });
 }
 
@@ -928,6 +965,26 @@ async function startDeviceOperation(target) {
   }
 }
 
+function createSetupDevice(payload) {
+  if (setupCreatePromise) return setupCreatePromise;
+  if (!deviceOperations?.createDevice) return Promise.resolve(null);
+
+  const requestId = createRequestId();
+  currentDeviceOperation = {
+    requestId,
+    target: payload.target,
+    phase: 'preparing',
+    resultShown: false,
+  };
+  saveDeviceOperation();
+  setSetupOperationUi('preparing');
+  setupCreatePromise = deviceOperations.createDevice({ requestId, ...payload })
+    .finally(() => {
+      setupCreatePromise = null;
+    });
+  return setupCreatePromise;
+}
+
 if (bentoSetupBtn && pageSetup) {
   bentoSetupBtn.addEventListener('click', () => {
     openOverlay(pageSetup);
@@ -991,6 +1048,10 @@ if (currentDeviceOperation && ['preparing', 'accepted', 'processing', 'unknown',
 // On Another Device Screen (#page-other-device) Logic
 const pageOtherDevice = document.getElementById('page-other-device');
 const btnOtherDeviceBack = document.getElementById('btn-other-device-back');
+const otherDevicePickerList = document.getElementById('other-device-picker-list');
+const otherDevicePickerStatus = document.getElementById('other-device-picker-status');
+const otherDeviceAddNew = document.getElementById('other-device-add-new');
+const otherPlatformsSection = document.getElementById('other-platforms-section');
 
 function selectDeviceForSetup(device) {
   if (!device?.id) return;
@@ -1001,10 +1062,39 @@ function selectDeviceForSetup(device) {
   openOverlay(pageAppSelect);
 }
 
+function renderOtherDevicePicker(devices) {
+  if (!otherDevicePickerList) return;
+  otherDevicePickerList.replaceChildren();
+  if (!devices.length) {
+    if (otherDevicePickerStatus) otherDevicePickerStatus.textContent = 'Сохранённых устройств пока нет. Добавьте новое.';
+    return;
+  }
+
+  if (otherDevicePickerStatus) otherDevicePickerStatus.textContent = 'Выберите устройство, для которого нужен ключ.';
+  devices.forEach((device) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'other-device-picker-card';
+    button.dataset.deviceId = device.id;
+    button.textContent = device.name || 'Устройство';
+    button.addEventListener('click', () => selectDeviceForSetup(device));
+    otherDevicePickerList.append(button);
+  });
+}
+
 async function openOtherDevicePicker() {
   if (!pageOtherDevice) return;
+  otherPlatformsSection?.classList.add('hidden');
+  renderOtherDevicePicker(lastConfirmedDeviceList?.devices || []);
   openOverlay(pageOtherDevice);
+  const snapshot = await loadDeviceList();
+  if (snapshot) renderOtherDevicePicker(snapshot.devices);
 }
+
+otherDeviceAddNew?.addEventListener('click', () => {
+  otherPlatformsSection?.classList.remove('hidden');
+  if (otherDevicePickerStatus) otherDevicePickerStatus.textContent = 'Выберите платформу нового устройства.';
+});
 
 function isValidSubToken(token) {
   if (typeof token !== 'string') return false;
@@ -1401,20 +1491,22 @@ async function proceedToKeyView() {
       return;
     }
     showToast('Создаём устройство…');
-    const requestId = createRequestId();
     try {
-      const res = await deviceOperations.createDevice({
-        requestId,
+      const res = await createSetupDevice({
         name: pendingNewDevice.name,
         platform: pendingNewDevice.platform || 'unknown',
         target: 'other-device',
       });
+      if (res?.status === 'accepted' || res?.status === 'processing') {
+        await handleDeviceOperationResult(res);
+        return;
+      }
       if (res?.status === 'succeeded' && res.device?.id) {
         selectedSetupDeviceId = res.device.id;
         selectedSetupDevice = { ...res.device };
         pendingNewDevice = null;
         setupFlowMode = 'existing-device';
-        await loadDeviceList();
+        await loadDeviceList(true);
         updateDisplayedSubscriptionUrls(currentSelectedApp);
         openOverlay(pageKeyView);
         showToast('Устройство создано и готово к подключению!');
@@ -1432,7 +1524,7 @@ async function proceedToKeyView() {
   if (setupFlowMode === 'this-device' && !selectedSetupDevice) {
     const curPlatform = getDevicePlatform();
     // Check if this device is already in confirmed list for current platform
-    const existingCurrent = existingDevices.find((d) => isDeviceCurrentForPlatform(d, curPlatform));
+    const existingCurrent = resolveSafeCurrentDevice(existingDevices, curPlatform);
     if (existingCurrent) {
       selectedSetupDeviceId = existingCurrent.id;
       selectedSetupDevice = { ...existingCurrent };
@@ -1444,14 +1536,8 @@ async function proceedToKeyView() {
     // If slots are exhausted, do not attempt to create a new device
     if (isLimitReached) {
       if (hasExistingDevices) {
-        // Automatically open the first existing device or current match, and notify user
-        const targetDev = existingDevices[0];
-        selectedSetupDeviceId = targetDev.id;
-        selectedSetupDevice = { ...targetDev };
-        setupFlowMode = 'existing-device';
-        updateDisplayedSubscriptionUrls(currentSelectedApp);
-        openOverlay(pageKeyView);
-        showToast(`Лимит устройств (все слоты заняты). Открыт ключ для «${targetDev.name}».`);
+        showToast('Лимит устройств исчерпан. Выберите нужное устройство из списка.');
+        openOtherDevicePicker();
         return;
       }
       showToast('Лимит устройств исчерпан. Освободите слот в списке устройств.');
@@ -1465,18 +1551,20 @@ async function proceedToKeyView() {
       const platform = getDevicePlatform();
       const pName = { ios: 'iPhone', android: 'Android', macos: 'Mac', windows: 'ПК' }[platform] || 'Устройство';
       const name = 'Мой ' + pName;
-      const requestId = createRequestId();
       try {
-        const res = await deviceOperations.createDevice({
-          requestId,
+        const res = await createSetupDevice({
           name,
           platform,
           target: 'this-device',
         });
+        if (res?.status === 'accepted' || res?.status === 'processing') {
+          await handleDeviceOperationResult(res);
+          return;
+        }
         if (res?.status === 'succeeded' && res.device?.id) {
           selectedSetupDeviceId = res.device.id;
           selectedSetupDevice = { ...res.device };
-          await loadDeviceList();
+          await loadDeviceList(true);
           updateDisplayedSubscriptionUrls(currentSelectedApp);
           openOverlay(pageKeyView);
           return;
@@ -1490,10 +1578,15 @@ async function proceedToKeyView() {
     }
   }
 
-  // Fallback / existing device flow: If selectedSetupDevice is not set but existing devices exist, use the first one
+  // Never select the first legacy record: a shared account may have several devices.
   if (!selectedSetupDevice && hasExistingDevices) {
     const curPlatform = getDevicePlatform();
-    const matched = existingDevices.find((d) => isDeviceCurrentForPlatform(d, curPlatform)) || existingDevices[0];
+    const matched = resolveSafeCurrentDevice(existingDevices, curPlatform);
+    if (!matched) {
+      showToast('Выберите нужное устройство из списка.');
+      openOtherDevicePicker();
+      return;
+    }
     selectedSetupDeviceId = matched.id;
     selectedSetupDevice = { ...matched };
     setupFlowMode = 'existing-device';

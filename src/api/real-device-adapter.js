@@ -17,6 +17,9 @@
     if (raw.includes('partial_failure_restored')) {
       return 'Не удалось завершить операцию. Исходное состояние устройства восстановлено.';
     }
+    if (raw.includes('device_delete_rolled_back')) {
+      return 'Удаление не завершено. Устройство восстановлено и остаётся в списке.';
+    }
     if (raw.includes('partial_failure_unrecovered')) {
       return 'Ошибка операции: часть настроек не удалось применить. Обратитесь в поддержку.';
     }
@@ -119,7 +122,15 @@
         try { data = text ? JSON.parse(text) : {}; } catch (_) {
           throw createError('invalid_json', 'Сервер вернул некорректные данные.', response.status);
         }
-        if (!response.ok) throw createError(response.status === 401 || response.status === 403 ? 'auth' : 'api', data?.detail || 'Операция не выполнена.', response.status, data);
+        if (!response.ok) {
+          const rawMessage = data?.detail || data?.message || 'Операция не выполнена.';
+          throw createError(
+            response.status === 401 || response.status === 403 ? 'auth' : 'api',
+            formatErrorMessage(rawMessage),
+            response.status,
+            data,
+          );
+        }
         return data;
       } catch (error) {
         if (error?.type) throw error;

@@ -276,7 +276,7 @@ test('5. Toast is viewport-fixed above overlays and device actions are 2 columns
   assert.match(settingsCss, /\.device-card-actions\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/);
 });
 
-test('6. proceedToKeyView opens existing device key when slots are exhausted without calling createDevice', async () => {
+test('6. proceedToKeyView opens the concrete-device picker when slots are exhausted without calling createDevice', async () => {
   const elements = new Map();
   function createElement(id = '') {
     const listeners = new Map();
@@ -382,15 +382,14 @@ test('6. proceedToKeyView opens existing device key when slots are exhausted wit
 
   // Must NOT attempt to create new device
   assert.equal(createCalls, 0, 'Must not call createDevice when slots are exhausted');
-  // Must open existing device (dev-mypgone-1)
-  assert.equal(devices.getSelectedSetupDeviceId(), 'dev-mypgone-1');
-  assert.equal(openedOverlayId, 'page-key-view');
-  assert.equal(devices.getSubscriptionUrl('incy'), 'https://api.112prd.ru:2053/s/tok-mypgone?compat=incy#GhostLink');
-  assert.match(toastMsg, /Лимит устройств/);
+  // Several existing devices are ambiguous: never select the first one.
+  assert.equal(devices.getSelectedSetupDeviceId(), null);
+  assert.equal(openedOverlayId, 'page-other-device');
+  assert.equal(devices.getSubscriptionUrl('incy'), '');
+  assert.match(toastMsg, /Выберите нужное устройство/);
 });
 
 test('7. real Block 1 adapter defaults DEFAULT_INIT_DATA_WAIT_MS to 6000ms', () => {
   const adapterJs = readFileSync(join(root, 'src', 'api', 'real-block1-adapter.js'), 'utf8');
   assert.match(adapterJs, /const DEFAULT_INIT_DATA_WAIT_MS = 6000;/);
 });
-
