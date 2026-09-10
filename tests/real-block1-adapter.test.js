@@ -141,6 +141,108 @@ test('real Block 1 gives user its own timeout budget after a slow session', asyn
   assert.equal(adapter.getDiagnostics().user_status, 200);
 });
 
+test('real Block 1 retries a delayed user read once with the existing session', async () => {
+  let sessionCalls = 0;
+  let userCalls = 0;
+  const adapter = createRealBlock1Adapter({
+    apiBase: 'https://api.example.test',
+    getInitData: () => 'telegram-init-data',
+    userRetryDelayMs: 0,
+    fetch: async (url) => {
+      if (url.endsWith('/api/miniapp/session')) {
+        sessionCalls += 1;
+        return response(200, { session_token: 'secret-token' });
+      }
+      if (url.endsWith('/api/user')) {
+        userCalls += 1;
+        if (userCalls === 1) throw new Error('temporary network delay');
+        return response(200, {
+          user: { id: '1', name: 'Recovered User' },
+          subscription: { active: true, status: 'active', days_left: 7 },
+          tariff_name: 'Solo Ghost', device_limit: 2, connected_devices: 1,
+        });
+      }
+      return response(200, { period_prices: {} });
+    },
+  });
+
+  const snapshot = await adapter.fetchProfileSubscription();
+
+  assert.equal(snapshot.profile.displayName, 'Recovered User');
+  assert.equal(sessionCalls, 1, 'retry must keep the original PWA session');
+  assert.equal(userCalls, 2, 'one bounded user retry is allowed');
+  assert.equal(adapter.getDiagnostics().user_status, 200);
+});
+
+test('real Block 1 recovers when the first user read exceeds its own timeout', async () => {
+  let sessionCalls = 0;
+  let userCalls = 0;
+  const adapter = createRealBlock1Adapter({
+    apiBase: 'https://api.example.test',
+    getInitData: () => 'telegram-init-data',
+    userTimeoutMs: 10,
+    userRetryTimeoutMs: 100,
+    userRetryDelayMs: 0,
+    fetch: async (url) => {
+      if (url.endsWith('/api/miniapp/session')) {
+        sessionCalls += 1;
+        return response(200, { session_token: 'secret-token' });
+      }
+      if (url.endsWith('/api/user')) {
+        userCalls += 1;
+        if (userCalls === 1) await new Promise((resolve) => setTimeout(resolve, 25));
+        return response(200, {
+          user: { id: '1', name: 'Slow Recovered User' },
+          subscription: { active: true, status: 'active', days_left: 7 },
+          tariff_name: 'Solo Ghost', device_limit: 2, connected_devices: 1,
+        });
+      }
+      return response(200, { period_prices: {} });
+    },
+  });
+
+  const snapshot = await adapter.fetchProfileSubscription();
+
+  assert.equal(snapshot.profile.displayName, 'Slow Recovered User');
+  assert.equal(sessionCalls, 1);
+  assert.equal(userCalls, 2);
+  assert.equal(adapter.getDiagnostics().user_status, 200);
+});
+
+test('a stale user generation never retries after a newer profile load starts', async () => {
+  let firstUserReject;
+  let userCalls = 0;
+  const adapter = createRealBlock1Adapter({
+    apiBase: 'https://api.example.test',
+    getInitData: () => 'telegram-init-data',
+    userRetryDelayMs: 0,
+    fetch: async (url) => {
+      if (url.endsWith('/api/miniapp/session')) return response(200, { session_token: 'secret-token' });
+      if (url.endsWith('/api/user')) {
+        userCalls += 1;
+        if (userCalls === 1) {
+          return new Promise((_, reject) => { firstUserReject = reject; });
+        }
+        return response(200, {
+          user: { id: '1', name: 'New Generation' },
+          subscription: { active: true, status: 'active', days_left: 7 },
+          tariff_name: 'Solo Ghost', device_limit: 2, connected_devices: 1,
+        });
+      }
+      return response(200, { period_prices: {} });
+    },
+  });
+
+  const first = adapter.fetchProfileSubscription();
+  while (!firstUserReject) await new Promise((resolve) => setTimeout(resolve, 0));
+  const second = adapter.fetchProfileSubscription({ force: true });
+  firstUserReject(new Error('late network failure'));
+
+  assert.equal(await first, null);
+  assert.equal((await second).profile.displayName, 'New Generation');
+  assert.equal(userCalls, 2, 'the stale request must not make a retry call');
+});
+
 test('real Block 1 maps a timeless VIP without inventing a date or a Ghost emoji', async () => {
   const adapter = createRealBlock1Adapter({
     apiBase: 'https://api.example.test',

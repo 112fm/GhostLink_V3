@@ -6,13 +6,15 @@ const vm = require('node:vm');
 
 const root = path.resolve(__dirname, '..');
 
-test('secondary failures do not interrupt boot and admin runtime starts only for a verified admin profile', () => {
+test('secondary failures do not interrupt boot and admin runtime starts only after SDK readiness', async () => {
   const calls = [];
   let notifyProfile = null;
+  let resolveSdk;
   const GhostLinkV3 = {
     createClipboard: () => () => true,
     createToast: () => ({ show: () => {} }),
     createOverlayNavigator: () => ({ open: () => {}, close: () => {}, home: () => {} }),
+    loadTelegramSdk: () => new Promise((resolve) => { resolveSdk = resolve; }),
     createRealBlock1Adapter: () => ({
       fetchProfileSubscription: async () => ({}),
       subscribe: (callback) => {
@@ -49,6 +51,9 @@ test('secondary failures do not interrupt boot and admin runtime starts only for
   };
 
   assert.doesNotThrow(() => vm.runInNewContext(source, context));
+  assert.deepEqual(calls, []);
+  resolveSdk({ source: 'fallback', ready: true });
+  await new Promise((resolve) => setImmediate(resolve));
   assert.deepEqual(calls, ['home', 'diagnostics']);
 
   notifyProfile({ user: { is_admin: false } });
@@ -72,7 +77,7 @@ test('runtime cache versions load the isolated home lifecycle and gift adapter',
   const localAssetVersions = [...template.matchAll(/(?:src|href)="\.\/src\/[^\"]+\?v=([^\"]+)/g)]
     .map((match) => match[1]);
   assert.ok(localAssetVersions.length > 0);
-  assert.deepEqual([...new Set(localAssetVersions)], ['25']);
+  assert.deepEqual([...new Set(localAssetVersions)], ['26']);
 });
 
 test('admin source never auto-starts the partners tab during page load', () => {

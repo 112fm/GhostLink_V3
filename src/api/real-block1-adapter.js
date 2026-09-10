@@ -4,6 +4,8 @@
   const DEFAULT_INIT_DATA_WAIT_MS = 6000;
   const DEFAULT_SESSION_TIMEOUT_MS = 5000;
   const DEFAULT_USER_TIMEOUT_MS = 5000;
+  const DEFAULT_USER_RETRY_DELAY_MS = 250;
+  const DEFAULT_USER_RETRY_TIMEOUT_MS = 5000;
   const DEFAULT_TARIFFS_TIMEOUT_MS = 5000;
   const INIT_DATA_RETRY_MS = 150;
   const DEFAULT_SESSION_RETRY_DELAY_MS = 500;
@@ -332,6 +334,12 @@
     const initDataWaitMs = toInteger(options.initDataWaitMs, DEFAULT_INIT_DATA_WAIT_MS) || DEFAULT_INIT_DATA_WAIT_MS;
     const sessionTimeoutMs = toInteger(options.sessionTimeoutMs, DEFAULT_SESSION_TIMEOUT_MS) || DEFAULT_SESSION_TIMEOUT_MS;
     const userTimeoutMs = toInteger(options.userTimeoutMs, DEFAULT_USER_TIMEOUT_MS) || DEFAULT_USER_TIMEOUT_MS;
+    const userRetryDelayMs = options.userRetryDelayMs !== undefined
+      ? toInteger(options.userRetryDelayMs, DEFAULT_USER_RETRY_DELAY_MS)
+      : DEFAULT_USER_RETRY_DELAY_MS;
+    const userRetryTimeoutMs = options.userRetryTimeoutMs !== undefined
+      ? toInteger(options.userRetryTimeoutMs, DEFAULT_USER_RETRY_TIMEOUT_MS)
+      : DEFAULT_USER_RETRY_TIMEOUT_MS;
     const tariffsTimeoutMs = toInteger(options.tariffsTimeoutMs, DEFAULT_TARIFFS_TIMEOUT_MS) || DEFAULT_TARIFFS_TIMEOUT_MS;
     const sessionRetryDelayMs = options.sessionRetryDelayMs !== undefined
       ? toInteger(options.sessionRetryDelayMs, DEFAULT_SESSION_RETRY_DELAY_MS)
@@ -395,6 +403,30 @@
         throw error;
       } finally {
         stageDiagnostics.durations_ms[name] = Math.max(0, nowMs() - startedAt);
+      }
+    }
+
+    function isRetryableUserReadError(error) {
+      if (error?.type === 'network' || error?.type === 'timeout' || error?.type === 'invalid_json') return true;
+      return error?.type === 'api' && Number(error?.status) >= 500;
+    }
+
+    async function readUserWithRetry(currentGeneration, requestDiagnostics) {
+      const startedAt = nowMs();
+      const readUser = (timeoutMs) => requestJson(fetchImpl, `${apiBase}/api/user`, {
+        method: 'GET', cache: 'no-store', credentials: 'include', headers: readHeaders(),
+      }, timeoutMs);
+
+      try {
+        return await runStage('user', userTimeoutMs, readUser, requestDiagnostics);
+      } catch (firstError) {
+        if (currentGeneration !== activeGeneration) return null;
+        if (!isRetryableUserReadError(firstError)) throw firstError;
+        if (userRetryDelayMs > 0) await sleep(userRetryDelayMs);
+        if (currentGeneration !== activeGeneration) return null;
+        return runStage('user', userRetryTimeoutMs, readUser, requestDiagnostics);
+      } finally {
+        requestDiagnostics.durations_ms.user = Math.max(0, nowMs() - startedAt);
       }
     }
 
@@ -480,11 +512,9 @@
           await openSession(currentGeneration);
           if (currentGeneration !== activeGeneration) return null;
 
-          const user = await runStage('user', userTimeoutMs, (timeoutMs) => requestJson(fetchImpl, `${apiBase}/api/user`, {
-            method: 'GET', cache: 'no-store', credentials: 'include', headers: readHeaders(),
-          }, timeoutMs), requestDiagnostics);
+          const user = await readUserWithRetry(currentGeneration, requestDiagnostics);
 
-          if (currentGeneration !== activeGeneration) {
+          if (currentGeneration !== activeGeneration || !user) {
             return null;
           }
 

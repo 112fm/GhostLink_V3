@@ -25,16 +25,17 @@ test('Telegram bootstrap is safe outside Telegram or when SDK methods fail', () 
   }));
 });
 
-test('V3 loads the official SDK before its real Block 1 boot graph', () => {
+test('V3 loads the bounded SDK loader before its real Block 1 boot graph', () => {
   const template = fs.readFileSync(path.join(root, 'src', 'templates', 'index.template.html'), 'utf8');
   const main = fs.readFileSync(path.join(root, 'src', 'main.js'), 'utf8');
 
-  const sdk = template.indexOf('https://telegram.org/js/telegram-web-app.js');
+  const sdk = template.indexOf('src/ui/telegram-sdk-loader.js');
   const bootstrap = template.indexOf('src/ui/telegram-webapp.js');
   const adapter = template.indexOf('src/api/real-block1-adapter.js');
 
   assert.ok(sdk >= 0 && sdk < bootstrap && bootstrap < adapter);
   assert.match(main, /initTelegramWebApp/);
+  assert.match(main, /await GhostLinkV3\.loadTelegramSdk/);
   assert.ok(main.indexOf('initTelegramWebApp') < main.indexOf('createRealBlock1Adapter'));
   assert.doesNotMatch(main, /initDataUnsafe/);
 });
