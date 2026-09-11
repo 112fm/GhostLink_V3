@@ -1,4 +1,4 @@
-(async () => {
+(() => {
   const GhostLinkV3 = window.GhostLinkV3 || {};
   const { createClipboard, createToast, createOverlayNavigator } = GhostLinkV3;
 
@@ -9,7 +9,6 @@
   const { show: showToast } = createToast(document.getElementById("toast"));
   const copyText = createClipboard();
   const overlayNavigator = createOverlayNavigator();
-  await GhostLinkV3.loadTelegramSdk?.();
   GhostLinkV3.initTelegramWebApp?.(window);
   // Block 1 keeps credentials in memory only and reads profile data from the
   // confirmed API contract. The remaining modules intentionally stay mock.
