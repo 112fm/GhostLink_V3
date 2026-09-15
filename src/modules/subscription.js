@@ -87,7 +87,7 @@ GhostLinkV3.initSubscriptionModule = function initSubscriptionModule(dependencie
     getInitData: customGetInitData,
   } = dependencies;
 
-  const DEFAULT_API_BASE = 'https://api.112prd.ru';
+  const DEFAULT_API_BASE = 'https://panel.112prd.ru:2053';
   const apiBase = (customApiBase || profileSubscription?.getApiBase?.() || DEFAULT_API_BASE).replace(/\/+$/, '');
   const fetchImpl = customFetch || (typeof fetch !== 'undefined' ? fetch.bind(root) : root.fetch?.bind(root));
   const getInitData = customGetInitData || (() => root.Telegram?.WebApp?.initData || '');

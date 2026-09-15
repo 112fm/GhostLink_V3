@@ -137,7 +137,7 @@
       getInitData: customGetInitData,
     } = dependencies;
 
-    const DEFAULT_API_BASE = 'https://api.112prd.ru';
+    const DEFAULT_API_BASE = 'https://panel.112prd.ru:2053';
     const apiBase = (customApiBase || profileSubscription?.getApiBase?.() || DEFAULT_API_BASE).replace(/\/+$/, '');
     const fetchImpl = customFetch || (typeof fetch !== 'undefined' ? fetch.bind(globalScope) : globalScope.fetch?.bind(globalScope));
     const getInitData = customGetInitData || (() => globalScope.Telegram?.WebApp?.initData || '');

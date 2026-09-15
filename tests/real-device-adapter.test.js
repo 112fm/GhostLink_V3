@@ -89,3 +89,18 @@ test('real device adapter turns a hanging device request into a timeout', async 
 
   await assert.rejects(adapter.fetchList(), (error) => error.type === 'timeout');
 });
+
+test('real device adapter defaults to https://panel.112prd.ru:2053 when apiBase is omitted', async () => {
+  const calls = [];
+  const adapter = createRealDeviceAdapter({
+    getToken: () => 'pwa-token',
+    fetch: async (url, options) => {
+      calls.push({ url, options });
+      return response(200, { devices: [], connected_devices: 0, device_limit: 2, can_add: true });
+    },
+  });
+
+  await adapter.fetchList();
+  assert.equal(calls[0].url, 'https://panel.112prd.ru:2053/api/device/list');
+});
+

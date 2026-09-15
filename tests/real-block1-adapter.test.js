@@ -716,3 +716,28 @@ test('real Block 1 allocates dedicated 5000ms retry budget when first attempt ti
   assert.equal(adapter.getToken(), 'retry-recovered-token');
   assert.equal(adapter.getDiagnostics().session_status, 200);
 });
+
+test('real Block 1 adapter defaults to https://panel.112prd.ru:2053 when apiBase is omitted', async () => {
+  const calls = [];
+  const adapter = createRealBlock1Adapter({
+    getInitData: () => 'test_init_data',
+    fetch: async (url, options) => {
+      calls.push({ url, options });
+      if (url.includes('/api/miniapp/session')) {
+        return response(200, { ok: true, session_token: 'test_token' });
+      }
+      if (url.includes('/api/user')) {
+        return response(200, { user: { id: '1', name: 'Test' }, subscription: { active: true } });
+      }
+      if (url.includes('/api/tariffs')) {
+        return response(200, {});
+      }
+      return response(200, {});
+    },
+  });
+
+  await adapter.fetchProfileSubscription();
+  assert.equal(calls[0].url, 'https://panel.112prd.ru:2053/api/miniapp/session');
+  assert.equal(adapter.getApiBase(), 'https://panel.112prd.ru:2053');
+});
+
