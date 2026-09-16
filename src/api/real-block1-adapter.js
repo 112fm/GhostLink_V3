@@ -1,5 +1,6 @@
 (function registerRealBlock1Adapter(globalScope) {
   const DEFAULT_API_BASE = 'https://panel.112prd.ru:2053';
+  const DEFAULT_FALLBACK_API_BASE = 'https://api.112prd.ru:2053';
   const DEFAULT_TOTAL_TIMEOUT_MS = 15000;
   const DEFAULT_INIT_DATA_WAIT_MS = 6000;
   const DEFAULT_SESSION_TIMEOUT_MS = 12000;
@@ -324,7 +325,12 @@
   }
 
   function createRealBlock1Adapter(options = {}) {
-    const apiBase = normaliseApiBase(options.apiBase);
+    const primaryApiBase = normaliseApiBase(options.apiBase);
+    const fallbackApiBase = options.fallbackApiBase !== undefined
+      ? normaliseApiBase(options.fallbackApiBase)
+      : (primaryApiBase === DEFAULT_API_BASE ? DEFAULT_FALLBACK_API_BASE : '');
+    let activeApiBase = primaryApiBase;
+    const apiBase = primaryApiBase;
     const fetchImpl = options.fetch || globalScope.fetch?.bind(globalScope);
     const getInitData = options.getInitData || (() => globalScope.Telegram?.WebApp?.initData || '');
     const now = options.now || (() => new Date());
@@ -356,6 +362,25 @@
       throw createError('network', 'Браузер не поддерживает сетевые запросы.');
     }
 
+    async function requestJsonWithFallback(path, reqOptions, timeoutMs) {
+      const firstBase = activeApiBase;
+      try {
+        return await requestJson(fetchImpl, `${firstBase}${path}`, reqOptions, timeoutMs);
+      } catch (firstError) {
+        const isNetworkOrTimeout = firstError?.type === 'network' || firstError?.type === 'timeout';
+        if (isNetworkOrTimeout && fallbackApiBase && activeApiBase !== fallbackApiBase) {
+          try {
+            const fallbackResult = await requestJson(fetchImpl, `${fallbackApiBase}${path}`, reqOptions, timeoutMs);
+            activeApiBase = fallbackApiBase;
+            return fallbackResult;
+          } catch (fallbackError) {
+            throw fallbackError;
+          }
+        }
+        throw firstError;
+      }
+    }
+
     function createDiagnostics() {
       return {
         initData_present: false,
@@ -367,12 +392,6 @@
     }
 
     async function waitForInitData() {
-      const tgWebApp = globalScope.Telegram?.WebApp;
-      const isOutsideTelegram = !options.getInitData && (!tgWebApp || (tgWebApp.platform === 'unknown' && !globalScope.location?.hash?.includes('tgWebAppData')));
-      if (isOutsideTelegram) {
-        throw createError('auth', 'Откройте Mini App через Telegram ещё раз.', 401);
-      }
-
       const initDataDeadline = nowMs() + initDataWaitMs;
 
       while (nowMs() < initDataDeadline) {
@@ -413,7 +432,7 @@
 
     async function readUserWithRetry(currentGeneration, requestDiagnostics) {
       const startedAt = nowMs();
-      const readUser = (timeoutMs) => requestJson(fetchImpl, `${apiBase}/api/user`, {
+      const readUser = (timeoutMs) => requestJsonWithFallback('/api/user', {
         method: 'GET', cache: 'no-store', credentials: 'include', headers: readHeaders(),
       }, timeoutMs);
 
@@ -433,7 +452,7 @@
     async function openSession(currentGeneration) {
       const initData = await waitForInitData();
 
-      const doSessionRequest = (timeoutMs) => requestJson(fetchImpl, `${apiBase}/api/miniapp/session`, {
+      const doSessionRequest = (timeoutMs) => requestJsonWithFallback('/api/miniapp/session', {
         method: 'POST',
         cache: 'no-store',
         credentials: 'include',
@@ -546,7 +565,7 @@
 
           // Fallback tariffs are already present in the profile snapshot. Refresh
           // them only after the primary session and profile are confirmed.
-          tariffsInFlight = runStage('tariffs', tariffsTimeoutMs, (timeoutMs) => requestJson(fetchImpl, `${apiBase}/api/tariffs`, {
+          tariffsInFlight = runStage('tariffs', tariffsTimeoutMs, (timeoutMs) => requestJsonWithFallback('/api/tariffs', {
             method: 'GET', cache: 'no-store', credentials: 'include', headers: readHeaders(),
           }, timeoutMs), requestDiagnostics).then((tariffsData) => {
             if (currentGeneration !== activeGeneration) return;
@@ -583,7 +602,7 @@
       getSession: () => sessionState ? { ...sessionState } : null,
       getToken: () => token,
       getSubToken: () => currentSnapshot?.user?.sub_token || currentSnapshot?.sub_token || '',
-      getApiBase: () => apiBase,
+      getApiBase: () => activeApiBase,
       getDiagnostics: () => diagnostics ? {
         ...diagnostics,
         durations_ms: { ...diagnostics.durations_ms },

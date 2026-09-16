@@ -183,11 +183,30 @@
     if (element) element.textContent = text;
   }
 
+  let lastRenderedProfile = null;
+
   function renderSubscriptionStatus(snapshot, documentRef = root.document, { loading = false } = {}) {
     if (!documentRef) return;
 
     const island = documentRef.getElementById('subscriptionStatus');
     if (!island) return;
+
+    // Guard: If lastRenderedProfile already has a valid profile,
+    // do NOT wipe the UI with error cards or 'СЕРВЕР НЕДОСТУПЕН' on background/secondary error or loading.
+    const hasValidRendered = Boolean(lastRenderedProfile?.subscription || lastRenderedProfile?.profile);
+    if (snapshot?.error && hasValidRendered) {
+      clearSubscriptionLoading(documentRef);
+      return;
+    }
+    if (loading && hasValidRendered) {
+      island.classList.add('is-subscription-loading');
+      island.setAttribute('aria-busy', 'true');
+      return;
+    }
+
+    if (snapshot && !snapshot.error && (snapshot.subscription || snapshot.profile)) {
+      lastRenderedProfile = snapshot;
+    }
 
     const presentation = loading ? getLoadingSubscriptionPresentation() : getSubscriptionPresentation(snapshot);
     const isUnavailable = presentation.state === 'unavailable';
@@ -280,7 +299,12 @@
     const deviceList = dependencies.deviceList;
     let requestSequence = 0;
     let currentLoad = null;
-    let lastRenderedProfile = null;
+    const initialCached = profileSubscription.getCachedProfile?.() || profileSubscription.getSnapshot?.();
+    if (initialCached?.subscription || initialCached?.profile) {
+      lastRenderedProfile = initialCached;
+    } else {
+      lastRenderedProfile = null;
+    }
 
     function renderLoading() {
       renderSubscriptionStatus(null, documentRef, { loading: true });

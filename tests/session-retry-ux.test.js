@@ -186,3 +186,37 @@ test('Stale-While-Revalidate preserves rendered profile and does NOT show sessio
     global.document = prevDoc;
   }
 });
+
+test('renderSubscriptionStatus does not overwrite valid rendered profile with СЕРВЕР НЕДОСТУПЕН on secondary error', async () => {
+  const { doc, getElement } = createMockDom();
+  const prevDoc = global.document;
+  global.document = doc;
+
+  try {
+    const { renderSubscriptionStatus } = require(path.join(root, 'src', 'modules', 'home.js'));
+
+    // 1. Initial valid profile render
+    renderSubscriptionStatus({
+      subscription: {
+        state: 'active',
+        active: true,
+        remainingDays: 20,
+        plan: { title: 'Solo', emoji: '👻' },
+      },
+    }, doc);
+    assert.equal(getElement('subscriptionPlanName').textContent, 'Solo');
+    assert.equal(getElement('subscriptionEmoji').textContent, '👻');
+
+    // 2. Secondary error arrives (e.g. 500 error from background check)
+    renderSubscriptionStatus({
+      error: { status: 500, type: 'api', message: 'Internal Server Error' },
+    }, doc);
+
+    // 3. Must NOT show 'СЕРВЕР НЕДОСТУПЕН' and must preserve existing data
+    assert.notEqual(getElement('subscriptionPlanName').textContent, 'СЕРВЕР НЕДОСТУПЕН');
+    assert.equal(getElement('subscriptionPlanName').textContent, 'Solo');
+    assert.equal(getElement('subscriptionEmoji').textContent, '👻');
+  } finally {
+    global.document = prevDoc;
+  }
+});

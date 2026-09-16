@@ -1666,36 +1666,40 @@ if (btnAddToApp && userKeyUrl) {
     }
 
     // 1. Auto-copy subscription URL to clipboard first so user can paste if needed
-    const copied = await copyText(subUrl);
+    await copyText(subUrl);
+
+    function safeOpenUrl(targetUrl) {
+      try {
+        if (window.Telegram?.WebApp?.openLink) {
+          window.Telegram.WebApp.openLink(targetUrl);
+          return;
+        }
+      } catch (_) {}
+      try {
+        const link = document.createElement('a');
+        link.href = targetUrl;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      } catch (_) {}
+    }
 
     if (isIncy) {
       // INCY deep link: incy://import/{encoded_url}
       const incyDeepLink = `incy://import/${encodeURIComponent(subUrl)}`;
-      showToast('Открываем INCY... Ссылка скопирована!');
+      showToast('Ссылка скопирована! Откройте INCY и нажмите Вставить');
       setTimeout(() => {
-        try {
-          if (window.Telegram?.WebApp?.openLink) {
-            window.Telegram.WebApp.openLink(incyDeepLink);
-          } else {
-            window.location.href = incyDeepLink;
-          }
-        } catch (_) {}
+        safeOpenUrl(incyDeepLink);
       }, 350);
     } else {
       // Karing deep link scheme with URI-encoded subscription URL
       const encoded = encodeURIComponent(subUrl);
       const karingInstallUrl = `karing://install-config?url=${encoded}`;
-      showToast(copied
-        ? 'Ссылка скопирована. Переходим в Karing...'
-        : 'Открываем Karing...');
+      showToast('Ссылка скопирована! Откройте Karing и нажмите Вставить');
       setTimeout(() => {
-        try {
-          if (window.Telegram?.WebApp?.openLink) {
-            window.Telegram.WebApp.openLink(karingInstallUrl);
-          } else {
-            window.location.href = karingInstallUrl;
-          }
-        } catch (_) {}
+        safeOpenUrl(karingInstallUrl);
       }, 350);
     }
   });

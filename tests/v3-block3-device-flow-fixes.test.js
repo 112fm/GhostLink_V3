@@ -234,9 +234,10 @@ test('2. Scenario 2 (Other device): new device deferred until app choice and add
 test('3. INCY deep-link format and browser-free opening with lossless encoding', () => {
   // Verifies that btnAddToApp uses incy://import/ with encodeURIComponent
   assert.match(devicesJs, /const incyDeepLink = `incy:\/\/import\/\$\{encodeURIComponent\(subUrl\)\}`;/);
-  // Verifies that window.location.href is used for incyDeepLink instead of openLink on https://
-  assert.match(devicesJs, /window\.location\.href = incyDeepLink/);
-  assert.doesNotMatch(devicesJs, /Telegram\.WebApp\.openLink\(subUrl\)/);
+  // Verifies that safeOpenUrl is used without window.location.href to avoid WebKit reload
+  assert.doesNotMatch(devicesJs, /window\.location\.href\s*=\s*incyDeepLink/);
+  assert.match(devicesJs, /safeOpenUrl\(incyDeepLink\)/);
+  assert.match(devicesJs, /Ссылка скопирована! Откройте INCY и нажмите Вставить/);
 
   // Test with a full production-like URL containing token, query parameters, and hash
   const fullSubUrl = 'https://api.112prd.ru:2053/s/test-token-xyz789?compat=incy&routing=true#GhostLink';

@@ -825,3 +825,64 @@ test('real Block 1 clears token and re-authenticates via openSession when /api/u
   assert.equal(snap.profile.displayName, 'Recovered User');
 });
 
+test('real Block 1 falls back to Cloudflare proxy domain on network failure or timeout of direct panel', async () => {
+  const attemptedUrls = [];
+  const adapter = createRealBlock1Adapter({
+    initDataWaitMs: 100,
+    sessionRetryDelayMs: 0,
+    getInitData: () => 'tg-data',
+    fetch: async (url) => {
+      attemptedUrls.push(url);
+      if (url.startsWith('https://panel.112prd.ru:2053')) {
+        // Direct Hetzner IP blocked by provider
+        throw new TypeError('Failed to fetch');
+      }
+      if (url.startsWith('https://api.112prd.ru:2053/api/miniapp/session')) {
+        return response(200, { ok: true, session_token: 'cf-session-token' });
+      }
+      if (url.startsWith('https://api.112prd.ru:2053/api/user')) {
+        return response(200, {
+          user: { id: '777', name: 'Cloudflare Fallback User' },
+          subscription: { active: true, status: 'active', days_left: 25 },
+          device_limit: 3,
+          connected_devices: 1,
+          tariff_name: 'Solo',
+        });
+      }
+      if (url.includes('/api/tariffs')) return response(200, { period_prices: {} });
+      return response(200, {});
+    },
+  });
+
+  const snapshot = await adapter.fetchProfileSubscription();
+  assert.ok(attemptedUrls.some((u) => u.startsWith('https://panel.112prd.ru:2053/api/miniapp/session')));
+  assert.ok(attemptedUrls.some((u) => u.startsWith('https://api.112prd.ru:2053/api/miniapp/session')));
+  assert.equal(snapshot.profile.displayName, 'Cloudflare Fallback User');
+  assert.equal(adapter.getApiBase(), 'https://api.112prd.ru:2053');
+});
+
+test('waitForInitData waits through cold-start delay on iOS/macOS without throwing early', async () => {
+  let attempts = 0;
+  const adapter = createRealBlock1Adapter({
+    initDataWaitMs: 500,
+    getInitData: () => {
+      attempts++;
+      // Simulates WebKit bridge taking 2 ticks to initialize
+      if (attempts < 3) return '';
+      return 'delayed-init-data';
+    },
+    fetch: async (url) => {
+      if (url.endsWith('/api/miniapp/session')) return response(200, { session_token: 'delayed-token' });
+      if (url.endsWith('/api/user')) return response(200, {
+        user: { id: '888', name: 'iOS Cold Start User' },
+        subscription: { active: true, days_left: 10 },
+      });
+      return response(200, {});
+    },
+  });
+
+  const snapshot = await adapter.fetchProfileSubscription();
+  assert.equal(snapshot.profile.displayName, 'iOS Cold Start User');
+  assert.ok(attempts >= 3, 'Must have polled multiple times before data arrived');
+});
+
