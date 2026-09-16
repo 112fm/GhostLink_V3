@@ -280,6 +280,7 @@
     const deviceList = dependencies.deviceList;
     let requestSequence = 0;
     let currentLoad = null;
+    let lastRenderedProfile = null;
 
     function renderLoading() {
       renderSubscriptionStatus(null, documentRef, { loading: true });
@@ -300,32 +301,49 @@
     function loadProfileSubscription(options = {}) {
       if (!profileSubscription || currentLoad) return currentLoad;
       const currentRequest = ++requestSequence;
-      renderLoading();
+      const cached = profileSubscription.getCachedProfile?.() || profileSubscription.getSnapshot?.();
+      const hasExistingData = Boolean(
+        lastRenderedProfile?.subscription ||
+        lastRenderedProfile?.profile ||
+        cached?.subscription ||
+        cached?.profile
+      );
+
+      if (!hasExistingData) {
+        renderLoading();
+      }
+
       currentLoad = Promise.resolve()
         .then(() => (options.force && profileSubscription.refresh ? profileSubscription.refresh() : profileSubscription.fetchProfileSubscription()))
         .then((snapshot) => {
           if (currentRequest === requestSequence) {
             if (snapshot?.error) {
-              showSessionError(snapshot.error, documentRef);
+              if (!hasExistingData) {
+                showSessionError(snapshot.error, documentRef);
+                renderSubscriptionStatus(snapshot, documentRef);
+              }
             } else {
+              lastRenderedProfile = snapshot;
               hideSessionError(documentRef);
-            }
-            renderSubscriptionStatus(snapshot, documentRef);
-            updateAdminSettingsVisibility(snapshot, documentRef);
-            syncDeviceCounterFromAdapter();
-            try {
-              root.GhostLinkPayment?.restorePaymentStateFromProfile?.(snapshot);
-            } catch (_) {
-              // Payment restore is optional and cannot replace a valid profile.
+              renderSubscriptionStatus(snapshot, documentRef);
+              updateAdminSettingsVisibility(snapshot, documentRef);
+              syncDeviceCounterFromAdapter();
+              try {
+                root.GhostLinkPayment?.restorePaymentStateFromProfile?.(snapshot);
+              } catch (_) {
+                // Payment restore is optional and cannot replace a valid profile.
+              }
             }
           }
           return snapshot;
         })
         .catch((error) => {
           if (currentRequest === requestSequence) {
-            showSessionError(error, documentRef);
-            renderSubscriptionStatus({ error }, documentRef);
-            updateAdminSettingsVisibility(null, documentRef);
+            if (!hasExistingData) {
+              showSessionError(error, documentRef);
+              renderSubscriptionStatus({ error }, documentRef);
+              updateAdminSettingsVisibility(null, documentRef);
+            }
           }
           return null;
         })
@@ -340,7 +358,9 @@
     if (btnSessionRetry && typeof btnSessionRetry.addEventListener === 'function') {
       btnSessionRetry.addEventListener('click', async () => {
         btnSessionRetry.disabled = true;
-        const originalText = btnSessionRetry.textContent;
+        const originalText = (btnSessionRetry.textContent && btnSessionRetry.textContent !== 'Подключение…')
+          ? btnSessionRetry.textContent
+          : 'Перезапустить';
         btnSessionRetry.textContent = 'Подключение…';
         try {
           await loadProfileSubscription({ force: true });

@@ -291,7 +291,6 @@ function renderDeviceList(snapshot) {
   lastConfirmedDeviceList = snapshot;
   const isEmpty = snapshot.status === 'empty';
   const isAtLimit = snapshot.status === 'limit';
-  renderDeviceCards(snapshot.devices);
 
   if (devicesSlotSummary) devicesSlotSummary.textContent = `${snapshot.usedSlots} из ${snapshot.deviceLimit} занято`;
   if (devicesSlotFree) devicesSlotFree.textContent = snapshot.freeSlots > 0
@@ -314,6 +313,12 @@ function renderDeviceList(snapshot) {
     homeCounter.textContent = `${used} ${word} · лимит ${snapshot.deviceLimit}`;
   }
 
+  try {
+    renderDeviceCards(snapshot.devices);
+  } catch (renderError) {
+    console.warn('Failed to render device cards:', renderError);
+  }
+
   devicesEmptyState?.classList.toggle('hidden', !isEmpty);
   devicesUnavailableState?.classList.add('hidden');
   if (btnDevicesAdd) {
@@ -331,7 +336,11 @@ function renderDeviceListError(error) {
     ? 'Обновление заняло слишком долго. Попробуйте ещё раз.'
     : 'Нет связи. Проверьте подключение и обновите список позже.';
   if (lastConfirmedDeviceList) {
-    renderDeviceCards(lastConfirmedDeviceList.devices);
+    try {
+      if (!activeDevicesContainer?.children?.length) {
+        renderDeviceCards(lastConfirmedDeviceList.devices);
+      }
+    } catch (_) {}
     devicesUnavailableState?.classList.remove('hidden');
     setDevicesListStatus(`${message} Показываем последние подтверждённые данные.`, 'warning');
   } else {

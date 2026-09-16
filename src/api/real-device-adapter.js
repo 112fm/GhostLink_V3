@@ -1,6 +1,6 @@
 (function registerRealDeviceAdapter(globalScope) {
   const DEFAULT_API_BASE = 'https://panel.112prd.ru:2053';
-  const DEFAULT_TIMEOUT_MS = 10000;
+  const DEFAULT_TIMEOUT_MS = 15000;
 
   function createError(type, message, status, data) {
     const error = new Error(message || type);

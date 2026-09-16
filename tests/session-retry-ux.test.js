@@ -134,3 +134,55 @@ test('btnSessionRetry triggers profile reload and clears session error overlay o
     global.document = prevDoc;
   }
 });
+
+test('Stale-While-Revalidate preserves rendered profile and does NOT show session error overlay on background fetch failure', async () => {
+  const { doc, getElement } = createMockDom();
+  const prevDoc = global.document;
+  global.document = doc;
+
+  let fetchCount = 0;
+  let failSecond = false;
+
+  try {
+    const home = initHomeModule({
+      profileSubscription: {
+        fetchProfileSubscription: async () => {
+          fetchCount++;
+          if (failSecond) {
+            const err = new Error('Timeout');
+            err.type = 'timeout';
+            throw err;
+          }
+          return {
+            isMock: false,
+            subscription: {
+              state: 'active',
+              active: true,
+              remainingDays: 45,
+              totalDays: 60,
+              plan: { title: 'Flex', emoji: '⚡' },
+            },
+          };
+        },
+      },
+    });
+
+    // 1. Initial load succeeds
+    await new Promise((r) => setTimeout(r, 10));
+    assert.equal(fetchCount, 1);
+    assert.equal(getElement('page-session-error').classList.contains('hidden'), true);
+    assert.equal(getElement('subscriptionPlanName').textContent, 'Flex');
+
+    // 2. Background refresh fails (e.g. timeout on mobile network)
+    failSecond = true;
+    await home.loadProfileSubscription({ force: true });
+
+    // 3. Error modal is NOT shown because valid profile was already rendered
+    assert.equal(getElement('page-session-error').classList.contains('hidden'), true);
+    assert.equal(doc.body.classList.contains('has-overlay-open'), false);
+    // Rendered profile is preserved
+    assert.equal(getElement('subscriptionPlanName').textContent, 'Flex');
+  } finally {
+    global.document = prevDoc;
+  }
+});

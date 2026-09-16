@@ -741,3 +741,87 @@ test('real Block 1 adapter defaults to https://panel.112prd.ru:2053 when apiBase
   assert.equal(adapter.getApiBase(), 'https://panel.112prd.ru:2053');
 });
 
+test('real Block 1 reuses cached session token on subsequent fetch and skips openSession', async () => {
+  const sessionCalls = [];
+  const userCalls = [];
+  const adapter = createRealBlock1Adapter({
+    apiBase: 'https://api.example.test',
+    getInitData: () => 'telegram-init-data',
+    fetch: async (url, options) => {
+      if (url.endsWith('/api/miniapp/session')) {
+        sessionCalls.push({ url, options });
+        return response(200, { ok: true, session_token: 'cached-token-123' });
+      }
+      if (url.endsWith('/api/user')) {
+        userCalls.push({ url, options });
+        return response(200, {
+          user: { id: '10', name: 'Reused Token User' },
+          subscription: { active: true, status: 'active', days_left: 15 },
+          device_limit: 3,
+          connected_devices: 1,
+          tariff_name: 'Solo',
+        });
+      }
+      if (url.endsWith('/api/tariffs')) return response(200, { period_prices: {} });
+      return response(200, {});
+    },
+  });
+
+  // 1st fetch: opens session
+  const snap1 = await adapter.fetchProfileSubscription();
+  assert.equal(sessionCalls.length, 1);
+  assert.equal(userCalls.length, 1);
+  assert.equal(adapter.getToken(), 'cached-token-123');
+
+  // 2nd fetch: reuses cached token, openSession is NOT called
+  const snap2 = await adapter.fetchProfileSubscription({ force: true });
+  assert.equal(sessionCalls.length, 1, 'openSession must NOT be called on second fetch');
+  assert.equal(userCalls.length, 2, 'user request must be made with cached token');
+  assert.equal(userCalls[1].options.headers['X-PWA-Token'], 'cached-token-123');
+  assert.equal(snap2.profile.displayName, 'Reused Token User');
+  assert.equal(adapter.getDiagnostics().session_status, 200);
+});
+
+test('real Block 1 clears token and re-authenticates via openSession when /api/user returns 401', async () => {
+  let sessionCallCount = 0;
+  let userCallCount = 0;
+  const adapter = createRealBlock1Adapter({
+    apiBase: 'https://api.example.test',
+    getInitData: () => 'telegram-init-data',
+    fetch: async (url, options) => {
+      if (url.endsWith('/api/miniapp/session')) {
+        sessionCallCount++;
+        return response(200, { ok: true, session_token: `token-v${sessionCallCount}` });
+      }
+      if (url.endsWith('/api/user')) {
+        userCallCount++;
+        if (userCallCount === 2) {
+          return response(401, { detail: 'Token expired' });
+        }
+        return response(200, {
+          user: { id: '20', name: 'Recovered User' },
+          subscription: { active: true, status: 'active', days_left: 20 },
+          device_limit: 2,
+          connected_devices: 1,
+          tariff_name: 'Solo',
+        });
+      }
+      if (url.endsWith('/api/tariffs')) return response(200, { period_prices: {} });
+      return response(200, {});
+    },
+  });
+
+  // 1st fetch: normal openSession -> user
+  await adapter.fetchProfileSubscription();
+  assert.equal(sessionCallCount, 1);
+  assert.equal(userCallCount, 1);
+  assert.equal(adapter.getToken(), 'token-v1');
+
+  // 2nd fetch: user call returns 401, adapter catches 401, clears token, calls openSession (v2), and retries user call
+  const snap = await adapter.fetchProfileSubscription({ force: true });
+  assert.equal(sessionCallCount, 2, 'Must call openSession again after 401');
+  assert.equal(userCallCount, 3, 'Must retry user call after re-authentication');
+  assert.equal(adapter.getToken(), 'token-v2');
+  assert.equal(snap.profile.displayName, 'Recovered User');
+});
+

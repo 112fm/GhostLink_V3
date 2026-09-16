@@ -1,12 +1,12 @@
 (function registerRealBlock1Adapter(globalScope) {
   const DEFAULT_API_BASE = 'https://panel.112prd.ru:2053';
-  const DEFAULT_TOTAL_TIMEOUT_MS = 10000;
+  const DEFAULT_TOTAL_TIMEOUT_MS = 15000;
   const DEFAULT_INIT_DATA_WAIT_MS = 6000;
-  const DEFAULT_SESSION_TIMEOUT_MS = 5000;
-  const DEFAULT_USER_TIMEOUT_MS = 5000;
+  const DEFAULT_SESSION_TIMEOUT_MS = 12000;
+  const DEFAULT_USER_TIMEOUT_MS = 12000;
   const DEFAULT_USER_RETRY_DELAY_MS = 250;
   const DEFAULT_USER_RETRY_TIMEOUT_MS = 5000;
-  const DEFAULT_TARIFFS_TIMEOUT_MS = 5000;
+  const DEFAULT_TARIFFS_TIMEOUT_MS = 10000;
   const INIT_DATA_RETRY_MS = 150;
   const DEFAULT_SESSION_RETRY_DELAY_MS = 500;
   const DEFAULT_SESSION_RETRY_TIMEOUT_MS = 5000;
@@ -509,10 +509,30 @@
         inFlight = (async () => {
           diagnostics = createDiagnostics();
           const requestDiagnostics = diagnostics;
-          await openSession(currentGeneration);
-          if (currentGeneration !== activeGeneration) return null;
 
-          const user = await readUserWithRetry(currentGeneration, requestDiagnostics);
+          if (!token || options?.reauth) {
+            await openSession(currentGeneration);
+            if (currentGeneration !== activeGeneration) return null;
+          } else {
+            requestDiagnostics.initData_present = true;
+            requestDiagnostics.session_status = 200;
+          }
+
+          let user;
+          try {
+            user = await readUserWithRetry(currentGeneration, requestDiagnostics);
+          } catch (userError) {
+            if (currentGeneration !== activeGeneration) return null;
+            if (userError?.status === 401) {
+              token = '';
+              sessionState = null;
+              await openSession(currentGeneration);
+              if (currentGeneration !== activeGeneration) return null;
+              user = await readUserWithRetry(currentGeneration, requestDiagnostics);
+            } else {
+              throw userError;
+            }
+          }
 
           if (currentGeneration !== activeGeneration || !user) {
             return null;
