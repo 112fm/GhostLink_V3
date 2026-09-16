@@ -1,6 +1,6 @@
 (function registerRealBlock1Adapter(globalScope) {
-  const DEFAULT_API_BASE = 'https://panel.112prd.ru:2053';
-  const DEFAULT_FALLBACK_API_BASE = 'https://api.112prd.ru:2053';
+  const DEFAULT_API_BASE = 'https://api.112prd.ru:2053';
+  const DEFAULT_FALLBACK_API_BASE = 'https://panel.112prd.ru:2053';
   const DEFAULT_TOTAL_TIMEOUT_MS = 15000;
   const DEFAULT_INIT_DATA_WAIT_MS = 6000;
   const DEFAULT_SESSION_TIMEOUT_MS = 12000;
@@ -8,9 +8,27 @@
   const DEFAULT_USER_RETRY_DELAY_MS = 250;
   const DEFAULT_USER_RETRY_TIMEOUT_MS = 5000;
   const DEFAULT_TARIFFS_TIMEOUT_MS = 10000;
+  const DEFAULT_FAST_FALLBACK_TIMEOUT_MS = 2500;
   const INIT_DATA_RETRY_MS = 150;
   const DEFAULT_SESSION_RETRY_DELAY_MS = 500;
   const DEFAULT_SESSION_RETRY_TIMEOUT_MS = 5000;
+
+  function raceFirstSuccess(promises) {
+    return new Promise((resolve, reject) => {
+      let pending = promises.length;
+      let lastError = null;
+      promises.forEach((p) => {
+        Promise.resolve(p).then(
+          (val) => resolve(val),
+          (err) => {
+            lastError = err;
+            pending -= 1;
+            if (pending <= 0) reject(lastError);
+          }
+        );
+      });
+    });
+  }
 
   const DEFAULT_FALLBACK_TARIFFS = Object.freeze({
     tier: 'regular',
@@ -347,6 +365,7 @@
       ? toInteger(options.userRetryTimeoutMs, DEFAULT_USER_RETRY_TIMEOUT_MS)
       : DEFAULT_USER_RETRY_TIMEOUT_MS;
     const tariffsTimeoutMs = toInteger(options.tariffsTimeoutMs, DEFAULT_TARIFFS_TIMEOUT_MS) || DEFAULT_TARIFFS_TIMEOUT_MS;
+    const fallbackThresholdMs = toInteger(options.fallbackThresholdMs, DEFAULT_FAST_FALLBACK_TIMEOUT_MS) || DEFAULT_FAST_FALLBACK_TIMEOUT_MS;
     const sessionRetryDelayMs = options.sessionRetryDelayMs !== undefined
       ? toInteger(options.sessionRetryDelayMs, DEFAULT_SESSION_RETRY_DELAY_MS)
       : DEFAULT_SESSION_RETRY_DELAY_MS;
@@ -364,15 +383,54 @@
 
     async function requestJsonWithFallback(path, reqOptions, timeoutMs) {
       const firstBase = activeApiBase;
-      try {
-        return await requestJson(fetchImpl, `${firstBase}${path}`, reqOptions, timeoutMs);
-      } catch (firstError) {
-        const isNetworkOrTimeout = firstError?.type === 'network' || firstError?.type === 'timeout';
-        if (isNetworkOrTimeout && fallbackApiBase && activeApiBase !== fallbackApiBase) {
-          try {
-            const fallbackResult = await requestJson(fetchImpl, `${fallbackApiBase}${path}`, reqOptions, timeoutMs);
+      if (!fallbackApiBase || activeApiBase === fallbackApiBase) {
+        return requestJson(fetchImpl, `${firstBase}${path}`, reqOptions, timeoutMs);
+      }
+
+      let fallbackStarted = false;
+      let fallbackPromise = null;
+
+      function triggerFallback() {
+        if (fallbackStarted) return fallbackPromise;
+        fallbackStarted = true;
+        fallbackPromise = requestJson(fetchImpl, `${fallbackApiBase}${path}`, reqOptions, timeoutMs)
+          .then((res) => {
             activeApiBase = fallbackApiBase;
-            return fallbackResult;
+            return res;
+          });
+        return fallbackPromise;
+      }
+
+      const thresholdMs = Math.min(timeoutMs, fallbackThresholdMs);
+      let thresholdTimer = null;
+      const thresholdPromise = new Promise((resolve) => {
+        thresholdTimer = globalScope.setTimeout(() => {
+          resolve('threshold_timeout');
+        }, thresholdMs);
+      });
+
+      const primaryPromise = requestJson(fetchImpl, `${firstBase}${path}`, reqOptions, timeoutMs);
+
+      try {
+        const firstResolution = await Promise.race([
+          primaryPromise.then((res) => ({ type: 'primary_success', res })),
+          thresholdPromise.then(() => ({ type: 'threshold_reached' })),
+        ]);
+
+        if (thresholdTimer) globalScope.clearTimeout(thresholdTimer);
+
+        if (firstResolution.type === 'primary_success') {
+          return firstResolution.res;
+        }
+
+        const fb = triggerFallback();
+        return await raceFirstSuccess([primaryPromise, fb]);
+      } catch (firstError) {
+        if (thresholdTimer) globalScope.clearTimeout(thresholdTimer);
+        const isNetworkOrTimeout = firstError?.type === 'network' || firstError?.type === 'timeout';
+        if (isNetworkOrTimeout) {
+          try {
+            return await triggerFallback();
           } catch (fallbackError) {
             throw fallbackError;
           }
@@ -439,10 +497,10 @@
       try {
         return await runStage('user', userTimeoutMs, readUser, requestDiagnostics);
       } catch (firstError) {
-        if (currentGeneration !== activeGeneration) return null;
+        if (currentGeneration !== activeGeneration && latestUserResponse) return latestUserResponse;
         if (!isRetryableUserReadError(firstError)) throw firstError;
         if (userRetryDelayMs > 0) await sleep(userRetryDelayMs);
-        if (currentGeneration !== activeGeneration) return null;
+        if (currentGeneration !== activeGeneration && latestUserResponse) return latestUserResponse;
         return runStage('user', userRetryTimeoutMs, readUser, requestDiagnostics);
       } finally {
         requestDiagnostics.durations_ms.user = Math.max(0, nowMs() - startedAt);
@@ -467,23 +525,23 @@
         if (firstError?.status === 401 || firstError?.status === 403 || firstError?.type === 'auth') {
           throw firstError;
         }
-        if (currentGeneration !== undefined && currentGeneration !== activeGeneration) return null;
         const delay = sessionRetryDelayMs;
         if (delay > 0) {
           await sleep(delay);
         }
-        if (currentGeneration !== undefined && currentGeneration !== activeGeneration) return null;
         session = await runStage('session', sessionRetryTimeoutMs, doSessionRequest);
       }
 
-      if (currentGeneration !== undefined && currentGeneration !== activeGeneration) {
-        // Late response from stale generation - do not touch active token or sessionState
-        return null;
+      const receivedToken = String(session?.session_token || '').trim();
+      if (receivedToken) {
+        if (!token || currentGeneration === activeGeneration) {
+          token = receivedToken;
+          sessionState = Object.freeze({ status: 'authenticated', transport: 'memory' });
+        }
+      } else if (!token) {
+        throw createError('invalid_json', 'Сервер не подтвердил сессию.');
       }
 
-      token = String(session?.session_token || '');
-      if (!token) throw createError('invalid_json', 'Сервер не подтвердил сессию.');
-      sessionState = Object.freeze({ status: 'authenticated', transport: 'memory' });
       return session;
     }
 
@@ -531,7 +589,6 @@
 
           if (!token || options?.reauth) {
             await openSession(currentGeneration);
-            if (currentGeneration !== activeGeneration) return null;
           } else {
             requestDiagnostics.initData_present = true;
             requestDiagnostics.session_status = 200;
@@ -541,34 +598,36 @@
           try {
             user = await readUserWithRetry(currentGeneration, requestDiagnostics);
           } catch (userError) {
-            if (currentGeneration !== activeGeneration) return null;
+            if (currentGeneration !== activeGeneration && currentSnapshot?.user) return currentSnapshot;
             if (userError?.status === 401) {
               token = '';
               sessionState = null;
               await openSession(currentGeneration);
-              if (currentGeneration !== activeGeneration) return null;
               user = await readUserWithRetry(currentGeneration, requestDiagnostics);
             } else {
               throw userError;
             }
           }
 
-          if (currentGeneration !== activeGeneration || !user) {
-            return null;
+          if (!user) {
+            return currentSnapshot?.user ? currentSnapshot : null;
           }
 
-          latestUserResponse = user;
-          const profileResult = mapProfile(user, null, now());
-          profileResult.tariffs = latestTariffsResponse || currentSnapshot?.tariffs || defaultTariffs;
-          currentSnapshot = profileResult;
-          notifyListeners(profileResult);
+          const hasNewerData = Boolean(currentGeneration !== activeGeneration && latestUserResponse);
+          if (!hasNewerData) {
+            latestUserResponse = user;
+            const profileResult = mapProfile(user, null, now());
+            profileResult.tariffs = latestTariffsResponse || currentSnapshot?.tariffs || defaultTariffs;
+            currentSnapshot = profileResult;
+            notifyListeners(profileResult);
+          }
 
           // Fallback tariffs are already present in the profile snapshot. Refresh
           // them only after the primary session and profile are confirmed.
           tariffsInFlight = runStage('tariffs', tariffsTimeoutMs, (timeoutMs) => requestJsonWithFallback('/api/tariffs', {
             method: 'GET', cache: 'no-store', credentials: 'include', headers: readHeaders(),
           }, timeoutMs), requestDiagnostics).then((tariffsData) => {
-            if (currentGeneration !== activeGeneration) return;
+            if (currentGeneration !== activeGeneration && latestTariffsResponse) return;
             if (tariffsData) {
               latestTariffsResponse = tariffsData;
               currentSnapshot.tariffs = tariffsData;
@@ -578,7 +637,7 @@
             // Preserve the fallback matrix when the optional refresh fails.
           });
 
-          return profileResult;
+          return currentSnapshot;
         })().finally(() => {
           if (currentGeneration === activeGeneration) {
             inFlight = null;

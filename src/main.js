@@ -17,6 +17,7 @@
     throw new Error("GhostLink V3 real Block 1 adapter is missing");
   }
   const deviceAdapter = GhostLinkV3.createRealDeviceAdapter?.({
+    getApiBase: () => profileSubscription.getApiBase?.(),
     apiBase: profileSubscription.getApiBase?.(),
     getToken: () => profileSubscription.getToken?.(),
   });
@@ -24,6 +25,7 @@
     throw new Error("GhostLink V3 real device adapter is missing");
   }
   const invitesAdapter = GhostLinkV3.createRealInvitesAdapter?.({
+    getApiBase: () => profileSubscription.getApiBase?.(),
     apiBase: profileSubscription.getApiBase?.(),
     getToken: () => profileSubscription.getToken?.(),
     profileSubscription,

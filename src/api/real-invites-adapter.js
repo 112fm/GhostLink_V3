@@ -1,5 +1,5 @@
 (function registerRealInvitesAdapter(globalScope) {
-  const DEFAULT_API_BASE = 'https://panel.112prd.ru:2053';
+  const DEFAULT_API_BASE = 'https://api.112prd.ru:2053';
   const DEFAULT_TIMEOUT_MS = 10000;
 
   function createError(type, message, status, data) {
@@ -53,7 +53,8 @@
   }
 
   function createRealInvitesAdapter(options = {}) {
-    const apiBase = String(options.apiBase || DEFAULT_API_BASE).replace(/\/+$/, '');
+    const getDynamicApiBase = typeof options.getApiBase === 'function' ? options.getApiBase : null;
+    const apiBase = String(options.apiBase || (getDynamicApiBase ? getDynamicApiBase() : '') || DEFAULT_API_BASE).replace(/\/+$/, '');
     const fetchImpl = options.fetch || globalScope.fetch?.bind(globalScope);
     const getToken = options.getToken || (() => '');
     const profileSubscription = options.profileSubscription || null;

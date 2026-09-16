@@ -1174,7 +1174,7 @@ function isSubscriptionReady(app = currentSelectedApp || 'karing') {
 }
 
 function getAllowedSubscriptionOrigins() {
-  const configured = profileSubscription?.getApiBase?.() || window.GhostLinkV3?.apiBase || 'https://panel.112prd.ru:2053';
+  const configured = profileSubscription?.getApiBase?.() || window.GhostLinkV3?.apiBase || 'https://api.112prd.ru:2053';
   const origins = new Set([
     String(configured).replace(/\/+$/, ''),
     'https://panel.112prd.ru:2053',

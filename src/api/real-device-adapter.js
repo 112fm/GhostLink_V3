@@ -1,6 +1,8 @@
 (function registerRealDeviceAdapter(globalScope) {
-  const DEFAULT_API_BASE = 'https://panel.112prd.ru:2053';
+  const DEFAULT_API_BASE = 'https://api.112prd.ru:2053';
+  const DEFAULT_FALLBACK_API_BASE = 'https://panel.112prd.ru:2053';
   const DEFAULT_TIMEOUT_MS = 15000;
+  const DEFAULT_FAST_FALLBACK_TIMEOUT_MS = 2500;
 
   function createError(type, message, status, data) {
     const error = new Error(message || type);
@@ -9,6 +11,23 @@
     if (data !== undefined) error.data = data;
     error.code = data?.code || data?.detail || type;
     return error;
+  }
+
+  function raceFirstSuccess(promises) {
+    return new Promise((resolve, reject) => {
+      let pending = promises.length;
+      let lastError = null;
+      promises.forEach((p) => {
+        Promise.resolve(p).then(
+          (val) => resolve(val),
+          (err) => {
+            lastError = err;
+            pending -= 1;
+            if (pending <= 0) reject(lastError);
+          }
+        );
+      });
+    });
   }
 
   function formatErrorMessage(codeOrMsg) {
@@ -88,20 +107,31 @@
   }
 
   function createRealDeviceAdapter(options = {}) {
-    const apiBase = String(options.apiBase || DEFAULT_API_BASE).replace(/\/+$/, '');
+    const getDynamicApiBase = typeof options.getApiBase === 'function' ? options.getApiBase : null;
+    const primaryApiBase = String(options.apiBase || (getDynamicApiBase ? getDynamicApiBase() : '') || DEFAULT_API_BASE).replace(/\/+$/, '');
+    const fallbackApiBase = options.fallbackApiBase !== undefined
+      ? String(options.fallbackApiBase || '').replace(/\/+$/, '')
+      : (primaryApiBase === DEFAULT_API_BASE ? DEFAULT_FALLBACK_API_BASE : (primaryApiBase === DEFAULT_FALLBACK_API_BASE ? DEFAULT_API_BASE : ''));
+    let activeApiBase = primaryApiBase;
     const fetchImpl = options.fetch || globalScope.fetch?.bind(globalScope);
     const getToken = options.getToken || (() => '');
     const timeoutMs = Math.max(1, Number(options.timeoutMs) || DEFAULT_TIMEOUT_MS);
+    const fallbackThresholdMs = Math.max(1, Number(options.fallbackThresholdMs) || DEFAULT_FAST_FALLBACK_TIMEOUT_MS);
 
-    async function request(path, requestOptions = {}) {
-      if (typeof fetchImpl !== 'function') throw createError('network', 'Сетевой клиент недоступен.');
-      const token = String(getToken() || '').trim();
-      if (!token) throw createError('auth', 'Сессия Mini App ещё не готова.', 401);
+    function getEffectiveBase() {
+      if (getDynamicApiBase) {
+        const dyn = getDynamicApiBase();
+        if (dyn) return String(dyn).replace(/\/+$/, '');
+      }
+      return activeApiBase;
+    }
+
+    async function executeSingleRequest(baseUrl, path, requestOptions, token, reqTimeoutMs) {
       const controller = typeof AbortController === 'function' ? new AbortController() : null;
       let timer;
       try {
         const response = await Promise.race([
-          fetchImpl(`${apiBase}${path}`, {
+          fetchImpl(`${baseUrl}${path}`, {
             ...requestOptions,
             signal: controller?.signal,
             headers: {
@@ -114,7 +144,7 @@
             timer = globalScope.setTimeout(() => {
               controller?.abort();
               reject(createError('timeout', 'Сервер отвечает слишком долго.'));
-            }, timeoutMs);
+            }, reqTimeoutMs);
           }),
         ]);
         const text = await response.text();
@@ -138,6 +168,72 @@
         throw createError('network', 'Не удалось связаться с GhostLink.');
       } finally {
         if (timer) globalScope.clearTimeout(timer);
+      }
+    }
+
+    async function request(path, requestOptions = {}) {
+      if (typeof fetchImpl !== 'function') throw createError('network', 'Сетевой клиент недоступен.');
+      const token = String(getToken() || '').trim();
+      if (!token) throw createError('auth', 'Сессия Mini App ещё не готова.', 401);
+
+      const firstBase = getEffectiveBase();
+      const currentFallback = (fallbackApiBase && firstBase !== fallbackApiBase)
+        ? fallbackApiBase
+        : (firstBase === DEFAULT_API_BASE ? DEFAULT_FALLBACK_API_BASE : '');
+
+      if (!currentFallback || firstBase === currentFallback) {
+        return executeSingleRequest(firstBase, path, requestOptions, token, timeoutMs);
+      }
+
+      let fallbackStarted = false;
+      let fallbackPromise = null;
+
+      function triggerFallback() {
+        if (fallbackStarted) return fallbackPromise;
+        fallbackStarted = true;
+        fallbackPromise = executeSingleRequest(currentFallback, path, requestOptions, token, timeoutMs)
+          .then((res) => {
+            activeApiBase = currentFallback;
+            return res;
+          });
+        return fallbackPromise;
+      }
+
+      const thresholdMs = Math.min(timeoutMs, fallbackThresholdMs);
+      let thresholdTimer = null;
+      const thresholdPromise = new Promise((resolve) => {
+        thresholdTimer = globalScope.setTimeout(() => {
+          resolve('threshold_timeout');
+        }, thresholdMs);
+      });
+
+      const primaryPromise = executeSingleRequest(firstBase, path, requestOptions, token, timeoutMs);
+
+      try {
+        const firstResolution = await Promise.race([
+          primaryPromise.then((res) => ({ type: 'primary_success', res })),
+          thresholdPromise.then(() => ({ type: 'threshold_reached' })),
+        ]);
+
+        if (thresholdTimer) globalScope.clearTimeout(thresholdTimer);
+
+        if (firstResolution.type === 'primary_success') {
+          return firstResolution.res;
+        }
+
+        const fb = triggerFallback();
+        return await raceFirstSuccess([primaryPromise, fb]);
+      } catch (firstError) {
+        if (thresholdTimer) globalScope.clearTimeout(thresholdTimer);
+        const isNetworkOrTimeout = firstError?.type === 'network' || firstError?.type === 'timeout';
+        if (isNetworkOrTimeout) {
+          try {
+            return await triggerFallback();
+          } catch (fallbackError) {
+            throw fallbackError;
+          }
+        }
+        throw firstError;
       }
     }
 
@@ -173,7 +269,7 @@
       return normalizeOperation(await request(`/api/device/operations/${encodeURIComponent(requestId)}`, { method: 'GET', cache: 'no-store' }));
     }
 
-    return Object.freeze({ fetchList, createDevice, start, getStatus });
+    return Object.freeze({ fetchList, createDevice, start, getStatus, getApiBase: () => getEffectiveBase() });
   }
 
   const exported = { createRealDeviceAdapter, normalizeList, normalizeOperation };

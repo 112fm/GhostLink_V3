@@ -90,7 +90,7 @@ test('real device adapter turns a hanging device request into a timeout', async 
   await assert.rejects(adapter.fetchList(), (error) => error.type === 'timeout');
 });
 
-test('real device adapter defaults to https://panel.112prd.ru:2053 when apiBase is omitted', async () => {
+test('real device adapter defaults to https://api.112prd.ru:2053 when apiBase is omitted', async () => {
   const calls = [];
   const adapter = createRealDeviceAdapter({
     getToken: () => 'pwa-token',
@@ -101,6 +101,49 @@ test('real device adapter defaults to https://panel.112prd.ru:2053 when apiBase 
   });
 
   await adapter.fetchList();
-  assert.equal(calls[0].url, 'https://panel.112prd.ru:2053/api/device/list');
+  assert.equal(calls[0].url, 'https://api.112prd.ru:2053/api/device/list');
+  assert.equal(adapter.getApiBase(), 'https://api.112prd.ru:2053');
+});
+
+test('real device adapter falls back to panel.112prd.ru:2053 on network failure', async () => {
+  const attemptedUrls = [];
+  const adapter = createRealDeviceAdapter({
+    getToken: () => 'pwa-token',
+    fetch: async (url, options) => {
+      attemptedUrls.push(url);
+      if (url.startsWith('https://api.112prd.ru:2053')) {
+        throw new TypeError('Failed to fetch');
+      }
+      return response(200, { devices: [], connected_devices: 0, device_limit: 2, can_add: true });
+    },
+  });
+
+  const list = await adapter.fetchList();
+  assert.ok(attemptedUrls.some((u) => u.startsWith('https://api.112prd.ru:2053/api/device/list')));
+  assert.ok(attemptedUrls.some((u) => u.startsWith('https://panel.112prd.ru:2053/api/device/list')));
+  assert.equal(list.deviceLimit, 2);
+  assert.equal(adapter.getApiBase(), 'https://panel.112prd.ru:2053');
+});
+
+test('real device adapter resolves base dynamically via getApiBase option', async () => {
+  let dynamicHost = 'https://dynamic-host.test';
+  const calls = [];
+  const adapter = createRealDeviceAdapter({
+    getToken: () => 'pwa-token',
+    getApiBase: () => dynamicHost,
+    fetch: async (url, options) => {
+      calls.push({ url, options });
+      return response(200, { devices: [], connected_devices: 0, device_limit: 2, can_add: true });
+    },
+  });
+
+  await adapter.fetchList();
+  assert.equal(calls[0].url, 'https://dynamic-host.test/api/device/list');
+  assert.equal(adapter.getApiBase(), 'https://dynamic-host.test');
+
+  dynamicHost = 'https://switched-host.test';
+  await adapter.fetchList();
+  assert.equal(calls[1].url, 'https://switched-host.test/api/device/list');
+  assert.equal(adapter.getApiBase(), 'https://switched-host.test');
 });
 
