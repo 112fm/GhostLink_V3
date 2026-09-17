@@ -72,7 +72,7 @@ test('runtime cache versions load the isolated home lifecycle and gift adapter',
   const localAssetVersions = [...template.matchAll(/(?:src|href)="\.\/src\/[^\"]+\?v=([^\"]+)/g)]
     .map((match) => match[1]);
   assert.ok(localAssetVersions.length > 0);
-  assert.deepEqual([...new Set(localAssetVersions)], ['29']);
+  assert.deepEqual([...new Set(localAssetVersions)], ['30']);
 });
 
 test('admin source never auto-starts the partners tab during page load', () => {

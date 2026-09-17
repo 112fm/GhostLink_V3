@@ -452,7 +452,8 @@
   transform: scale(0.98);
 }
 
-.devices-add-button:disabled {
+.devices-add-button:disabled,
+.devices-add-button.is-limit-reached {
   background: rgba(255, 255, 255, 0.08);
   color: rgba(255, 255, 255, 0.45);
   box-shadow: none;

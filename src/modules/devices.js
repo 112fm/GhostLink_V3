@@ -322,8 +322,14 @@ function renderDeviceList(snapshot) {
   devicesEmptyState?.classList.toggle('hidden', !isEmpty);
   devicesUnavailableState?.classList.add('hidden');
   if (btnDevicesAdd) {
-    btnDevicesAdd.disabled = isAtLimit;
-    btnDevicesAdd.textContent = isAtLimit ? 'Лимит устройств достигнут' : 'Добавить устройство';
+    const span = btnDevicesAdd.querySelector('span');
+    const label = isAtLimit ? `Лимит исчерпан (${snapshot.usedSlots} из ${snapshot.deviceLimit})` : 'Добавить устройство';
+    if (span) {
+      span.textContent = label;
+    } else {
+      btnDevicesAdd.textContent = label;
+    }
+    btnDevicesAdd.classList.toggle('is-limit-reached', isAtLimit);
   }
   setDevicesListStatus(isAtLimit
     ? 'Все слоты по тарифу заняты.'
@@ -696,8 +702,10 @@ if (btnDevicesRefresh) btnDevicesRefresh.addEventListener('click', loadDeviceLis
 
 if (btnDevicesAdd && pageSetup) {
   btnDevicesAdd.addEventListener('click', () => {
-    if (lastConfirmedDeviceList?.freeSlots === 0) {
-      showToast('Лимит устройств исчерпан. Удалите неиспользуемое устройство или увеличьте лимит');
+    if (lastConfirmedDeviceList && (lastConfirmedDeviceList.freeSlots === 0 || lastConfirmedDeviceList.status === 'limit')) {
+      const used = lastConfirmedDeviceList.usedSlots ?? 2;
+      const limit = lastConfirmedDeviceList.deviceLimit ?? 2;
+      showToast(`Лимит устройств исчерпан (${used} из ${limit}). Удалите одно из старых устройств через корзину, чтобы выпустить новое`, 4500);
       return;
     }
     
@@ -1174,7 +1182,7 @@ function isSubscriptionReady(app = currentSelectedApp || 'karing') {
 }
 
 function getAllowedSubscriptionOrigins() {
-  const configured = profileSubscription?.getApiBase?.() || window.GhostLinkV3?.apiBase || 'https://api.112prd.ru:2053';
+  const configured = profileSubscription?.getApiBase?.() || window.GhostLinkV3?.apiBase || 'https://panel.112prd.ru:2053';
   const origins = new Set([
     String(configured).replace(/\/+$/, ''),
     'https://panel.112prd.ru:2053',

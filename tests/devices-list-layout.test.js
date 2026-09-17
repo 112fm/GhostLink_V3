@@ -492,6 +492,126 @@ test('key rotation UI safety: Cancel closes modal with 0 mutations; Confirm trig
   assert.equal(mutationCalls[0].deviceId, 'dev-active-ios');
 });
 
+test('exhausted device slots (2/2) updates add button label, applies limit class, and shows warning toast on click', async () => {
+  const elements = new Map();
+
+  function createElement(id = '', className = '') {
+    const listeners = new Map();
+    const children = [];
+    const classes = new Set(className ? className.split(/\s+/).filter(Boolean) : []);
+    let textContent = '';
+    return {
+      id,
+      className,
+      children,
+      dataset: {},
+      style: {},
+      get textContent() { return textContent; },
+      set textContent(v) { textContent = String(v); },
+      classList: {
+        _classes: classes,
+        add(...c) { c.forEach(n => this._classes.add(n)); },
+        remove(...c) { c.forEach(n => this._classes.delete(n)); },
+        toggle(c, force) { if (force !== undefined) { force ? this.add(c) : this.remove(c); } else { this._classes.has(c) ? this.remove(c) : this.add(c); } },
+        contains(c) { return this._classes.has(c); },
+      },
+      append: (...items) => children.push(...items),
+      appendChild: (child) => { children.push(child); return child; },
+      replaceChildren: (...items) => { children.length = 0; if (items.length) children.push(...items); },
+      addEventListener: (type, handler) => {
+        if (!listeners.has(type)) listeners.set(type, []);
+        listeners.get(type).push(handler);
+      },
+      click: () => {
+        const handlers = listeners.get('click') || [];
+        handlers.forEach(h => h());
+      },
+      querySelector: (sel) => {
+        if (sel === 'span') {
+          let span = children.find(c => c.tagName === 'SPAN');
+          if (!span) {
+            span = createElement('', '');
+            span.tagName = 'SPAN';
+            children.push(span);
+          }
+          return span;
+        }
+        return null;
+      },
+      setAttribute: () => {},
+      removeAttribute: () => {},
+      closest: () => null,
+    };
+  }
+
+  const mockDocument = {
+    readyState: 'complete',
+    getElementById: (id) => {
+      if (!elements.has(id)) elements.set(id, createElement(id));
+      return elements.get(id);
+    },
+    createElement: (tag) => {
+      const el = createElement('', '');
+      el.tagName = String(tag).toUpperCase();
+      return el;
+    },
+    createTextNode: (text) => ({ textContent: String(text) }),
+    querySelectorAll: () => [],
+    querySelector: () => null,
+    addEventListener: () => {},
+    body: createElement('body'),
+  };
+
+  global.window = {
+    document: mockDocument,
+    GhostLinkV3: {},
+    Telegram: { WebApp: { platform: 'ios', openLink: () => {} } },
+  };
+  global.document = mockDocument;
+
+  new Function(devicesJs)();
+
+  const toastCalls = [];
+  global.window.GhostLinkV3.initDevicesModule({
+    showToast: (msg, duration) => toastCalls.push({ msg, duration }),
+    copyText: async () => true,
+    openOverlay: () => {},
+    closeOverlay: () => {},
+    returnToHome: () => {},
+    profileSubscription: {
+      getApiBase: () => 'https://panel.112prd.ru:2053',
+      getToken: () => 'auth-token-123',
+    },
+    deviceList: {
+      fetchList: async () => ({
+        status: 'limit',
+        devices: [
+          { id: 'd1', name: 'iPhone 15', platform: 'ios', is_active: true },
+          { id: 'd2', name: 'MacBook Pro', platform: 'macos', is_active: true },
+        ],
+        usedSlots: 2,
+        deviceLimit: 2,
+        freeSlots: 0,
+        canAdd: false,
+      }),
+    },
+    deviceMutations: { start: async () => ({}) },
+  });
+
+  await new Promise((resolve) => setTimeout(resolve, 20));
+
+  const slotSummary = mockDocument.getElementById('devices-slot-summary');
+  assert.equal(slotSummary.textContent, '2 из 2 занято');
+
+  const btnAdd = mockDocument.getElementById('btn-devices-add');
+  assert.equal(btnAdd.classList.contains('is-limit-reached'), true);
+
+  btnAdd.click();
+  assert.equal(toastCalls.length, 1);
+  assert.match(toastCalls[0].msg, /Лимит устройств исчерпан \(2 из 2\)/);
+  assert.match(toastCalls[0].msg, /корзину/);
+});
+
 
 
 

@@ -717,7 +717,7 @@ test('real Block 1 allocates dedicated 5000ms retry budget when first attempt ti
   assert.equal(adapter.getDiagnostics().session_status, 200);
 });
 
-test('real Block 1 adapter defaults to https://api.112prd.ru:2053 when apiBase is omitted', async () => {
+test('real Block 1 adapter defaults to https://panel.112prd.ru:2053 when apiBase is omitted', async () => {
   const calls = [];
   const adapter = createRealBlock1Adapter({
     getInitData: () => 'test_init_data',
@@ -737,8 +737,8 @@ test('real Block 1 adapter defaults to https://api.112prd.ru:2053 when apiBase i
   });
 
   await adapter.fetchProfileSubscription();
-  assert.equal(calls[0].url, 'https://api.112prd.ru:2053/api/miniapp/session');
-  assert.equal(adapter.getApiBase(), 'https://api.112prd.ru:2053');
+  assert.equal(calls[0].url, 'https://panel.112prd.ru:2053/api/miniapp/session');
+  assert.equal(adapter.getApiBase(), 'https://panel.112prd.ru:2053');
 });
 
 test('real Block 1 reuses cached session token on subsequent fetch and skips openSession', async () => {
@@ -825,7 +825,7 @@ test('real Block 1 clears token and re-authenticates via openSession when /api/u
   assert.equal(snap.profile.displayName, 'Recovered User');
 });
 
-test('real Block 1 falls back to panel origin domain on network failure or timeout of Cloudflare proxy', async () => {
+test('real Block 1 falls back to Cloudflare proxy domain on network failure or timeout of direct panel', async () => {
   const attemptedUrls = [];
   const adapter = createRealBlock1Adapter({
     initDataWaitMs: 100,
@@ -833,16 +833,16 @@ test('real Block 1 falls back to panel origin domain on network failure or timeo
     getInitData: () => 'tg-data',
     fetch: async (url) => {
       attemptedUrls.push(url);
-      if (url.startsWith('https://api.112prd.ru:2053')) {
-        // Cloudflare blocked or dropped
+      if (url.startsWith('https://panel.112prd.ru:2053')) {
+        // Direct panel blocked or dropped
         throw new TypeError('Failed to fetch');
       }
-      if (url.startsWith('https://panel.112prd.ru:2053/api/miniapp/session')) {
-        return response(200, { ok: true, session_token: 'panel-session-token' });
+      if (url.startsWith('https://api.112prd.ru:2053/api/miniapp/session')) {
+        return response(200, { ok: true, session_token: 'api-session-token' });
       }
-      if (url.startsWith('https://panel.112prd.ru:2053/api/user')) {
+      if (url.startsWith('https://api.112prd.ru:2053/api/user')) {
         return response(200, {
-          user: { id: '777', name: 'Panel Fallback User' },
+          user: { id: '777', name: 'Cloudflare Fallback User' },
           subscription: { active: true, status: 'active', days_left: 25 },
           device_limit: 3,
           connected_devices: 1,
@@ -855,10 +855,10 @@ test('real Block 1 falls back to panel origin domain on network failure or timeo
   });
 
   const snapshot = await adapter.fetchProfileSubscription();
-  assert.ok(attemptedUrls.some((u) => u.startsWith('https://api.112prd.ru:2053/api/miniapp/session')));
   assert.ok(attemptedUrls.some((u) => u.startsWith('https://panel.112prd.ru:2053/api/miniapp/session')));
-  assert.equal(snapshot.profile.displayName, 'Panel Fallback User');
-  assert.equal(adapter.getApiBase(), 'https://panel.112prd.ru:2053');
+  assert.ok(attemptedUrls.some((u) => u.startsWith('https://api.112prd.ru:2053/api/miniapp/session')));
+  assert.equal(snapshot.profile.displayName, 'Cloudflare Fallback User');
+  assert.equal(adapter.getApiBase(), 'https://api.112prd.ru:2053');
 });
 
 test('real Block 1 hedges parallel fallback when primary request exceeds fallbackThresholdMs', async () => {
@@ -871,15 +871,15 @@ test('real Block 1 hedges parallel fallback when primary request exceeds fallbac
     getInitData: () => 'tg-data',
     fetch: async (url) => {
       attemptedUrls.push(url);
-      if (url.startsWith('https://api.112prd.ru:2053')) {
+      if (url.startsWith('https://panel.112prd.ru:2053')) {
         // Primary hangs for 150ms
         await new Promise((r) => setTimeout(r, 150));
-        return response(200, { ok: true, session_token: 'slow-cf-token' });
+        return response(200, { ok: true, session_token: 'slow-panel-token' });
       }
-      if (url.startsWith('https://panel.112prd.ru:2053/api/miniapp/session')) {
+      if (url.startsWith('https://api.112prd.ru:2053/api/miniapp/session')) {
         // Fallback responds quickly in 10ms
         await new Promise((r) => setTimeout(r, 10));
-        return response(200, { ok: true, session_token: 'fast-panel-token' });
+        return response(200, { ok: true, session_token: 'fast-api-token' });
       }
       if (url.includes('/api/user')) {
         return response(200, {
@@ -894,10 +894,10 @@ test('real Block 1 hedges parallel fallback when primary request exceeds fallbac
   });
 
   const snapshot = await adapter.fetchProfileSubscription();
-  assert.ok(attemptedUrls.some((u) => u.startsWith('https://api.112prd.ru:2053/api/miniapp/session')));
   assert.ok(attemptedUrls.some((u) => u.startsWith('https://panel.112prd.ru:2053/api/miniapp/session')));
+  assert.ok(attemptedUrls.some((u) => u.startsWith('https://api.112prd.ru:2053/api/miniapp/session')));
   assert.equal(snapshot.profile.displayName, 'Hedged User');
-  assert.equal(adapter.getApiBase(), 'https://panel.112prd.ru:2053');
+  assert.equal(adapter.getApiBase(), 'https://api.112prd.ru:2053');
 });
 
 test('session token is preserved and valid user data is returned even during generation change', async () => {
