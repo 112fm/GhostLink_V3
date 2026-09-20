@@ -8,7 +8,7 @@
   const DEFAULT_USER_RETRY_DELAY_MS = 250;
   const DEFAULT_USER_RETRY_TIMEOUT_MS = 5000;
   const DEFAULT_TARIFFS_TIMEOUT_MS = 10000;
-  const DEFAULT_FAST_FALLBACK_TIMEOUT_MS = 2500;
+  const DEFAULT_FAST_FALLBACK_TIMEOUT_MS = 4500;
   const INIT_DATA_RETRY_MS = 150;
   const DEFAULT_SESSION_RETRY_DELAY_MS = 500;
   const DEFAULT_SESSION_RETRY_TIMEOUT_MS = 5000;
@@ -393,11 +393,7 @@
       function triggerFallback() {
         if (fallbackStarted) return fallbackPromise;
         fallbackStarted = true;
-        fallbackPromise = requestJson(fetchImpl, `${fallbackApiBase}${path}`, reqOptions, timeoutMs)
-          .then((res) => {
-            activeApiBase = fallbackApiBase;
-            return res;
-          });
+        fallbackPromise = requestJson(fetchImpl, `${fallbackApiBase}${path}`, reqOptions, timeoutMs);
         return fallbackPromise;
       }
 

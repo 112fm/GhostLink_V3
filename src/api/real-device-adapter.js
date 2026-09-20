@@ -2,7 +2,7 @@
   const DEFAULT_API_BASE = 'https://panel.112prd.ru:2053';
   const DEFAULT_FALLBACK_API_BASE = 'https://api.112prd.ru:2053';
   const DEFAULT_TIMEOUT_MS = 15000;
-  const DEFAULT_FAST_FALLBACK_TIMEOUT_MS = 2500;
+  const DEFAULT_FAST_FALLBACK_TIMEOUT_MS = 4500;
 
   function createError(type, message, status, data) {
     const error = new Error(message || type);
@@ -191,11 +191,7 @@
       function triggerFallback() {
         if (fallbackStarted) return fallbackPromise;
         fallbackStarted = true;
-        fallbackPromise = executeSingleRequest(currentFallback, path, requestOptions, token, timeoutMs)
-          .then((res) => {
-            activeApiBase = currentFallback;
-            return res;
-          });
+        fallbackPromise = executeSingleRequest(currentFallback, path, requestOptions, token, timeoutMs);
         return fallbackPromise;
       }
 
