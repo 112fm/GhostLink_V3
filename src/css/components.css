@@ -184,6 +184,27 @@
 
 .status-island.is-subscription-loading .status-content {
   opacity: 0;
+  transition: opacity 280ms ease;
+}
+
+.status-island.is-subscription-loading.has-loading-hint .status-content {
+  opacity: 1;
+}
+
+.status-island.has-loading-hint .status-tariff {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary, #b0b7c3);
+  letter-spacing: 0.01em;
+}
+
+.status-island.has-loading-hint .tariff-emoji {
+  animation: pulse-slow 1.8s infinite ease-in-out;
+}
+
+@keyframes pulse-slow {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
 }
 
 .status-island.is-subscription-loading .status-progress span {

@@ -16,11 +16,19 @@
     return Number.isFinite(number) ? Math.max(0, Math.floor(number)) : fallback;
   }
 
-  function getLoadingSubscriptionPresentation() {
+  function getLoadingSubscriptionPresentation(loadingHint = '') {
     return {
-      state: 'loading', planTitle: '', emoji: '', remainingDays: null,
-      daysValue: '', daysLabel: '', deviceLabel: '', progress: 100, actionLabel: 'Продлить подписку',
-      isDemo: false, progressKnown: true,
+      state: 'loading',
+      planTitle: loadingHint || '',
+      emoji: loadingHint ? '📡' : '',
+      remainingDays: null,
+      daysValue: '',
+      daysLabel: '',
+      deviceLabel: '',
+      progress: 100,
+      actionLabel: 'Продлить подписку',
+      isDemo: false,
+      progressKnown: true,
     };
   }
 
@@ -185,7 +193,7 @@
 
   let lastRenderedProfile = null;
 
-  function renderSubscriptionStatus(snapshot, documentRef = root.document, { loading = false } = {}) {
+  function renderSubscriptionStatus(snapshot, documentRef = root.document, { loading = false, loadingHint = '' } = {}) {
     if (!documentRef) return;
 
     const island = documentRef.getElementById('subscriptionStatus');
@@ -208,7 +216,7 @@
       lastRenderedProfile = snapshot;
     }
 
-    const presentation = loading ? getLoadingSubscriptionPresentation() : getSubscriptionPresentation(snapshot);
+    const presentation = loading ? getLoadingSubscriptionPresentation(loadingHint) : getSubscriptionPresentation(snapshot);
     const isUnavailable = presentation.state === 'unavailable';
     const isGreenActive = ['active', 'vip'].includes(presentation.state)
       && !['critical', 'warning', 'expired', 'denied', 'unavailable', 'pending'].includes(presentation.state);
@@ -217,6 +225,7 @@
     island.dataset.subscriptionState = presentation.state;
     island.setAttribute('aria-busy', String(loading));
     island.classList.toggle('is-subscription-loading', loading);
+    island.classList.toggle('has-loading-hint', Boolean(loading && loadingHint));
     island.classList.toggle('is-subscription-demo', presentation.isDemo);
     island.classList.toggle('is-subscription-active', isGreenActive);
     island.classList.toggle('is-subscription-warning', presentation.state === 'warning');
@@ -245,6 +254,7 @@
     const island = documentRef?.getElementById('subscriptionStatus');
     if (!island) return;
     island.classList.remove('is-subscription-loading');
+    island.classList.remove('has-loading-hint');
     island.setAttribute('aria-busy', 'false');
   }
 
@@ -306,8 +316,20 @@
       lastRenderedProfile = null;
     }
 
-    function renderLoading() {
-      renderSubscriptionStatus(null, documentRef, { loading: true });
+    const slowConnectionDelayMs = Number.isFinite(dependencies.slowConnectionDelayMs)
+      ? dependencies.slowConnectionDelayMs
+      : 3000;
+    let slowConnectionTimer = null;
+
+    function clearSlowConnectionTimer() {
+      if (slowConnectionTimer) {
+        clearTimeout(slowConnectionTimer);
+        slowConnectionTimer = null;
+      }
+    }
+
+    function renderLoading(hint = '') {
+      renderSubscriptionStatus(null, documentRef, { loading: true, loadingHint: hint });
     }
 
     function syncDeviceCounterFromAdapter() {
@@ -323,7 +345,16 @@
     }
 
     function loadProfileSubscription(options = {}) {
-      if (!profileSubscription || currentLoad) return currentLoad;
+      if (!profileSubscription) return null;
+      if (options?.force) {
+        currentLoad = null;
+        clearSlowConnectionTimer();
+        if (typeof profileSubscription.clearInFlight === 'function') {
+          profileSubscription.clearInFlight();
+        }
+      } else if (currentLoad) {
+        return currentLoad;
+      }
       const currentRequest = ++requestSequence;
       const cached = profileSubscription.getCachedProfile?.() || profileSubscription.getSnapshot?.();
       const hasExistingData = Boolean(
@@ -333,13 +364,22 @@
         cached?.profile
       );
 
+      clearSlowConnectionTimer();
       if (!hasExistingData) {
         renderLoading();
+        slowConnectionTimer = setTimeout(() => {
+          if (currentLoad && !lastRenderedProfile?.subscription && !lastRenderedProfile?.profile) {
+            renderLoading('Подключаемся к GhostLink…');
+          }
+        }, slowConnectionDelayMs);
       }
 
       currentLoad = Promise.resolve()
-        .then(() => (options.force && profileSubscription.refresh ? profileSubscription.refresh() : profileSubscription.fetchProfileSubscription()))
+        .then(() => (options.force && profileSubscription.refresh
+          ? profileSubscription.refresh(options)
+          : profileSubscription.fetchProfileSubscription(options)))
         .then((snapshot) => {
+          clearSlowConnectionTimer();
           if (currentRequest === requestSequence) {
             if (snapshot?.error) {
               if (!hasExistingData) {
@@ -362,6 +402,7 @@
           return snapshot;
         })
         .catch((error) => {
+          clearSlowConnectionTimer();
           if (currentRequest === requestSequence) {
             if (!hasExistingData) {
               showSessionError(error, documentRef);
@@ -372,6 +413,7 @@
           return null;
         })
         .finally(() => {
+          clearSlowConnectionTimer();
           clearSubscriptionLoading(documentRef);
           currentLoad = null;
         });
@@ -387,7 +429,11 @@
           : 'Перезапустить';
         btnSessionRetry.textContent = 'Подключение…';
         try {
-          await loadProfileSubscription({ force: true });
+          if (typeof profileSubscription?.clearInFlight === 'function') {
+            profileSubscription.clearInFlight();
+          }
+          currentLoad = null;
+          await loadProfileSubscription({ force: true, reauth: true });
         } catch (_) {
         } finally {
           btnSessionRetry.disabled = false;

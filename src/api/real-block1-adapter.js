@@ -3,15 +3,15 @@
   const DEFAULT_FALLBACK_API_BASE = '';
   const DEFAULT_TOTAL_TIMEOUT_MS = 15000;
   const DEFAULT_INIT_DATA_WAIT_MS = 6000;
-  const DEFAULT_SESSION_TIMEOUT_MS = 12000;
+  const DEFAULT_SESSION_TIMEOUT_MS = 6000;
   const DEFAULT_USER_TIMEOUT_MS = 12000;
   const DEFAULT_USER_RETRY_DELAY_MS = 250;
   const DEFAULT_USER_RETRY_TIMEOUT_MS = 5000;
   const DEFAULT_TARIFFS_TIMEOUT_MS = 10000;
   const DEFAULT_FAST_FALLBACK_TIMEOUT_MS = 4500;
   const INIT_DATA_RETRY_MS = 150;
-  const DEFAULT_SESSION_RETRY_DELAY_MS = 500;
-  const DEFAULT_SESSION_RETRY_TIMEOUT_MS = 5000;
+  const DEFAULT_SESSION_RETRY_DELAY_MS = 200;
+  const DEFAULT_SESSION_RETRY_TIMEOUT_MS = 6000;
 
   function raceFirstSuccess(promises) {
     return new Promise((resolve, reject) => {
@@ -510,7 +510,10 @@
         method: 'POST',
         cache: 'no-store',
         credentials: 'include',
-        headers: { Accept: 'application/json' },
+        headers: {
+          Accept: 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+        },
         body: new URLSearchParams({ init_data: initData }),
       }, timeoutMs);
 
@@ -584,6 +587,10 @@
           const requestDiagnostics = diagnostics;
 
           if (!token || options?.reauth) {
+            if (options?.reauth) {
+              token = '';
+              sessionState = null;
+            }
             await openSession(currentGeneration);
           } else {
             requestDiagnostics.initData_present = true;
@@ -649,6 +656,10 @@
           notifyListeners(currentSnapshot);
         }
         return result;
+      },
+      clearInFlight() {
+        inFlight = null;
+        tariffsInFlight = null;
       },
       getSnapshot: () => currentSnapshot,
       getCachedProfile: () => currentSnapshot,

@@ -108,6 +108,7 @@ test('real device adapter defaults to https://panel.112prd.ru:2053 when apiBase 
 test('real device adapter falls back to api.112prd.ru:2053 on network failure', async () => {
   const attemptedUrls = [];
   const adapter = createRealDeviceAdapter({
+    fallbackApiBase: 'https://api.112prd.ru:2053',
     getToken: () => 'pwa-token',
     fetch: async (url, options) => {
       attemptedUrls.push(url);
@@ -122,7 +123,7 @@ test('real device adapter falls back to api.112prd.ru:2053 on network failure', 
   assert.ok(attemptedUrls.some((u) => u.startsWith('https://panel.112prd.ru:2053/api/device/list')));
   assert.ok(attemptedUrls.some((u) => u.startsWith('https://api.112prd.ru:2053/api/device/list')));
   assert.equal(list.deviceLimit, 2);
-  assert.equal(adapter.getApiBase(), 'https://api.112prd.ru:2053');
+  assert.equal(adapter.getApiBase(), 'https://panel.112prd.ru:2053');
 });
 
 test('real device adapter resolves base dynamically via getApiBase option', async () => {

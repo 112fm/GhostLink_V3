@@ -220,3 +220,101 @@ test('renderSubscriptionStatus does not overwrite valid rendered profile with С
     global.document = prevDoc;
   }
 });
+
+test('btnSessionRetry clears inFlight on adapter and requests with { force: true, reauth: true }', async () => {
+  const { doc, getElement } = createMockDom();
+  const prevDoc = global.document;
+  global.document = doc;
+
+  let clearInFlightCalled = 0;
+  let receivedOptions = null;
+  let fetchCount = 0;
+
+  try {
+    initHomeModule({
+      profileSubscription: {
+        clearInFlight: () => {
+          clearInFlightCalled++;
+        },
+        fetchProfileSubscription: async (options) => {
+          fetchCount++;
+          receivedOptions = options;
+          if (fetchCount === 1) {
+            const err = new Error('Session timeout');
+            err.type = 'timeout';
+            throw err;
+          }
+          return {
+            subscription: { state: 'active', active: true, plan: { title: 'Solo' } },
+          };
+        },
+      },
+    });
+
+    await new Promise((r) => setTimeout(r, 10));
+    assert.equal(fetchCount, 1);
+    assert.equal(getElement('page-session-error').classList.contains('hidden'), false);
+
+    // Click retry
+    await getElement('btnSessionRetry').click();
+
+    assert.equal(fetchCount, 2);
+    assert.ok(clearInFlightCalled >= 1);
+    assert.deepEqual(receivedOptions, { force: true, reauth: true });
+    assert.equal(getElement('page-session-error').classList.contains('hidden'), true);
+  } finally {
+    global.document = prevDoc;
+  }
+});
+
+test('slow connection displays "Подключаемся к GhostLink…" after delay when loading without cached profile', async () => {
+  const { doc, getElement } = createMockDom();
+  const prevDoc = global.document;
+  global.document = doc;
+
+  let resolveProfile;
+  const profilePromise = new Promise((resolve) => {
+    resolveProfile = resolve;
+  });
+
+  try {
+    initHomeModule({
+      slowConnectionDelayMs: 25,
+      profileSubscription: {
+        fetchProfileSubscription: () => profilePromise,
+      },
+    });
+
+    // Before delay threshold: loading is active, but hint is not yet shown
+    assert.equal(getElement('subscriptionStatus').classList.contains('is-subscription-loading'), true);
+    assert.equal(getElement('subscriptionStatus').classList.contains('has-loading-hint'), false);
+    assert.equal(getElement('subscriptionPlanName').textContent, '');
+
+    // Wait past 25ms delay
+    await new Promise((r) => setTimeout(r, 35));
+
+    // After delay: hint is shown in subscription island
+    assert.equal(getElement('subscriptionStatus').classList.contains('has-loading-hint'), true);
+    assert.equal(getElement('subscriptionPlanName').textContent, 'Подключаемся к GhostLink…');
+    assert.equal(getElement('subscriptionEmoji').textContent, '📡');
+
+    // Resolve profile
+    resolveProfile({
+      subscription: {
+        state: 'active',
+        active: true,
+        remainingDays: 14,
+        plan: { title: 'Flex', emoji: '⚡' },
+      },
+    });
+    await new Promise((r) => setTimeout(r, 10));
+
+    // Once resolved, loading and hint classes are cleared and profile is rendered
+    assert.equal(getElement('subscriptionStatus').classList.contains('has-loading-hint'), false);
+    assert.equal(getElement('subscriptionStatus').classList.contains('is-subscription-loading'), false);
+    assert.equal(getElement('subscriptionPlanName').textContent, 'Flex');
+    assert.equal(getElement('subscriptionEmoji').textContent, '⚡');
+  } finally {
+    global.document = prevDoc;
+  }
+});

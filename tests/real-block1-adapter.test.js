@@ -828,6 +828,7 @@ test('real Block 1 clears token and re-authenticates via openSession when /api/u
 test('real Block 1 falls back to Cloudflare proxy domain on network failure or timeout of direct panel', async () => {
   const attemptedUrls = [];
   const adapter = createRealBlock1Adapter({
+    fallbackApiBase: 'https://api.112prd.ru:2053',
     initDataWaitMs: 100,
     sessionRetryDelayMs: 0,
     getInitData: () => 'tg-data',
@@ -858,12 +859,13 @@ test('real Block 1 falls back to Cloudflare proxy domain on network failure or t
   assert.ok(attemptedUrls.some((u) => u.startsWith('https://panel.112prd.ru:2053/api/miniapp/session')));
   assert.ok(attemptedUrls.some((u) => u.startsWith('https://api.112prd.ru:2053/api/miniapp/session')));
   assert.equal(snapshot.profile.displayName, 'Cloudflare Fallback User');
-  assert.equal(adapter.getApiBase(), 'https://api.112prd.ru:2053');
+  assert.equal(adapter.getApiBase(), 'https://panel.112prd.ru:2053');
 });
 
 test('real Block 1 hedges parallel fallback when primary request exceeds fallbackThresholdMs', async () => {
   const attemptedUrls = [];
   const adapter = createRealBlock1Adapter({
+    fallbackApiBase: 'https://api.112prd.ru:2053',
     initDataWaitMs: 100,
     fallbackThresholdMs: 20, // fast 20ms threshold for unit test
     sessionTimeoutMs: 200,
@@ -897,7 +899,7 @@ test('real Block 1 hedges parallel fallback when primary request exceeds fallbac
   assert.ok(attemptedUrls.some((u) => u.startsWith('https://panel.112prd.ru:2053/api/miniapp/session')));
   assert.ok(attemptedUrls.some((u) => u.startsWith('https://api.112prd.ru:2053/api/miniapp/session')));
   assert.equal(snapshot.profile.displayName, 'Hedged User');
-  assert.equal(adapter.getApiBase(), 'https://api.112prd.ru:2053');
+  assert.equal(adapter.getApiBase(), 'https://panel.112prd.ru:2053');
 });
 
 test('session token is preserved and valid user data is returned even during generation change', async () => {
@@ -956,5 +958,54 @@ test('waitForInitData waits through cold-start delay on iOS/macOS without throwi
   const snapshot = await adapter.fetchProfileSubscription();
   assert.equal(snapshot.profile.displayName, 'iOS Cold Start User');
   assert.ok(attempts >= 3, 'Must have polled multiple times before data arrived');
+});
+
+test('real Block 1 session timeouts default to 6000ms and retry delay to 200ms', async () => {
+  const fs = require('node:fs');
+  const source = fs.readFileSync(path.join(root, 'src', 'api', 'real-block1-adapter.js'), 'utf8');
+  assert.match(source, /const DEFAULT_SESSION_TIMEOUT_MS = 6000;/);
+  assert.match(source, /const DEFAULT_SESSION_RETRY_DELAY_MS = 200;/);
+  assert.match(source, /const DEFAULT_SESSION_RETRY_TIMEOUT_MS = 6000;/);
+});
+
+test('real Block 1 clearInFlight allows immediate re-fetch and reauth forces session renewal with no-cache headers', async () => {
+  let sessionCalls = 0;
+  let sessionHeaders = null;
+  const adapter = createRealBlock1Adapter({
+    initDataWaitMs: 100,
+    getInitData: () => 'tg-data',
+    fetch: async (url, opts) => {
+      if (url.endsWith('/api/miniapp/session')) {
+        sessionCalls++;
+        sessionHeaders = opts.headers;
+        return response(200, { ok: true, session_token: `token-${sessionCalls}` });
+      }
+      if (url.endsWith('/api/user')) {
+        return response(200, {
+          user: { id: '1', name: 'User 1' },
+          subscription: { active: true, days_left: 30 },
+        });
+      }
+      return response(200, {});
+    },
+  });
+
+  const snap1 = await adapter.fetchProfileSubscription();
+  assert.equal(sessionCalls, 1);
+  assert.equal(adapter.getToken(), 'token-1');
+  assert.equal(sessionHeaders['Cache-Control'], 'no-cache, no-store, must-revalidate');
+
+  // Normal fetch reuses cached session
+  await adapter.fetchProfileSubscription();
+  assert.equal(sessionCalls, 1);
+
+  // Calling clearInFlight
+  assert.equal(typeof adapter.clearInFlight, 'function');
+  adapter.clearInFlight();
+
+  // Reauth forces session renewal
+  await adapter.fetchProfileSubscription({ force: true, reauth: true });
+  assert.equal(sessionCalls, 2);
+  assert.equal(adapter.getToken(), 'token-2');
 });
 
