@@ -1,17 +1,17 @@
 (function registerRealBlock1Adapter(globalScope) {
   const DEFAULT_API_BASE = 'https://panel.112prd.ru:2053';
-  const DEFAULT_FALLBACK_API_BASE = 'https://api.112prd.ru:2053';
+  const DEFAULT_FALLBACK_API_BASE = '';
   const DEFAULT_TOTAL_TIMEOUT_MS = 15000;
   const DEFAULT_INIT_DATA_WAIT_MS = 6000;
-  const DEFAULT_SESSION_TIMEOUT_MS = 12000;
-  const DEFAULT_USER_TIMEOUT_MS = 12000;
+  const DEFAULT_SESSION_TIMEOUT_MS = 6000;
+  const DEFAULT_USER_TIMEOUT_MS = 6000;
   const DEFAULT_USER_RETRY_DELAY_MS = 250;
   const DEFAULT_USER_RETRY_TIMEOUT_MS = 5000;
   const DEFAULT_TARIFFS_TIMEOUT_MS = 10000;
   const DEFAULT_FAST_FALLBACK_TIMEOUT_MS = 2500;
   const INIT_DATA_RETRY_MS = 150;
-  const DEFAULT_SESSION_RETRY_DELAY_MS = 300;
-  const DEFAULT_SESSION_RETRY_TIMEOUT_MS = 12000;
+  const DEFAULT_SESSION_RETRY_DELAY_MS = 200;
+  const DEFAULT_SESSION_RETRY_TIMEOUT_MS = 6000;
 
   function raceFirstSuccess(promises) {
     return new Promise((resolve, reject) => {
@@ -530,7 +530,7 @@
 
       const receivedToken = String(session?.session_token || '').trim();
       if (receivedToken) {
-        if (!token || currentGeneration === activeGeneration) {
+        if (currentGeneration === activeGeneration) {
           token = receivedToken;
           sessionState = Object.freeze({ status: 'authenticated', transport: 'memory' });
         }

@@ -960,12 +960,60 @@ test('waitForInitData waits through cold-start delay on iOS/macOS without throwi
   assert.ok(attempts >= 3, 'Must have polled multiple times before data arrived');
 });
 
-test('real Block 1 session timeouts default to 6000ms and retry delay to 200ms', async () => {
+test('real Block 1 session timeouts default to 6000ms, retry delay to 200ms, and empty fallback', async () => {
   const fs = require('node:fs');
   const source = fs.readFileSync(path.join(root, 'src', 'api', 'real-block1-adapter.js'), 'utf8');
   assert.match(source, /const DEFAULT_SESSION_TIMEOUT_MS = 6000;/);
   assert.match(source, /const DEFAULT_SESSION_RETRY_DELAY_MS = 200;/);
   assert.match(source, /const DEFAULT_SESSION_RETRY_TIMEOUT_MS = 6000;/);
+  assert.match(source, /const DEFAULT_USER_TIMEOUT_MS = 6000;/);
+  assert.match(source, /const DEFAULT_FALLBACK_API_BASE = '';/);
+});
+
+test('late arrival of openSession response from older generation cannot overwrite active token even if token was reset', async () => {
+  let sessionCallCount = 0;
+  const adapter = createRealBlock1Adapter({
+    getInitData: () => 'telegram-init-data',
+    fetch: async (url) => {
+      if (url.endsWith('/api/miniapp/session')) {
+        sessionCallCount++;
+        const currentCall = sessionCallCount;
+        if (currentCall === 1) {
+          // Slow session request #1 (takes 120ms, returns token-stale-1)
+          await new Promise((r) => setTimeout(r, 120));
+          return response(200, { ok: true, session_token: 'token-stale-1' });
+        } else {
+          // Fast session request #2 (takes 30ms, returns token-fresh-2)
+          await new Promise((r) => setTimeout(r, 30));
+          return response(200, { ok: true, session_token: 'token-fresh-2' });
+        }
+      }
+      if (url.endsWith('/api/user')) {
+        return response(200, {
+          user: { id: '1', name: 'Test User' },
+          subscription: { active: true, status: 'active', days_left: 30 },
+        });
+      }
+      return response(200, {});
+    },
+  });
+
+  // 1. Launch request #1 (slow session)
+  void adapter.fetchProfileSubscription();
+
+  // 2. User clicks retry/reauth which increments generation and resets token
+  await new Promise((r) => setTimeout(r, 10));
+  const req2 = adapter.fetchProfileSubscription({ force: true, reauth: true });
+
+  // 3. Fast req2 finishes
+  await req2;
+  assert.equal(adapter.getToken(), 'token-fresh-2');
+
+  // 4. Wait for slow req1 to complete
+  await new Promise((r) => setTimeout(r, 130));
+
+  // 5. Verify token is NOT overwritten by late response from req1
+  assert.equal(adapter.getToken(), 'token-fresh-2');
 });
 
 test('real Block 1 clearInFlight allows immediate re-fetch and reauth forces session renewal with Simple CORS headers', async () => {
