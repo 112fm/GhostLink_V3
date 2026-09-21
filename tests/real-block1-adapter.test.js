@@ -960,13 +960,13 @@ test('waitForInitData waits through cold-start delay on iOS/macOS without throwi
   assert.ok(attempts >= 3, 'Must have polled multiple times before data arrived');
 });
 
-test('real Block 1 session timeouts default to 6000ms, retry delay to 200ms, and empty fallback', async () => {
+test('real Block 1 session timeouts default to 12000ms, retry delay to 300ms, and empty fallback', async () => {
   const fs = require('node:fs');
   const source = fs.readFileSync(path.join(root, 'src', 'api', 'real-block1-adapter.js'), 'utf8');
-  assert.match(source, /const DEFAULT_SESSION_TIMEOUT_MS = 6000;/);
-  assert.match(source, /const DEFAULT_SESSION_RETRY_DELAY_MS = 200;/);
-  assert.match(source, /const DEFAULT_SESSION_RETRY_TIMEOUT_MS = 6000;/);
-  assert.match(source, /const DEFAULT_USER_TIMEOUT_MS = 6000;/);
+  assert.match(source, /const DEFAULT_SESSION_TIMEOUT_MS = 12000;/);
+  assert.match(source, /const DEFAULT_SESSION_RETRY_DELAY_MS = 300;/);
+  assert.match(source, /const DEFAULT_SESSION_RETRY_TIMEOUT_MS = 12000;/);
+  assert.match(source, /const DEFAULT_USER_TIMEOUT_MS = 12000;/);
   assert.match(source, /const DEFAULT_FALLBACK_API_BASE = '';/);
 });
 
