@@ -968,7 +968,7 @@ test('real Block 1 session timeouts default to 6000ms and retry delay to 200ms',
   assert.match(source, /const DEFAULT_SESSION_RETRY_TIMEOUT_MS = 6000;/);
 });
 
-test('real Block 1 clearInFlight allows immediate re-fetch and reauth forces session renewal with no-cache headers', async () => {
+test('real Block 1 clearInFlight allows immediate re-fetch and reauth forces session renewal with Simple CORS headers', async () => {
   let sessionCalls = 0;
   let sessionHeaders = null;
   const adapter = createRealBlock1Adapter({
@@ -993,7 +993,8 @@ test('real Block 1 clearInFlight allows immediate re-fetch and reauth forces ses
   const snap1 = await adapter.fetchProfileSubscription();
   assert.equal(sessionCalls, 1);
   assert.equal(adapter.getToken(), 'token-1');
-  assert.equal(sessionHeaders['Cache-Control'], 'no-cache, no-store, must-revalidate');
+  assert.equal(sessionHeaders['Accept'], 'application/json');
+  assert.equal(sessionHeaders['Cache-Control'], undefined);
 
   // Normal fetch reuses cached session
   await adapter.fetchProfileSubscription();

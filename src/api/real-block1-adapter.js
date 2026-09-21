@@ -510,10 +510,7 @@
         method: 'POST',
         cache: 'no-store',
         credentials: 'include',
-        headers: {
-          Accept: 'application/json',
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-        },
+        headers: { Accept: 'application/json' },
         body: new URLSearchParams({ init_data: initData }),
       }, timeoutMs);
 
