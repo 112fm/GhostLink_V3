@@ -1,6 +1,6 @@
 (function registerRealBlock1Adapter(globalScope) {
   const DEFAULT_API_BASE = 'https://panel.112prd.ru:2053';
-  const DEFAULT_FALLBACK_API_BASE = '';
+  const DEFAULT_FALLBACK_API_BASE = 'https://api.112prd.ru:2053';
   const DEFAULT_TOTAL_TIMEOUT_MS = 15000;
   const DEFAULT_INIT_DATA_WAIT_MS = 6000;
   const DEFAULT_SESSION_TIMEOUT_MS = 12000;

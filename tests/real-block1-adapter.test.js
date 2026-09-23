@@ -828,7 +828,6 @@ test('real Block 1 clears token and re-authenticates via openSession when /api/u
 test('real Block 1 falls back to Cloudflare proxy domain on network failure or timeout of direct panel', async () => {
   const attemptedUrls = [];
   const adapter = createRealBlock1Adapter({
-    fallbackApiBase: 'https://api.112prd.ru:2053',
     initDataWaitMs: 100,
     sessionRetryDelayMs: 0,
     getInitData: () => 'tg-data',
@@ -960,14 +959,14 @@ test('waitForInitData waits through cold-start delay on iOS/macOS without throwi
   assert.ok(attempts >= 3, 'Must have polled multiple times before data arrived');
 });
 
-test('real Block 1 session timeouts default to 12000ms, retry delay to 300ms, and empty fallback', async () => {
+test('real Block 1 session timeouts and default Cloudflare fallback are configured for mobile networks', async () => {
   const fs = require('node:fs');
   const source = fs.readFileSync(path.join(root, 'src', 'api', 'real-block1-adapter.js'), 'utf8');
   assert.match(source, /const DEFAULT_SESSION_TIMEOUT_MS = 12000;/);
   assert.match(source, /const DEFAULT_SESSION_RETRY_DELAY_MS = 300;/);
   assert.match(source, /const DEFAULT_SESSION_RETRY_TIMEOUT_MS = 12000;/);
   assert.match(source, /const DEFAULT_USER_TIMEOUT_MS = 12000;/);
-  assert.match(source, /const DEFAULT_FALLBACK_API_BASE = '';/);
+  assert.match(source, /const DEFAULT_FALLBACK_API_BASE = 'https:\/\/api\.112prd\.ru:2053';/);
 });
 
 test('late arrival of openSession response from older generation cannot overwrite active token even if token was reset', async () => {
@@ -1057,4 +1056,3 @@ test('real Block 1 clearInFlight allows immediate re-fetch and reauth forces ses
   assert.equal(sessionCalls, 2);
   assert.equal(adapter.getToken(), 'token-2');
 });
-

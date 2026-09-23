@@ -1,6 +1,6 @@
 (function registerRealDeviceAdapter(globalScope) {
   const DEFAULT_API_BASE = 'https://panel.112prd.ru:2053';
-  const DEFAULT_FALLBACK_API_BASE = '';
+  const DEFAULT_FALLBACK_API_BASE = 'https://api.112prd.ru:2053';
   const DEFAULT_TIMEOUT_MS = 15000;
   const DEFAULT_FAST_FALLBACK_TIMEOUT_MS = 2500;
 
